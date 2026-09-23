@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mindspeed.example/schemas/tool-result-v1.schema.json",
+  "title": "MindSpeed Config Tool Result V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "tool",
+    "status",
+    "rule_profile",
+    "source_versions",
+    "errors",
+    "warnings",
+    "assumptions",
+    "confidence",
+    "data"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "tool": {
+      "enum": [
+        "validate_parallel_config",
+        "compute_rank_topology",
+        "suggest_config_fixes",
+        "estimate_training_capacity"
+      ]
+    },
+    "status": { "enum": ["valid", "invalid", "estimated", "error"] },
+    "rule_profile": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["framework", "version"],
+      "properties": {
+        "framework": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "source_commit": { "type": "string" }
+      }
+    },
+    "source_versions": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "errors": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/diagnostic" }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/diagnostic" }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "confidence": {
+      "enum": ["deterministic", "theoretical", "model-informed", "calibrated"]
+    },
+    "data": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "fields", "source"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 },
+        "fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "formula": { "type": "string" },
+        "source": {
+          "enum": ["page-rule", "mindspeed-rule", "megatron-rule", "compatibility-gap"]
+        },
+        "source_ref": { "type": "string" }
+      }
+    }
+  }
+}

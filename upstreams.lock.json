@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-09-22",
+  "repositories": {
+    "tool_matrix_ui": {
+      "path": "D:\\Projects\\compute-graph-viewer-wzh",
+      "commit": "ef39d306e70ad48954b3acd3a826b2c3be3c350d",
+      "dirty": true,
+      "dirty_note": "检测到 router-logits-viz.html 修改和一张未跟踪截图；本次读取的 config-relation 与 MindSpeed 页面文件未显示为已修改。",
+      "relevant_paths": [
+        "Profiling_Insight_and_Tool/shared/plane-rules.js",
+        "Profiling_Insight_and_Tool/training-run-twin-standalone/js/config-relation-observer.js",
+        "Profiling_Insight_and_Tool/training-run-twin-standalone/js/config-relation-capacity.js",
+        "Profiling_Insight_and_Tool/training-run-twin-standalone/mindspeed-tool-matrix-analysis.html",
+        "Profiling_Insight_and_Tool/training-run-twin-standalone/mindspeed-agent-overview.html",
+        "Profiling_Insight_and_Tool/training-run-twin-standalone/tools/plane-rules-selfcheck.js",
+        "Profiling_Insight_and_Tool/training-run-twin-standalone/tools/cro-selfcheck.js"
+      ]
+    },
+    "mindspeed_agent": {
+      "path": "D:\\Projects\\MindSpeed-Agent",
+      "commit": "81120d07c68944de393f0398900f627be15b056a",
+      "dirty": false,
+      "dirty_note": "读取时工作区干净。",
+      "relevant_paths": [
+        "catalog/repos.yaml",
+        "catalog/plugins.yaml",
+        "skills/common/common/ecosystem-routing/SKILL.md",
+        "skills/llm-skills/llm-model-analysis/SKILL.md",
+        "skills/llm-skills/fsdp2-model-adaptation/fsdp2-model-analysis/SKILL.md"
+      ]
+    },
+    "mindspeed_core": {
+      "path": "D:\\Projects\\MindSpeed",
+      "commit": "65634689bed75ee9b6df666d526f7f16051a3db5",
+      "package_version": "0.12.1",
+      "dirty": false,
+      "relevant_paths": [
+        "mindspeed/arguments.py",
+        "mindspeed/auto_settings/config/model_config.py",
+        "docs/zh/release_notes_core.md",
+        "README.md"
+      ]
+    },
+    "megatron_core": {
+      "path": "D:\\Projects\\Megatron-LM",
+      "status": "missing",
+      "expected_ref": "core_v0.12.1",
+      "reason": "Rank 通信组和并行状态的最终语义来自与 MindSpeed 匹配的 Megatron-Core。"
+    }
+  }
+}

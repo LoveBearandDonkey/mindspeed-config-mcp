@@ -1,0 +1,33 @@
+{
+  "A01": { "status": "valid", "world_size": 16, "error_codes": [], "rank_count": 16, "unique_rank_count": 16 },
+  "A02": { "status": "invalid", "error_codes": ["PAGE_WORLD_SIZE_MATCHES_TOTAL_RANKS"] },
+  "A03": { "status": "invalid", "error_codes": ["MINDSPEED_LAYERS_DIVISIBLE_BY_PP"] },
+  "A04": { "status": "invalid", "error_codes": ["PAGE_HEADS_DIVISIBLE_BY_TP"] },
+  "A05": { "status": "valid", "edp": 2, "ep_group_sizes": [2, 2, 2, 2, 2, 2, 2, 2] },
+  "A06": { "status": "invalid", "error_codes": ["PAGE_EP_DOMAIN_DIVISIBLE_BY_EP"] },
+  "A07": { "status": "valid", "ep_domain": 4, "edp": 1, "rank_count": 8, "unique_rank_count": 8 },
+  "A08": { "status": "invalid", "error_codes": ["MINDSPEED_ULYSSES_HEADS_DIVISIBLE_BY_TP_CP"] },
+  "A09": { "status": "invalid", "error_codes": ["MINDSPEED_RING_SEQUENCE_DIVISIBLE_BY_2CP"] },
+  "A10": {
+    "solved": true,
+    "locked_fields": ["cluster.total_ranks", "parallel.ep"],
+    "first_changes": [{ "path": "parallel.cp", "old_value": 1, "new_value": 2 }]
+  },
+  "A11": { "solved": false, "suggestion_count": 0 },
+  "A12": {
+    "confidence": "theoretical",
+    "bottleneck_level": "safe",
+    "stages": [
+      { "stage": 0, "level": "safe", "total_gib": 4.581702, "weight_gib": 0.092285, "gradient_gib": 0.092285, "optimizer_gib": 0.046143, "activation_gib": 0.132813 },
+      { "stage": 1, "level": "safe", "total_gib": 4.511975, "weight_gib": 0.092285, "gradient_gib": 0.092285, "optimizer_gib": 0.046143, "activation_gib": 0.066406 }
+    ]
+  },
+  "A13": { "confidence": "theoretical", "bottleneck_level": "over", "bottleneck_stage": 0, "total_gib": 162.080615 },
+  "A14": {
+    "none": { "stage": 0, "level": "safe", "total_gib": 4.727051, "weight_gib": 0.092285, "gradient_gib": 0.092285, "optimizer_gib": 0.18457, "activation_gib": 0.132813 },
+    "zero1": { "stage": 0, "level": "safe", "total_gib": 4.581702, "weight_gib": 0.092285, "gradient_gib": 0.092285, "optimizer_gib": 0.046143, "activation_gib": 0.132813 },
+    "fsdp2": { "stage": 0, "level": "safe", "total_gib": 4.558423, "weight_gib": 0.023071, "gradient_gib": 0.023071, "optimizer_gib": 0.046143, "activation_gib": 0.132813 }
+  },
+  "A15": { "bottleneck_stage": 0, "stage_weights_gib": [0.07666, 0.015625, 0.015625, 0.07666] }
+}
+

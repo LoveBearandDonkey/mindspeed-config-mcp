@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mindspeed.example/schemas/training-config-v1.schema.json",
+  "title": "MindSpeed Training Configuration V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "rule_profile",
+    "model",
+    "parallel",
+    "cluster",
+    "batch",
+    "memory"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "rule_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["framework", "version"],
+      "properties": {
+        "framework": {
+          "enum": ["mindspeed-core", "mindspeed-llm-mcore", "mindformers", "generic"]
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_commit": {
+          "type": "string"
+        }
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "total_layers",
+        "hidden_size",
+        "num_attention_heads",
+        "routed_experts",
+        "top_k",
+        "shared_experts"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "total_layers": { "type": "integer", "minimum": 1 },
+        "hidden_size": { "type": "integer", "minimum": 1 },
+        "num_attention_heads": { "type": "integer", "minimum": 1 },
+        "num_key_value_heads": { "type": "integer", "minimum": 1 },
+        "ffn_hidden_size": { "type": "integer", "minimum": 1 },
+        "expert_ffn_hidden_size": { "type": "integer", "minimum": 1 },
+        "vocab_size": { "type": "integer", "minimum": 1 },
+        "first_k_dense_layers": { "type": "integer", "minimum": 0 },
+        "routed_experts": { "type": "integer", "minimum": 0 },
+        "top_k": { "type": "integer", "minimum": 0 },
+        "shared_experts": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "parallel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dp",
+        "pp",
+        "tp",
+        "cp",
+        "ep",
+        "vpp",
+        "ep_mode",
+        "cp_mode",
+        "sequence_parallel",
+        "vocab_embedding_data_parallel",
+        "expert_tensor_parallel"
+      ],
+      "properties": {
+        "dp": { "type": "integer", "minimum": 1 },
+        "pp": { "type": "integer", "minimum": 1 },
+        "tp": { "type": "integer", "minimum": 1 },
+        "cp": { "type": "integer", "minimum": 1 },
+        "ep": { "type": "integer", "minimum": 1 },
+        "vpp": { "type": "integer", "minimum": 1 },
+        "ep_mode": { "enum": ["split", "orthogonal", "mf"] },
+        "cp_mode": { "enum": ["ulysses", "ring"] },
+        "sequence_parallel": { "type": "boolean" },
+        "vocab_embedding_data_parallel": { "type": "boolean" },
+        "expert_tensor_parallel": { "type": "boolean" }
+      }
+    },
+    "cluster": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total_ranks", "ranks_per_node", "card_model", "card_memory_gib"],
+      "properties": {
+        "total_ranks": { "type": "integer", "minimum": 1 },
+        "ranks_per_node": { "type": "integer", "minimum": 1 },
+        "card_model": { "type": "string", "minLength": 1 },
+        "card_memory_gib": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "batch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["micro_batch_size", "sequence_length", "micro_batch_count"],
+      "properties": {
+        "micro_batch_size": { "type": "integer", "minimum": 1 },
+        "sequence_length": { "type": "integer", "minimum": 1 },
+        "micro_batch_count": { "type": "integer", "minimum": 1 },
+        "global_batch_size": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "memory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "compute_dtype",
+        "parameter_dtype",
+        "recompute_mode",
+        "shard_mode",
+        "lora_enabled"
+      ],
+      "properties": {
+        "compute_dtype": { "enum": ["bf16", "fp16", "fp8"] },
+        "parameter_dtype": { "enum": ["bf16", "fp32"] },
+        "recompute_mode": { "enum": ["none", "selective", "layers", "full"] },
+        "recompute_layers": { "type": "integer", "minimum": 0 },
+        "shard_mode": { "enum": ["none", "zero1", "fsdp2"] },
+        "lora_enabled": { "type": "boolean" },
+        "lora_rank": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "locked_fields": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "objective": {
+          "enum": ["minimal-change", "fit-current-ranks", "reduce-memory", "balanced"]
+        }
+      }
+    }
+  }
+}

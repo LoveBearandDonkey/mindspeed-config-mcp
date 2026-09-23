@@ -1,0 +1,13 @@
+{
+  "name": "@mindspeed-config/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@mindspeed-config/config-core": "0.1.0",
+    "@mindspeed-config/contracts": "0.1.0",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "zod": "^4.0.0"
+  }
+}
+
