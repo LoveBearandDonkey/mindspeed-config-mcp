@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindSpeed 配置分析</title>
+    <script type="module" src="/src/app.js"></script>
+  </head>
+  <body>
+    <main class="app-shell" id="app">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">MindSpeed Config MCP</p>
+          <h1 id="title">等待配置分析结果</h1>
+          <p class="summary" id="summary">调用任一配置工具后，这里会展示可交互的结构化结果。</p>
+        </div>
+        <span class="status" id="status" data-status="idle">等待中</span>
+      </header>
+      <section class="metrics" id="metrics" aria-label="结果摘要"></section>
+      <section class="panel" id="primary">
+        <div class="empty-state">
+          <span>⌁</span>
+          <p>支持配置校验、Rank 矩阵、修复建议、配置文件解析和理论容量估算。</p>
+        </div>
+      </section>
+      <details class="panel trace" id="trace">
+        <summary>规则来源、假设与原始结果</summary>
+        <div id="traceBody"></div>
+      </details>
+    </main>
+  </body>
+</html>

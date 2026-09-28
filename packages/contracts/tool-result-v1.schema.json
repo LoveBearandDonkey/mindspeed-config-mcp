@@ -23,6 +23,7 @@
         "validate_parallel_config",
         "compute_rank_topology",
         "suggest_config_fixes",
+        "parse_training_config",
         "estimate_training_capacity"
       ]
     },
@@ -74,7 +75,7 @@
         },
         "formula": { "type": "string" },
         "source": {
-          "enum": ["page-rule", "mindspeed-rule", "megatron-rule", "compatibility-gap"]
+          "enum": ["page-rule", "mindspeed-rule", "megatron-rule", "parser-rule", "compatibility-gap"]
         },
         "source_ref": { "type": "string" }
       }

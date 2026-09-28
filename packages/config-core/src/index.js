@@ -1,5 +1,6 @@
 export { computeRankTopology } from "./compute-rank-topology.js";
 export { estimateTrainingCapacity } from "./estimate-training-capacity.js";
+export { parseTrainingConfig } from "./parse-training-config.js";
 export {
   EP_MF,
   EP_ORTHOGONAL,
@@ -24,6 +25,7 @@ export const CONFIG_CORE_STATUS = Object.freeze({
     "validate_parallel_config",
     "compute_rank_topology",
     "suggest_config_fixes",
+    "parse_training_config",
     "estimate_training_capacity",
   ],
 });

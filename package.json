@@ -8,15 +8,16 @@
     "packages/*"
   ],
   "scripts": {
-    "test": "node --test",
+    "build:ui": "npm run build:ui --workspace @mindspeed-config/mcp-server",
+    "test": "npm run build:ui && node --test",
     "test:contracts": "node --test packages/contracts/test/contracts.test.js",
     "test:golden": "node --test tests/golden/acceptance-golden.test.js",
-    "test:mcp": "node --test apps/mcp-server/test/server.test.js",
-    "start:mcp": "node apps/mcp-server/src/index.js",
+    "test:mcp": "npm run build:ui && node --test apps/mcp-server/test/server.test.js",
+    "start:mcp": "npm run build:ui && node apps/mcp-server/src/index.js",
     "verify:upstream": "node tools/verify-upstream-baseline.cjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.19.0"
   },
   "devDependencies": {
     "ajv": "^8.20.0"

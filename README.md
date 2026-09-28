@@ -4,15 +4,17 @@
 
 ## 当前状态
 
-项目处于第一阶段：四项纯计算接口已经形成第一版并通过单元测试，stdio MCP Server
-也已注册对应的四个只读 Tool。当前尚未实现远程 HTTP、鉴权和服务器部署。
+项目处于第一阶段：`集成分析.md` 表中第 1、2、3、4、6 项已经形成第一版并通过
+单元测试，stdio MCP Server 已注册五个只读 Tool，并为每个 Tool 关联同一个 MCP App
+结果界面。当前尚未实现远程 HTTP、鉴权和服务器部署。
 
 第一版范围：
 
 1. `validate_parallel_config`
 2. `compute_rank_topology`
 3. `suggest_config_fixes`
-4. `estimate_training_capacity`
+4. `parse_training_config`
+5. `estimate_training_capacity`（对应分析表第 6 项）
 
 纯计算入口由 `packages/config-core/src/index.js` 统一导出。当前 Rank 语义为
 `page-derived`，容量置信等级为 `theoretical`。
@@ -21,10 +23,10 @@
 
 ```text
 apps/
-  mcp-server/       # 协议适配层，纯计算核心稳定后再实现
+  mcp-server/       # MCP 协议适配与可嵌入结果界面
   web/              # 工具矩阵页面适配层
 packages/
-  config-core/      # 四项能力的唯一计算实现
+  config-core/      # 五项能力的唯一计算实现
   contracts/        # 输入输出 JSON Schema
 docs/               # 来源映射、验收矩阵和架构决策
 tests/              # fixtures、golden 与兼容性测试
@@ -38,12 +40,14 @@ deploy/             # 后续服务器部署文件
 - MindSpeed Core 是版本化规则证据源，不作为服务端运行时依赖；
 - MindSpeed Agent 是路由、编排和解释层，不复制到计算核心；
 - 第一版不启动训练，不读取任意服务器文件路径；
+- 配置解析只处理调用方显式传入的文本，不根据路径读取服务器文件；
 - 每个结论必须携带规则版本、来源、假设和置信等级。
 
 ## 开发基线
 
 ```powershell
 npm test
+npm run build:ui
 npm run test:contracts
 npm run test:golden
 npm run test:mcp

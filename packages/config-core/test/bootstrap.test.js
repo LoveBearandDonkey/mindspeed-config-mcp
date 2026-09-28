@@ -9,6 +9,7 @@ test("config-core starts without registering MCP tools", () => {
     "validate_parallel_config",
     "compute_rank_topology",
     "suggest_config_fixes",
+    "parse_training_config",
     "estimate_training_capacity",
   ]);
 });

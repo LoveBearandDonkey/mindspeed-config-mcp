@@ -6,6 +6,10 @@ const trainingConfigSchema = JSON.parse(fs.readFileSync(
   new URL("../training-config-v1.schema.json", import.meta.url),
   "utf8",
 ));
+const parseTrainingConfigSchema = JSON.parse(fs.readFileSync(
+  new URL("../parse-training-config-v1.schema.json", import.meta.url),
+  "utf8",
+));
 const toolResultSchema = JSON.parse(fs.readFileSync(
   new URL("../tool-result-v1.schema.json", import.meta.url),
   "utf8",
@@ -13,6 +17,7 @@ const toolResultSchema = JSON.parse(fs.readFileSync(
 
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 const checkTrainingConfig = ajv.compile(trainingConfigSchema);
+const checkParseTrainingConfig = ajv.compile(parseTrainingConfigSchema);
 const checkToolResult = ajv.compile(toolResultSchema);
 
 function outcome(valid, errors) {
@@ -32,6 +37,10 @@ export function validateTrainingConfig(value) {
   return outcome(checkTrainingConfig(value), checkTrainingConfig.errors);
 }
 
+export function validateParseTrainingConfig(value) {
+  return outcome(checkParseTrainingConfig(value), checkParseTrainingConfig.errors);
+}
+
 export function validateToolResult(value) {
   return outcome(checkToolResult(value), checkToolResult.errors);
 }
@@ -42,11 +51,16 @@ export function assertTrainingConfig(value) {
   throw new TypeError(`训练配置不符合 Schema：${JSON.stringify(result.errors)}`);
 }
 
+export function assertParseTrainingConfig(value) {
+  const result = validateParseTrainingConfig(value);
+  if (result.valid) return value;
+  throw new TypeError(`待解析训练配置不符合 Schema：${JSON.stringify(result.errors)}`);
+}
+
 export function assertToolResult(value) {
   const result = validateToolResult(value);
   if (result.valid) return value;
   throw new TypeError(`工具返回值不符合 Schema：${JSON.stringify(result.errors)}`);
 }
 
-export { toolResultSchema, trainingConfigSchema };
-
+export { parseTrainingConfigSchema, toolResultSchema, trainingConfigSchema };

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mindspeed.example/schemas/parse-training-config-v1.schema.json",
+  "title": "Parse Training Configuration Input V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "rule_profile", "source"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "rule_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["framework", "version"],
+      "properties": {
+        "framework": {
+          "enum": [
+            "mindspeed-core",
+            "mindspeed-llm-mcore",
+            "mindspeed-llm-fsdp2",
+            "mindspeed-bridge",
+            "mindformers",
+            "generic"
+          ]
+        },
+        "version": { "type": "string", "minLength": 1 },
+        "source_commit": { "type": "string" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "content"],
+      "properties": {
+        "format": { "enum": ["auto", "yaml", "json", "shell"] },
+        "content": { "type": "string", "minLength": 1, "maxLength": 1048576 },
+        "name": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

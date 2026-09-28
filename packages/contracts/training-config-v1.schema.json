@@ -23,7 +23,14 @@
       "required": ["framework", "version"],
       "properties": {
         "framework": {
-          "enum": ["mindspeed-core", "mindspeed-llm-mcore", "mindformers", "generic"]
+          "enum": [
+            "mindspeed-core",
+            "mindspeed-llm-mcore",
+            "mindspeed-llm-fsdp2",
+            "mindspeed-bridge",
+            "mindformers",
+            "generic"
+          ]
         },
         "version": {
           "type": "string",
