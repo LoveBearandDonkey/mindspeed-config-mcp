@@ -33,15 +33,17 @@ npm run smoke:http
 
 ```powershell
 $bytes = New-Object byte[] 32
-[Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
-$token = [Convert]::ToHexString($bytes)
+$rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
+$token = ([BitConverter]::ToString($bytes)).Replace("-", "")
 $env:MCP_BEARER_TOKEN = $token
 $token
 npm run start:http
 ```
 
 保存终端打印的 Token，并保持该窗口运行。默认 MCP 地址是
-`http://127.0.0.1:3000/mcp`。
+`http://127.0.0.1:3000/mcp`。上述生成方式同时兼容 Windows PowerShell 5.1 和
+PowerShell 7。
 
 ### 2. 启动 MCP Inspector
 

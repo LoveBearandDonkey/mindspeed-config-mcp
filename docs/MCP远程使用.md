@@ -18,10 +18,14 @@ Streamable HTTP 服务提供两个端点：
 
 ```powershell
 $bytes = New-Object byte[] 32
-[Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
-$env:MCP_BEARER_TOKEN = [Convert]::ToHexString($bytes)
+$rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
+$env:MCP_BEARER_TOKEN = ([BitConverter]::ToString($bytes)).Replace("-", "")
 npm run start:http
 ```
+
+这段写法同时兼容 Windows PowerShell 5.1 和 PowerShell 7。不要使用只在较新 .NET 中提供的
+`RandomNumberGenerator.Fill()` 或 `Convert.ToHexString()`。
 
 默认地址：
 
