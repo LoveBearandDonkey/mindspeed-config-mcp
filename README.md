@@ -53,6 +53,7 @@ npm run test:contracts
 npm run test:golden
 npm run test:mcp
 npm run test:http
+npm run smoke:http
 npm run verify:upstream
 ```
 
@@ -67,5 +68,6 @@ npm run verify:upstream
 - [源码能力映射](docs/源码能力映射.md)
 - [验收矩阵](docs/验收矩阵.md)
 - [MCP 本地使用](docs/MCP本地使用.md)
+- [MCP 本地模拟验收](docs/MCP本地模拟验收.md)
 - [MCP 远程使用](docs/MCP远程使用.md)
 - [页面原型拷贝清单](docs/页面原型拷贝清单.md)

@@ -14,6 +14,7 @@
     "test:golden": "node --test tests/golden/acceptance-golden.test.js",
     "test:mcp": "npm run build:ui && node --test apps/mcp-server/test/server.test.js",
     "test:http": "npm run build:ui && node --test apps/mcp-server/test/http.test.js",
+    "smoke:http": "npm run build:ui && node tools/smoke-http.mjs",
     "start:mcp": "npm run build:ui && node apps/mcp-server/src/index.js",
     "start:http": "npm run build:ui && node apps/mcp-server/src/http-entry.js",
     "verify:upstream": "node tools/verify-upstream-baseline.cjs"
