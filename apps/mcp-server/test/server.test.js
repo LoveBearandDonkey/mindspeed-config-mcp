@@ -11,6 +11,7 @@ import { APP_RESOURCE_URI, createMcpServer } from "../src/server.js";
 const EXPECTED_TOOLS = [
   "compute_rank_topology",
   "estimate_training_capacity",
+  "open_config_workbench",
   "parse_training_config",
   "suggest_config_fixes",
   "validate_parallel_config",
@@ -39,7 +40,7 @@ async function withClient(run) {
   }
 }
 
-test("MCP Server 只注册第一版五个 Tool，并为每个 Tool 关联结果界面", async () => {
+test("MCP Server 注册五个分析 Tool 和一个零参数中文工作台入口", async () => {
   await withClient(async (client) => {
     const response = await client.listTools();
     const names = response.tools.map((tool) => tool.name).sort();
@@ -51,9 +52,9 @@ test("MCP Server 只注册第一版五个 Tool，并为每个 Tool 关联结果�
   });
 });
 
-test("五个 MCP Tool 都返回文本解释和结构化结果", async () => {
+test("五个分析 Tool 都返回文本解释和结构化结果", async () => {
   await withClient(async (client) => {
-    for (const name of EXPECTED_TOOLS) {
+    for (const name of EXPECTED_TOOLS.filter((name) => name !== "open_config_workbench")) {
       const response = await client.callTool({
         name,
         arguments: name === "parse_training_config" ? PARSE_INPUT : createTrainingConfig(),
@@ -67,6 +68,15 @@ test("五个 MCP Tool 都返回文本解释和结构化结果", async () => {
   });
 });
 
+test("中文配置工作台无需输入 JSON 即可打开", async () => {
+  await withClient(async (client) => {
+    const response = await client.callTool({ name: "open_config_workbench", arguments: {} });
+    assert.notEqual(response.isError, true);
+    assert.equal(response.structuredContent.tool, "open_config_workbench");
+    assert.equal(response.structuredContent.status, "ready");
+  });
+});
+
 test("MCP App 资源可读取且为单文件 HTML", async () => {
   await withClient(async (client) => {
     const listed = await client.listResources();
@@ -76,6 +86,7 @@ test("MCP App 资源可读取且为单文件 HTML", async () => {
     assert.equal(response.contents.length, 1);
     assert.equal(response.contents[0].mimeType, "text/html;profile=mcp-app");
     assert.match(response.contents[0].text, /MindSpeed Config MCP/);
+    assert.match(response.contents[0].text, /选择文件或拖到这里/);
     assert.match(response.contents[0].text, /<script type="module"/);
   });
 });
@@ -93,7 +104,7 @@ test("MCP 层在输入缺字段时返回协议错误而不是进入核心计算"
   });
 });
 
-test("真实 stdio 子进程可以完成握手并枚举五个 Tool", async () => {
+test("真实 stdio 子进程可以完成握手并枚举全部 Tool", async () => {
   const entry = fileURLToPath(new URL("../src/index.js", import.meta.url));
   const transport = new StdioClientTransport({
     command: process.execPath,

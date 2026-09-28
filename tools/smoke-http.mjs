@@ -14,6 +14,15 @@ const EXPECTED_TOOLS = [
   "parse_training_config",
   "estimate_training_capacity",
 ];
+const REGISTERED_TOOLS = [...EXPECTED_TOOLS, "open_config_workbench"];
+const FETCH_FORBIDDEN_PORTS = new Set([
+  1, 7, 9, 11, 13, 15, 17, 19, 20, 21, 22, 23, 25, 37, 42, 43, 53, 69, 77, 79,
+  87, 95, 101, 102, 103, 104, 109, 110, 111, 113, 115, 117, 119, 123, 135, 137,
+  139, 143, 161, 179, 389, 427, 465, 512, 513, 514, 515, 526, 530, 531, 532, 540,
+  548, 554, 556, 563, 587, 601, 636, 989, 990, 993, 995, 1719, 1720, 1723, 2049,
+  3659, 4045, 4190, 5060, 5061, 6000, 6566, 6665, 6666, 6667, 6668, 6669, 6697,
+  10080,
+]);
 
 const PARSE_INPUT = {
   schema_version: "1.0",
@@ -54,8 +63,12 @@ try {
 
   await client.connect(transport);
   const listed = await client.listTools();
-  assert.deepEqual(listed.tools.map(({ name }) => name).sort(), [...EXPECTED_TOOLS].sort());
-  checks.push({ check: "MCP 握手与枚举", result: "通过", detail: "五个 Tool 已注册" });
+  assert.deepEqual(listed.tools.map(({ name }) => name).sort(), [...REGISTERED_TOOLS].sort());
+  checks.push({ check: "MCP 握手与枚举", result: "通过", detail: "五个分析 Tool 和中文工作台已注册" });
+
+  const workbench = await client.callTool({ name: "open_config_workbench", arguments: {} });
+  assert.equal(workbench.structuredContent?.status, "ready");
+  checks.push({ check: "中文工作台零输入入口", result: "通过", detail: "无需填写 JSON" });
 
   for (const name of EXPECTED_TOOLS) {
     const response = await client.callTool({
@@ -81,10 +94,19 @@ try {
 }
 
 function listen(app) {
-  return new Promise((resolve, reject) => {
-    const server = app.listen(0, "127.0.0.1", () => resolve(server));
-    server.on("error", reject);
-  });
+  return tryListen(app);
+}
+
+async function tryListen(app) {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const server = await new Promise((resolve, reject) => {
+      const candidate = app.listen(0, "127.0.0.1", () => resolve(candidate));
+      candidate.on("error", reject);
+    });
+    if (!FETCH_FORBIDDEN_PORTS.has(server.address().port)) return server;
+    await close(server);
+  }
+  throw new Error("连续十次获得 Fetch 禁止端口，无法启动本地模拟服务");
 }
 
 function close(server) {

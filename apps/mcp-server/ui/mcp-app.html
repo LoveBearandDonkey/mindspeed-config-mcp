@@ -16,6 +16,60 @@
         </div>
         <span class="status" id="status" data-status="idle">等待中</span>
       </header>
+      <section class="workbench" id="workbench" hidden>
+        <section class="panel source-panel">
+          <div class="panel-title">
+            <div>
+              <h2>第一步：加入训练配置</h2>
+              <small>支持同时选择 YAML、JSON、Shell；文件只在本地浏览器中读取</small>
+            </div>
+          </div>
+          <label class="drop-zone" id="dropZone">
+            <input id="fileInput" type="file" multiple accept=".yaml,.yml,.json,.sh,.bash,.txt">
+            <strong>选择文件或拖到这里</strong>
+            <span>可同时选择模型配置、启动脚本和并行配置</span>
+          </label>
+          <div class="paste-grid">
+            <label>文件名（用于判断格式）<input id="pasteName" value="train.yaml" placeholder="例如 train.yaml"></label>
+            <label>格式<select id="pasteFormat"><option value="auto">自动判断</option><option value="yaml">YAML</option><option value="json">JSON</option><option value="shell">Shell</option></select></label>
+          </div>
+          <label class="paste-content">或者直接粘贴内容<textarea id="pasteContent" rows="6" placeholder="在这里粘贴 YAML、JSON 或 Shell 启动参数"></textarea></label>
+          <div class="button-row">
+            <button class="button secondary" id="addPaste" type="button">加入粘贴内容</button>
+            <button class="button primary" id="parseSources" type="button">解析全部配置</button>
+          </div>
+          <div class="source-list" id="sourceList"></div>
+          <p class="inline-message" id="sourceMessage" role="status"></p>
+        </section>
+
+        <section class="panel config-panel" id="configPanel" hidden>
+          <div class="panel-title">
+            <div>
+              <h2>第二步：核对统一配置</h2>
+              <small id="coverageSummary">尚未解析</small>
+            </div>
+            <button class="button secondary compact" id="fillDefaults" type="button">填入常用默认值</button>
+          </div>
+          <div class="conflict-list" id="conflictList"></div>
+          <div class="config-form" id="configForm"></div>
+        </section>
+
+        <section class="panel action-panel" id="actionPanel" hidden>
+          <div class="panel-title">
+            <div>
+              <h2>第三步：选择分析</h2>
+              <small id="actionHint">补齐必填项后即可运行</small>
+            </div>
+          </div>
+          <div class="action-grid">
+            <button class="button primary" data-tool="validate_parallel_config" type="button">校验配置</button>
+            <button class="button" data-tool="compute_rank_topology" type="button">查看 Rank 矩阵</button>
+            <button class="button" data-tool="suggest_config_fixes" type="button">生成修复建议</button>
+            <button class="button" data-tool="estimate_training_capacity" type="button">估算理论容量</button>
+          </div>
+          <p class="inline-message" id="actionMessage" role="status"></p>
+        </section>
+      </section>
       <section class="metrics" id="metrics" aria-label="结果摘要"></section>
       <section class="panel" id="primary">
         <div class="empty-state">

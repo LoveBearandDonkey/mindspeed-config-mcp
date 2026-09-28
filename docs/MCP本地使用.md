@@ -2,7 +2,7 @@
 
 ## 当前能力
 
-同一个 `mindspeed-config-mcp` Server 提供五个只读 Tool：
+同一个 `mindspeed-config-mcp` Server 提供五个只读分析 Tool：
 
 1. `validate_parallel_config`
 2. `compute_rank_topology`
@@ -12,6 +12,10 @@
 
 五个 Tool 都不会启动训练、连接远端或修改输入文件。解析工具接收配置文本，不根据
 用户给出的路径读取服务器文件。
+
+此外还有一个零参数界面入口 `open_config_workbench`。它不增加新的计算规则，只负责
+以中文界面组织文件导入、缺项补充和上述五个 Tool 的调用。使用支持 MCP Apps 的客户端
+时，优先打开这个入口，不需要手写 JSON。
 
 ## 启动
 
@@ -67,5 +71,5 @@ HTTP 入口；不要通过自行转发 stdio 来模拟网络服务。
 npm run test:mcp
 ```
 
-测试会先构建 MCP App，通过内存传输调用五个 Tool、读取 `ui://` 界面资源，再真实
+测试会先构建 MCP App，通过内存传输调用五个分析 Tool 和中文工作台、读取 `ui://` 界面资源，再真实
 启动 stdio 子进程完成握手和工具枚举。

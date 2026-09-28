@@ -23,8 +23,14 @@ import {
 const trainingInputSchema = z.fromJSONSchema(trainingConfigSchema);
 const parseInputSchema = z.fromJSONSchema(parseTrainingConfigSchema);
 const outputSchema = z.fromJSONSchema(toolResultSchema);
+const workbenchOutputSchema = z.object({
+  tool: z.literal("open_config_workbench"),
+  status: z.literal("ready"),
+  data: z.object({ analysis_tools: z.array(z.string()) }),
+});
 const APP_RESOURCE_URI = "ui://mindspeed-config/result-view.html";
 const APP_HTML_URL = new URL("../dist/ui/mcp-app.html", import.meta.url);
+const WORKBENCH_TOOL_NAME = "open_config_workbench";
 
 const TOOL_DEFINITIONS = Object.freeze([
   {
@@ -111,6 +117,28 @@ function runTool(definition, args) {
 export function createMcpServer() {
   const server = new McpServer({ name: "mindspeed-config-mcp", version: "0.1.0" });
 
+  registerAppTool(server, WORKBENCH_TOOL_NAME, {
+    title: "打开中文配置工作台",
+    description: "无需填写 JSON，直接打开中文工作台，上传或粘贴 YAML、JSON、Shell 配置，再调用五个分析工具。",
+    outputSchema: workbenchOutputSchema,
+    _meta: {
+      ui: { resourceUri: APP_RESOURCE_URI },
+    },
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  }, async () => ({
+    content: [{ type: "text", text: "已打开 MindSpeed 中文配置工作台。请在界面中上传或粘贴训练配置。" }],
+    structuredContent: {
+      tool: WORKBENCH_TOOL_NAME,
+      status: "ready",
+      data: { analysis_tools: TOOL_DEFINITIONS.map(({ name }) => name) },
+    },
+  }));
+
   for (const definition of TOOL_DEFINITIONS) {
     registerAppTool(server, definition.name, {
       title: definition.title,
@@ -147,4 +175,6 @@ export function createMcpServer() {
   return server;
 }
 
-export { APP_RESOURCE_URI, TOOL_DEFINITIONS };
+const REGISTERED_TOOL_COUNT = TOOL_DEFINITIONS.length + 1;
+
+export { APP_RESOURCE_URI, REGISTERED_TOOL_COUNT, TOOL_DEFINITIONS, WORKBENCH_TOOL_NAME };

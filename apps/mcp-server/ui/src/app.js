@@ -6,6 +6,7 @@ import {
 } from "@modelcontextprotocol/ext-apps";
 
 import "./styles.css";
+import { createWorkbench } from "./workbench.js";
 
 const title = document.getElementById("title");
 const summary = document.getElementById("summary");
@@ -13,6 +14,7 @@ const status = document.getElementById("status");
 const metrics = document.getElementById("metrics");
 const primary = document.getElementById("primary");
 const traceBody = document.getElementById("traceBody");
+let workbench;
 
 const TITLES = {
   validate_parallel_config: "并行配置校验",
@@ -226,6 +228,13 @@ function renderTrace(result) {
 
 function render(result) {
   if (!result?.tool) return;
+  if (result.tool === "open_config_workbench") {
+    metrics.replaceChildren();
+    primary.replaceChildren(panelTitle("分析结果", "完成上方三步后显示"), element("div", "empty-state", "请选择或粘贴配置文件开始分析。"));
+    traceBody.replaceChildren();
+    workbench.open();
+    return;
+  }
   title.textContent = TITLES[result.tool] ?? result.tool;
   summary.textContent = resultSummary(result);
   status.textContent = result.status;
@@ -248,6 +257,7 @@ function applyHostContext(context) {
 }
 
 const app = new App({ name: "MindSpeed Config Result View", version: "0.1.0" });
+workbench = createWorkbench({ app, renderResult: render });
 app.ontoolresult = (result) => render(result.structuredContent);
 app.onhostcontextchanged = applyHostContext;
 app.onerror = (error) => {

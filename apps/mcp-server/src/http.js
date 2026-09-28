@@ -3,7 +3,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { createMcpExpressApp } from "@modelcontextprotocol/express";
 import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
 
-import { createMcpServer, TOOL_DEFINITIONS } from "./server.js";
+import { createMcpServer, REGISTERED_TOOL_COUNT } from "./server.js";
 
 const SERVICE_VERSION = "0.1.0";
 const DEFAULT_HOST = "127.0.0.1";
@@ -56,7 +56,7 @@ export function createHttpApp({
       service: "mindspeed-config-mcp",
       version: SERVICE_VERSION,
       transport: "streamable-http",
-      tools: TOOL_DEFINITIONS.length,
+      tools: REGISTERED_TOOL_COUNT,
       uptime_seconds: Math.floor(process.uptime()),
     });
   });
