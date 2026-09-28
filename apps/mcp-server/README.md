@@ -22,3 +22,16 @@ npm run start:mcp
 
 stdio 模式下标准输出保留给 MCP JSON-RPC，诊断信息只能写入标准错误。协议层只负责
 Schema 校验、工具/界面资源注册和错误映射，所有业务公式仍由 `packages/config-core` 提供。
+
+## Streamable HTTP
+
+```powershell
+$env:MCP_BEARER_TOKEN="至少-32-字符的随机值"
+npm run start:http
+```
+
+默认监听 `127.0.0.1:3000`：MCP 端点是 `/mcp`，健康检查是 `/health`。`/mcp`
+必须携带 `Authorization: Bearer <token>`；服务不会在缺少 Token 时启动。
+
+监听所有网卡时还必须配置 `MCP_ALLOWED_HOSTS`。完整配置见
+[MCP 远程使用](../../docs/MCP远程使用.md)。

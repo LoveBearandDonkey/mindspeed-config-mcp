@@ -6,7 +6,8 @@
 
 项目处于第一阶段：`集成分析.md` 表中第 1、2、3、4、6 项已经形成第一版并通过
 单元测试，stdio MCP Server 已注册五个只读 Tool，并为每个 Tool 关联同一个 MCP App
-结果界面。当前尚未实现远程 HTTP、鉴权和服务器部署。
+结果界面。远程 Streamable HTTP、健康检查和静态 Bearer Token 鉴权已经实现；生产
+服务器的 TLS、反向代理和进程托管仍待按目标环境落地。
 
 第一版范围：
 
@@ -51,6 +52,7 @@ npm run build:ui
 npm run test:contracts
 npm run test:golden
 npm run test:mcp
+npm run test:http
 npm run verify:upstream
 ```
 
@@ -65,4 +67,5 @@ npm run verify:upstream
 - [源码能力映射](docs/源码能力映射.md)
 - [验收矩阵](docs/验收矩阵.md)
 - [MCP 本地使用](docs/MCP本地使用.md)
+- [MCP 远程使用](docs/MCP远程使用.md)
 - [页面原型拷贝清单](docs/页面原型拷贝清单.md)

@@ -21,4 +21,5 @@
 - 页面规则与框架规则不一致时显式返回差异，不静默选择；
 - 容量估算必须标明 `theoretical`、`model-informed` 或 `calibrated`；
 - 任何会启动训练、连接远端或写入外部系统的能力必须与纯计算工具隔离；
+- HTTP 模式不得在缺少 `MCP_BEARER_TOKEN` 时降级为匿名访问；
 - 中文正文统一使用“昇腾”“NPU”“CANN”“MindSpeed”。
