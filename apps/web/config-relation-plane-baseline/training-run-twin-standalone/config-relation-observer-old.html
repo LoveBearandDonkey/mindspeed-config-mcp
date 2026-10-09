@@ -1,0 +1,1870 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Config &amp; Relation Observer</title>
+  <script>
+    (() => {
+      const theme = new URLSearchParams(window.location.search).get("theme");
+      if (theme === "dark" || theme === "light") document.documentElement.dataset.theme = theme;
+    })();
+  </script>
+
+  <!-- 设计系统 tokens + 组件（本目录 vendored 副本，与 training-monitoring-v2.html 同源） -->
+  <link rel="stylesheet" href="./css/foundation.css">
+  <link rel="stylesheet" href="./css/semantic.css">
+  <link rel="stylesheet" href="./css/components.css">
+  <link rel="stylesheet" href="./css/style.css">
+  <!-- IDE frame shell（patterns/ide-frame + patterns/workbench-shell） -->
+  <link rel="stylesheet" href="./css/workbench-shell-pattern.css">
+  <link rel="stylesheet" href="./css/ide-frame-pattern.css">
+  <!-- 整网图（patterns/model-graphviz 提供 colormap，model-architecture-3d-deck 提供 deck） -->
+  <link rel="stylesheet" href="./css/model-graphviz-pattern.css">
+  <link rel="stylesheet" href="./css/model-architecture-3d-deck-pattern.css">
+  <!-- 集群热力图样式（复用 training-monitoring-v2 的 .twin-heat* 视觉） -->
+  <link rel="stylesheet" href="./css/training-run-twin.css">
+  <!-- 本页模块私有 layout -->
+  <link rel="stylesheet" href="./css/config-relation-observer-old.css?v=20260821-archive">
+  <!-- 单卡容量（Cluster 区右栏）：容量是「卡」的属性，与集群矩阵同区并排 -->
+  <link rel="stylesheet" href="./css/config-relation-capacity.css?v=20260820-spread-head">
+  <!-- 顶栏视图页签 / 导出配置键 / YAML 代码框 -->
+  <link rel="stylesheet" href="./css/config-relation-yaml.css?v=20260820-yaml-view">
+  <!-- 文档视图（顶栏第三档）：章节目录 + 800px 正文栏 -->
+  <link rel="stylesheet" href="./css/config-relation-doc.css?v=20260821-doc-arrow">
+</head>
+<body data-theme="dark">
+  <section class="pto-ide-frame" data-ide-frame data-host="standalone" aria-label="Config and Relation Observer">
+
+    <header class="pto-ide-frame__topbar pto-ide-frame__standalone-chrome">
+      <div class="pto-ide-frame__topbar-left">
+        <div class="pto-ide-frame__host-chip" data-ide-slot="host-chip">
+          <svg class="pto-ide-frame__host-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+            <path d="m7 9 3 3-3 3"></path>
+            <path d="M12 15h5"></path>
+          </svg>
+        </div>
+        <div class="pto-ide-frame__workspace" data-ide-slot="workspace-switcher">
+          <span>训练监控</span>
+        </div>
+      </div>
+      <!-- 全局视图页签：关系视图（四域联动，默认）/ YAML 视图（右侧三区换成代码框）/
+           文档（整板换成一篇配置规则说明）。
+           层级高于整网区内那三档（croNetView 只管整网列怎么摆），所以放顶栏正中。
+           样式与 profileCompare 顶栏的「分组视图 / 聚合视图」同款。
+           三档统一由 js/config-relation-yaml.js 的 setup() 监听，见那里的说明。 -->
+      <div class="pto-ide-frame__topbar-center">
+        <div class="segmented-control segmented-control-muted cro-view-tabs" id="croViewTabs" role="tablist" aria-label="观测视图切换">
+          <button class="btn btn-sm is-selected" type="button" role="tab" data-observer-view="relation" aria-selected="true" title="整网 / Model Architecture / MoE / Cluster 四域联动">关系视图</button>
+          <button class="btn btn-sm" type="button" role="tab" data-observer-view="yaml" aria-selected="false" title="按当前配置实时生成训练启动 yaml，整网列保留">YAML 视图</button>
+          <button class="btn btn-sm" type="button" role="tab" data-observer-view="doc" aria-selected="false" title="这些配置项之间的兼容规则：已生效的、计划中的、待确认的">文档</button>
+        </div>
+      </div>
+      <div class="pto-ide-frame__topbar-right">
+        <!-- 导出配置：配置调完之后的终点动作，故带文字标签、独立于右侧那组窗口图标键。
+             ⚠ 目前只做样子（无 click 绑定），真正落盘的实现待定。 -->
+        <button class="btn btn-sm cro-export-btn" id="croExportConfig" type="button" title="导出当前配置为 yaml 文件">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v12"></path>
+            <path d="m7 11 5 5 5-5"></path>
+            <path d="M4 19h16"></path>
+          </svg>
+          <span>导出配置</span>
+        </button>
+        <div class="pto-ide-frame__window-actions" data-ide-slot="window-controls" aria-label="Window controls">
+          <button class="pto-ide-frame__window-action" id="themeToggle" type="button" aria-pressed="false" title="切换主题" aria-label="切换主题">
+            <svg class="pto-ide-frame__window-icon" id="themeToggleIcon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3a6.5 6.5 0 0 0 7.8 8.8A8 8 0 1 1 12 3z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="pto-ide-frame__body">
+      <nav class="pto-ide-frame__activity-rail pto-ide-frame__standalone-chrome" data-ide-slot="activity-rail" aria-label="Activity rail">
+        <!-- 首键与 TaskCompare.html 同款：文件夹图标 = 跳转训练监控大盘。本页选中态归属末位的
+             「配置关系」，故首键不带 is-selected。 -->
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" id="navMonitoring" aria-label="训练监控" title="训练监控">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9l-.81-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path>
+          </svg>
+        </button>
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Search" title="Search">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+          </svg>
+        </button>
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Source control" title="Source control">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="18" cy="18" r="3"></circle>
+            <circle cx="6" cy="6" r="3"></circle>
+            <path d="M13 6h3a2 2 0 0 1 2 2v7"></path>
+            <path d="M6 9v12"></path>
+          </svg>
+        </button>
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Terminal" title="Terminal">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+            <path d="m7 9 3 3-3 3"></path>
+            <path d="M12 15h5"></path>
+          </svg>
+        </button>
+        <!-- 互跳组：对比 / 配置关系，三页同款同序（训练监控即首键），当前页保持 is-selected 不绑定跳转。 -->
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" id="navTaskCompare" aria-label="对比" title="对比">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+            <path d="M12 3v18"></path>
+          </svg>
+        </button>
+        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button is-selected" type="button" id="navRelationEvents" aria-label="配置关系与运行事件" title="配置关系与运行事件" aria-pressed="true">
+          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="18" cy="5" r="3"></circle>
+            <circle cx="6" cy="12" r="3"></circle>
+            <circle cx="18" cy="19" r="3"></circle>
+            <path d="m8.6 13.5 6.8 4"></path>
+            <path d="m15.4 6.5-6.8 4"></path>
+          </svg>
+        </button>
+      </nav>
+
+      <div class="pto-ide-frame__workarea">
+        <aside class="cro-event-rail" id="croEventRail" aria-label="运行事件">
+          <button class="btn btn-ghost cro-event-rail__collapsed" id="croEventRailExpand" type="button" aria-label="展开运行事件" title="展开运行事件">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m9 18 6-6-6-6"></path>
+            </svg>
+            <span>运行事件</span>
+          </button>
+          <div class="cro-event-rail__header">
+            <h2 class="cro-event-rail__title">运行事件</h2>
+            <div class="cro-event-rail__actions">
+              <button class="btn btn-icon btn-ghost btn-sm" id="croEventRailCollapse" type="button" aria-label="收起运行事件" title="收起运行事件">
+                <!-- 比标准 chevron 大一号（16 格高而非 12 格）：这枚是面板级收起键，
+                     旁边就是「运行事件」标题，用默认尺寸会显得没分量。 -->
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m16 20-8-8 8-8"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="cro-event-rail__legend" aria-hidden="true">
+            <span class="cro-event-rail__legend-item"><span class="cro-event-rail__legend-dot cro-event-rail__legend-dot--origin"></span>传播源</span>
+            <span class="cro-event-rail__legend-item"><span class="cro-event-rail__legend-dot cro-event-rail__legend-dot--victim"></span>受影响最大</span>
+          </div>
+          <div class="cro-event-groups" id="croEventGroups"></div>
+        </aside>
+        <!-- 单一 pane：T 型的四个区域全部是同一面板内的不可见网格区（.cro-board），
+             区域之间没有 pane 边界、没有 gutter、没有卡片描边，只靠 grid 间距与大标题分区。
+             grid-areas:  net | arch | moe
+                          net | cluster cluster                                    -->
+        <section class="pto-ide-frame__pane" data-ide-pane="observer" aria-label="配置与关系观测">
+          <!-- 上区 · 事件关系横幅：一句桥接句带过，不是重点，别喧宾夺主 -->
+          <div class="cro-incident-banner" id="croIncidentBanner" role="status" aria-live="polite" hidden>
+            <span class="cro-incident-banner__tag" id="croIncidentBannerTag"></span>
+            <span class="cro-incident-banner__message" id="croIncidentBannerMessage"></span>
+            <!-- ✕ 必须是 SVG 不能是 &#10005; 文本：文本走基线排版，place-items:center
+                 居中的是含 descender 空白的行盒，而 ✕ 没有下伸笔画，视觉上就偏下半个
+                 descender。SVG 是 block 盒，没有这个偏差。 -->
+            <button class="pto-ide-frame__window-action cro-incident-banner__close" id="croIncidentBannerClose" type="button" aria-label="关闭事件关系" title="关闭事件关系">
+              <svg class="pto-ide-frame__window-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M18 6 6 18"></path>
+                <path d="m6 6 12 12"></path>
+              </svg>
+            </button>
+          </div>
+          <!-- ═══ 事件详情视图（上=横幅 / 中=传播源→受影响 / 下=事件内涵）═══
+               运行事件是已发生的既成事实：配置表单不可调、四域静态查询口径不成立，
+               所以事件模式下 .cro-board 整块隐藏，由这一块接管。关闭横幅或收起
+               运行事件栏回到配置仿真态。 -->
+          <div class="cro-incident-view" id="croIncidentView" hidden>
+
+            <!-- ── 中区 · 一块编排画布 ──
+                 传播源 / 连接线 / 受影响不是三个各自带滚动条的容器，而是同一张图上
+                 的三个部位。舞台（.cro-incident-stage）按内容排到自然尺寸，视口只负责
+                 「看哪一块、看多大」：进场自动适配屏幕，滚轮缩放、拖拽平移。 -->
+            <div class="cro-incident-flow" id="croIncidentFlow" aria-label="传播关系画布">
+              <div class="cro-incident-stage" id="croIncidentStage">
+                <!-- 连线层在内容底下（pointer-events:none）：贝塞尔从传播源那个具体
+                     对象/整体的右缘出发，落到受影响那个对象/整体的左缘，两端各圈一道
+                     虚线框标出「连的是哪一坨」。坐标是舞台自身坐标系，跟着画布一起缩放。 -->
+                <svg class="cro-stage-links" id="croStageLinks" aria-hidden="true"></svg>
+
+                <section class="cro-stage-role" data-role="origin" aria-label="传播源">
+                  <header class="cro-stage-role__head">
+                    <span class="cro-stage-role__badge">传播源</span>
+                  </header>
+                  <div class="cro-stage-role__domains" id="croOriginDomains"></div>
+                </section>
+
+                <section class="cro-stage-role" data-role="victim" aria-label="受影响">
+                  <header class="cro-stage-role__head">
+                    <span class="cro-stage-role__badge">受影响</span>
+                  </header>
+                  <div class="cro-stage-role__domains" id="croVictimDomains"></div>
+                </section>
+
+                <!-- 路径节点：骑在连线中点上的一枚标签（path 拆出的链路步骤 +
+                     event.propagation 的途经范围），读起来就是这条边的名字。
+                     位置由 JS 按曲线中点算，故绝对定位。 -->
+                <div class="cro-incident-arrow" id="croIncidentArrow" aria-label="传播路径">
+                  <ol class="cro-incident-arrow__chain" id="croIncidentArrowChain"></ol>
+                  <div class="cro-incident-arrow__via" id="croIncidentArrowVia"></div>
+                </div>
+              </div>
+
+              <div class="cro-stage-zoom" aria-label="画布缩放">
+                <button class="btn btn-icon btn-ghost btn-sm" id="croStageZoomOut" type="button" aria-label="缩小" title="缩小">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path></svg>
+                </button>
+                <span class="cro-stage-zoom__readout" id="croStageZoomReadout">100%</span>
+                <button class="btn btn-icon btn-ghost btn-sm" id="croStageZoomIn" type="button" aria-label="放大" title="放大">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+                </button>
+                <button class="btn btn-sm btn-ghost" id="croStageZoomFit" type="button" title="适配屏幕">适配</button>
+              </div>
+            </div>
+
+            <!-- ── 下区 · 问题详情（图表 + 文字）── -->
+            <section class="cro-incident-detail" aria-label="问题详情">
+              <div class="tab-control cro-incident-detail__tabs" role="tablist" aria-label="事件详情视图">
+                <button class="tab-control-item is-selected" id="croIncidentDetailTab" type="button"
+                        role="tab" aria-selected="true" aria-controls="croIncidentDetail">事件详情</button>
+                <button class="tab-control-item" id="croIncidentLineageTab" type="button"
+                        role="tab" aria-selected="false" aria-controls="croIncidentLineage">计算血缘</button>
+              </div>
+              <div class="cro-incident-detail__body" id="croIncidentDetail"
+                   role="tabpanel" aria-labelledby="croIncidentDetailTab"></div>
+              <div class="cro-incident-lineage" id="croIncidentLineage"
+                   role="tabpanel" aria-labelledby="croIncidentLineageTab" hidden></div>
+            </section>
+          </div>
+
+          <div class="pto-ide-frame__pane-body cro-board" id="croBoard">
+
+            <!-- ═══ 区域 A · 整网（3D deck · 正视图） ═══ -->
+            <section class="cro-region cro-region--net" id="croNetRegion" aria-label="整网">
+              <h2 class="cro-region__title">整网</h2>
+              <!-- 视图口径：整网 deck 的层卡展开的就是「典型 Layer」里那串算子，
+                   两块信息重复度高。与其硬删一边，不如把「看哪一边」交给用户 ——
+                   只看整网 / 只看典型 Layer / 两者并看（= 改动前的现状，默认值）。
+                   选「只看典型 Layer」时 deck 收起，典型层那一节整节搬进本列，改
+                   2+2+1 宫格（见 html 末尾的 croNetView 脚本与 .cro-region--net
+                   .cro-structure 的排布）。 -->
+              <div class="tab-control cro-net-view" id="croNetView" role="group" aria-label="整网视图">
+                <button class="tab-control-item" type="button" data-net-view="net"
+                        aria-pressed="false" title="只看整网">整网</button>
+                <button class="tab-control-item" type="button" data-net-view="layer"
+                        aria-pressed="false" title="只看典型 Layer">典型 Layer</button>
+                <button class="tab-control-item is-selected" type="button" data-net-view="both"
+                        aria-pressed="true" title="同时看整网与典型 Layer">两者并看</button>
+              </div>
+              <div class="cro-stepper">
+                <label class="cro-stepper__label" for="croModelSelect">模型</label>
+                <select class="cro-select" id="croModelSelect">
+                  <option value="openpangu-flash">openPangu 2.0 flash 92B</option>
+                  <option value="qwen2-7b">Qwen2-7B（Dense）</option>
+                </select>
+              </div>
+              <div class="cro-deck-host" id="croDeckHost">
+                <div class="cro-placeholder">整网 3D deck（正视图）· 第 3 项接入</div>
+              </div>
+            </section>
+
+            <!-- ═══ 区域 B · Model Architecture（配置 + Layer 导航 + 结构条） ═══ -->
+            <section class="cro-region cro-region--arch" aria-label="Model Architecture">
+              <h2 class="cro-region__title">Model Architecture</h2>
+
+              <div class="cro-stepper-row" id="croParallelSteppers">
+                <div class="cro-placeholder">Total Layer / DP / PP / TP / CP stepper · 第 2 项接入</div>
+              </div>
+              <p class="cro-config-error" id="croConfigError" role="status" aria-live="polite"></p>
+
+              <div class="cro-section">
+                <div class="cro-section__heading">
+                  <div class="cro-section__title">Layer 导航</div>
+                  <!-- 初始 hidden：本页启动即选中第一个运行事件（见 js 末尾的
+                       selectIncident），事件模式下这个静态查询口径不生效。清空
+                       选择后由 syncDpScope() 放出来。 -->
+                  <div class="segmented-control segmented-control-muted cro-dp-scope" id="croDpScope" role="group" aria-label="Layer Rank 查询范围" hidden>
+                    <!-- 两枚键的文案里那个「DP」在切出档下其实是 EDP（矩阵的
+                         一行 = 一个完整模型副本），由 syncDpScopeLabels() 按口径
+                         改写，这里写的是正交档的默认文案。 -->
+                    <button class="btn btn-sm is-selected" type="button" data-dp-scope="single" aria-pressed="true" title="默认查询 DP0；存在异常上下文时查询异常所在 DP">单 DP（默认第一个 DP）</button>
+                    <button class="btn btn-sm" type="button" data-dp-scope="all" aria-pressed="false" title="查询所有 DP 副本关联的物理 Rank">所有 DP</button>
+                  </div>
+                  <!-- 一个 step 的数据流：前向 Emb→…→Head、反向倒回、收尾 Optimizer step，
+                       逐格点亮四域并驱动下方 6 条数据线。默认不播放；播放期间不画关系连线
+                       （见 js 的 quiet 铺色）。
+                       播完不自停而是**循环重播**（训练本来就是成千上万个 step 连着跑，
+                       停在收尾格反倒像"训练结束了"）。
+                       播放中拆成两枚键：主键在 暂停/继续 之间翻转（画面定在当前这一步，
+                       方便看中间状态），退出才是真正结束并还原上一次选择。 -->
+                  <div class="cro-flow-actions">
+                    <button class="btn btn-sm btn-ghost cro-flow-play" id="croFlowPlay" type="button" aria-pressed="false" title="循环播放一个 step 的数据流，播完自动重来，退出才停">
+                      <svg class="cro-flow-play__icon" id="croFlowPlayIcon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M8 5v14l11-7z"></path>
+                      </svg>
+                      <span id="croFlowPlayLabel">播放数据流</span>
+                    </button>
+                    <button class="btn btn-sm btn-ghost cro-flow-exit" id="croFlowExit" type="button" title="退出播放，回到播放前的选择" hidden>
+                      <svg class="cro-flow-exit__icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M18 6 6 18"></path>
+                        <path d="m6 6 12 12"></path>
+                      </svg>
+                      <span>退出</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="cro-layer-nav" id="croLayerNav">
+                  <div class="cro-placeholder">46 层刻度 · PP 分段 · Dense/MoE 分区 · 第 4 项接入</div>
+                </div>
+                <!-- 数据线：一个 step 里发生变化的 6 类数据，仅播放时展开。
+                     必须紧贴 Layer 导航之下、且与刻度带同宽同锚点 —— 泳道的 x 轴
+                     就是层号，小点从第 i 格垂直落到泳道上，落点即第 i 层。位置一挪
+                     这层投影关系就没了。x 坐标由 JS 实测刻度中心写入（见 lanesMeasure），
+                     不靠 CSS padding 碰巧对齐。 -->
+                <div class="cro-flow-lanes" id="croFlowLanes" hidden>
+                  <div class="cro-flow-lanes__head">
+                    <span class="cro-flow-lanes__phase" id="croFlowPhase"></span>
+                    <span class="cro-flow-lanes__note" id="croFlowNote"></span>
+                  </div>
+                  <!-- 6 条泳道共用一张 canvas：46 层 × （点 + 脉冲 + 刻痕 + 面积 + 填块）
+                       用 DOM 画会在每步建/删几十个节点，canvas 全量重绘反而更便宜。
+                       标签留在 DOM 里（静态文本，可无障碍读取），由 --i 定位。 -->
+                  <div class="cro-flow-lanes__plot" id="croFlowPlot">
+                    <canvas class="cro-flow-lanes__canvas" id="croFlowCanvas" aria-hidden="true"></canvas>
+                  </div>
+                </div>
+              </div>
+
+              <div class="cro-section cro-section--structure">
+                <div class="cro-section__title">典型 Layer</div>
+                <div class="cro-structure" id="croStructure">
+                  <div class="cro-placeholder">Emb / Dense×2 / MoE×44 / Norm / Head 结构条 · 第 4 项接入</div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ═══ 区域 C · MoE ═══ -->
+            <section class="cro-region cro-region--moe" aria-label="MoE">
+              <!-- EP 口径与区标题同行：它不是一个可调的量（不像下面四枚 stepper），
+                   而是「下面这些数字该怎么读」的前提 —— 切一下 DP 的读数就从 512
+                   变 8，卡数一张没变。放在标题右侧而不是挤进 stepper 行，也是因为
+                   那一行是 nowrap 的四等分，塞第五个控件会把 Routed / Top-K 的
+                   标签压到省略号。详解见「文档」视图 EP 与 DP 一章。 -->
+              <div class="cro-region__heading">
+                <h2 class="cro-region__title">MoE</h2>
+                <div class="segmented-control segmented-control-muted cro-ep-mode" id="croEpMode"
+                     role="group" aria-label="EP 与 DP 的口径">
+                  <button class="btn btn-sm is-selected" type="button" data-ep-mode="split" aria-pressed="true"
+                          title="EP 从 DP 组内切出（Megatron / MindSpeed / MindFormers 的做法）：world = DP×PP×TP×CP，EDP = DP/EP">EP 切出</button>
+                  <button class="btn btn-sm" type="button" data-ep-mode="orthogonal" aria-pressed="false"
+                          title="EP 独占 rank，与 DP 正交：world = DP×PP×TP×CP×EP">EP 正交</button>
+                </div>
+              </div>
+
+              <div class="cro-stepper-row" id="croMoeSteppers">
+                <div class="cro-placeholder">Routed Expert / Top-K / Share Expert / EP stepper · 第 2 项接入</div>
+              </div>
+
+              <div class="cro-section">
+                <div class="cro-section__title">共享专家</div>
+                <div class="cro-moe-group__experts" id="croSharedExperts">
+                  <div class="cro-placeholder">SE · 第 5 项接入</div>
+                </div>
+              </div>
+
+              <div class="cro-section">
+                <div class="cro-section__title">路由专家</div>
+                <div class="cro-moe-groups" id="croRoutedExperts">
+                  <div class="cro-placeholder">EP 分组 · 第 5 项接入</div>
+                </div>
+              </div>
+            </section>
+
+            <!-- ═══ 区域 D · Cluster（横跨 arch＋moe 两列的下行）═══ -->
+            <section class="cro-region cro-region--cluster" aria-label="Cluster">
+              <!-- 区标题独占通栏一行（横跨矩阵＋单卡容量两半）：单卡容量是 Cluster
+                   区里的一栏而不是与它并列的第五个区，标题只压在左半上会读成两块
+                   各自为政的内容。与整网 / Model Architecture / MoE 三个区的排法
+                   一致（.cro-region__title 后跟内容）。 -->
+              <!-- 标题右侧那行小字是矩阵 d 轴的口径说明，由 JS 按当前配置写
+                   （见 config-relation-observer.js 的 syncClusterAxisNote）。
+                   切出档下表单里的 DP 是 512、矩阵左侧标的却是 EDP0–7，两个数
+                   对不上是本页最容易被当成算错的一处，换算式必须常驻可见，
+                   不能只藏在格子的悬浮提示里。放在标题行不占额外高度 ——
+                   矩阵的纵向预算是量 .cro-cluster__grid 得来的，多一行会挤掉格子。 -->
+              <div class="cro-region__heading">
+                <h2 class="cro-region__title">Cluster</h2>
+                <span class="cro-cluster__axis-note" id="croClusterAxisNote"></span>
+              </div>
+              <div class="cro-cluster">
+                <!-- 左半是「表单在上、矩阵在下」的纵向两段，右半是单卡容量栏。
+                     表单横排（Total Rank / Node / 卡型号 / Micro Batch / Seq Length
+                     一行读完）之后，矩阵拿到了
+                     整个左半宽度 —— 默认 4 个 stage 块 × 64 EP 列要在不横向滚动的
+                     前提下画完，宽度比高度值钱。 -->
+                <div class="cro-cluster__main">
+                  <div class="cro-cluster__form">
+                    <div class="cro-stepper-row" id="croClusterSteppers"></div>
+                    <!-- 卡型号：硬件属性，和 Total Rank / Node 同属集群配置，接在 Node 之后。
+                         用 select 而不是 stepper —— 型号是枚举不是量。选项与显存规格由
+                         config-relation-observer.js 的 CARD_SPECS 生成，它同时是「单卡容量」
+                         那个线框盒高度的来源。 -->
+                    <div class="cro-stepper cro-cluster__card">
+                      <label class="cro-stepper__label" for="croCardSelect">卡型号</label>
+                      <select class="cro-select" id="croCardSelect"></select>
+                    </div>
+                    <!-- Micro Batch / Seq Length：不参与切分、不进 world_size，只决定
+                         往这张卡里装多少，所以接在卡型号之后 —— 型号给容量框的高度，
+                         这两项给装进去的体积，一行读完就是「单卡容量」的全部输入。
+                         由 config-relation-observer.js 的 FIELD_ORDER.batch 渲染。 -->
+                    <div class="cro-stepper-row" id="croBatchSteppers"></div>
+                  </div>
+                  <div class="cro-cluster__grid">
+                    <!-- .cro-heat 是集群矩阵的样式钩子（原先挂在 #croHeat 上）。
+                         事件详情的角色卡里会再开若干份同款矩阵，故改成类。 -->
+                    <div class="twin-heat cro-heat" id="croHeat"></div>
+                  </div>
+                </div>
+
+                <!-- ── 单卡容量 ──
+                     矩阵回答「是哪张卡」，这一栏回答「这张卡里装了什么、还剩多少」，
+                     所以两者同区并排而不是各自成区。数值与阈值全部由
+                     js/config-relation-capacity.js 写入（它只吃 cro:change / cro:select
+                     两个事件，不改主控制器）。 -->
+                <aside class="cro-capacity" id="croCapacity" aria-label="单卡容量">
+                  <div class="cro-capacity__head">
+                    <h2 class="cro-region__title cro-capacity__title">单卡容量</h2>
+                    <!-- 口径收在这枚问号里：它是「这些数怎么算出来的」，属于随时可查、
+                         但不该常驻占版面的东西。常驻会把一栏窄面板压掉十几行。
+                         悬浮即出（触屏与键盘各留一条通路，见 js 的 showBasis），
+                         故不写 title —— 原生 tooltip 会和浮层同时冒出来读成两份。 -->
+                    <button class="cro-capacity__help" id="croCapacityHelp" type="button"
+                            aria-expanded="false" aria-describedby="croCapacityBasis"
+                            aria-label="容量口径">?</button>
+                    <span class="cro-capacity__scope" id="croCapacityScope"></span>
+                  </div>
+
+                  <!-- 口径浮层：宽度锁在面板内、绝对定位盖住下方内容。不往面板外弹是
+                       因为 .cro-board 与 .cro-cluster 都是 overflow:auto，弹出去会被裁。 -->
+                  <div class="cro-capacity__basis" id="croCapacityBasis" role="tooltip" hidden></div>
+
+                  <!-- 口径里那三个可调量（Micro Batch / Seq Length / 单卡显存）不在
+                       这一栏里，而在同区左半的表单行（卡型号下拉 + 其后两个 stepper）
+                       —— 它们是开训前要拍板的配置，不是这一栏的局部开关。本栏渲染前
+                       由 syncBasis() 从 topology.config / topology.card 同步过来。 -->
+                  <p class="cro-capacity__empty" id="croCapacityEmpty" hidden></p>
+
+                  <div class="cro-capacity__body" id="croCapacityBody" hidden>
+                    <div class="cro-capacity__main">
+                      <!-- 容器是立体的：卡的容量是一个有体积的盒子，装进去的四段各有各的
+                           体积，装不下的那截摞在盒口之上。等距投影（SVG，见
+                           config-relation-capacity.js 的 buildScene）比平面色条更贴近
+                           「容器」这个隐喻，也把「越界」画成结构性的溢出而不是变色。 -->
+                      <div class="cro-capacity__scene" id="croCapacityScene"></div>
+                      <div class="cro-capacity__readouts">
+                        <!-- 占比是这一栏的头条读数：安全档不出判定横幅之后，它就是唯一
+                             一眼能看出「险不险」的东西，所以放大、并按档位换色。绝对值
+                             压小压暗——需要时才看。 -->
+                        <div class="cro-capacity__ratio" id="croCapacityRatio" data-level="safe">
+                          <b id="croCapacityPct"></b>
+                          <span id="croCapacityAbs"></span>
+                        </div>
+                        <ul class="cro-capacity__legend" id="croCapacityLegend"></ul>
+                      </div>
+                    </div>
+
+                    <div class="cro-capacity__verdict" id="croCapacityVerdict" role="status" aria-live="polite" data-level="safe">
+                      <span class="cro-capacity__badge" id="croCapacityBadge"></span>
+                      <span id="croCapacityVerdictText"></span>
+                    </div>
+
+                    <!-- 预警/越界时让位给上面的判定横幅：横幅已经把「险不险」说清楚了，
+                         这排小柱这时只是重复信息还挤占竖向空间，故 alert/over 两档隐藏。 -->
+                    <div class="cro-capacity__spread" id="croCapacitySpread">
+                      <div class="cro-capacity__spread-head">
+                        <span>各 PP Stage 峰值</span>
+                        <span id="croCapacitySpreadNote"></span>
+                      </div>
+                      <div class="cro-capacity__stages" id="croCapacityStages" role="group" aria-label="各 PP Stage 单卡占用"></div>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+            </section>
+
+            <!-- ═══ 区域 E · 配置 YAML（顶栏切到「YAML 视图」时顶掉 B/C/D 三区）═══
+                 只在 yaml 档显示，格位是 arch＋moe 两列 × 两行（见
+                 css/config-relation-yaml.css）。整网列不参与切换：左边始终回答
+                 「这份 yaml 描述的是哪张网」。内容由 js/config-relation-yaml.js
+                 从当前 config 实时生成，不是写死的样例。 -->
+            <section class="cro-region cro-region--yaml" id="croYamlRegion" aria-label="配置文件">
+              <div class="cro-yaml__head">
+                <!-- 字号与下栏「启动命令」取齐（.cro-yaml__title），不用区标题的 20px -->
+                <h2 class="cro-region__title cro-yaml__title">配置文件</h2>
+                <!-- 路径由 js 按模型名生成（configs/<家族>/run_<全名>.yaml），
+                     与 MindFormers 仓的 configs/ 目录同形 -->
+                <span class="cro-yaml__file" id="croYamlPath"></span>
+                <span class="cro-yaml__status" id="croYamlStatus" data-level="ok" role="status" aria-live="polite"></span>
+                <button class="btn btn-sm btn-ghost cro-yaml__copy" id="croYamlCopy" type="button" title="复制 yaml 全文">
+                  <span class="cro-yaml__copy-label">复制</span>
+                </button>
+              </div>
+              <ol class="cro-yaml__code" id="croYamlCode"></ol>
+
+              <!-- ── 下栏 · 启动命令 ──
+                   卡型号 / 单卡 HBM / 节点数 / 总卡数 都不写在 MindFormers 的
+                   run_*.yaml 里：前两项是硬件事实（yaml 里只有 context
+                   .max_device_memory 这个上限，写成它的行尾注释），后两项由启动器
+                   给。所以它们的落点在这一栏，而不是硬塞进上面那份 yaml。 -->
+              <div class="cro-yaml__launch">
+                <div class="cro-yaml__launch-head">
+                  <span class="cro-yaml__launch-title">启动命令</span>
+                  <span class="cro-yaml__launch-note">msrun · 集群规模</span>
+                  <button class="btn btn-sm btn-ghost cro-yaml__copy" id="croLaunchCopy" type="button" title="复制启动命令">
+                    <span class="cro-yaml__copy-label">复制</span>
+                  </button>
+                </div>
+                <ol class="cro-yaml__code cro-yaml__code--shell" id="croLaunchCode"></ol>
+              </div>
+            </section>
+
+            <!-- ═══ 区域 F · 文档（顶栏切到「文档」时顶掉全部四个区）═══
+                 与 YAML 区的差别是**连整网列一起顶掉**：yaml 档留着整网是因为
+                 左边要回答「这份 yaml 描述的是哪张网」，文档没有这层对照关系，
+                 留半张 3D 图在旁边只是噪声。格位见 css/config-relation-doc.css。
+
+                 正文是静态 HTML 不是 JS 生成：它是一篇要逐字打磨的散文，塞进
+                 模板串之后每改一个字都要在转义里找位置。js/config-relation-doc.js
+                 只从 .cro-doc__section[id] 生成左边的目录并做滚动高亮 ——
+                 改标题只改这里一处，目录自动跟。 -->
+            <section class="cro-region cro-region--doc" id="croDocRegion" aria-label="配置规则文档">
+              <nav class="cro-doc__toc" aria-label="章节目录">
+                <div class="cro-doc__toc-title">章节目录</div>
+                <!-- 空的：条目由 js/config-relation-doc.js 按下面各节的标题建 -->
+                <ol class="cro-doc__toc-list" id="croDocTocList"></ol>
+              </nav>
+
+              <article class="cro-doc__body" id="croDocBody">
+                <p class="cro-doc__lede">
+                  把一份训练配置调对，本质上是在一张互相牵制的约束网里找可行点：
+                  五个并行维度不是五个独立的旋钮，它们彼此相乘、又同时被模型结构、集群拓扑和单卡显存三面夹住。
+                  这份文档写的就是这张网 —— <b>每条约束从哪来、违反了会怎样、以及某一项调不动时该动哪一项</b>。
+                  约束卡左缘的色条是类别：<b>红</b>=硬约束（违反则起不来），<b>橙</b>=软约束（能起来，但踩在性能悬崖上），<b>蓝</b>=取决于所用框架的口径。
+                </p>
+
+                <!-- ── 1 ── -->
+                <section class="cro-doc__section" id="doc-overview">
+                  <h3 class="cro-doc__h">一份配置要过三关</h3>
+                  <p>三关的失败方式完全不同，代价也差着数量级：</p>
+                  <div class="cro-doc__table-wrap">
+                    <table class="cro-doc__table">
+                      <thead>
+                        <tr><th>关</th><th>要满足什么</th><th>不满足时</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr><td>配得通</td><td>并行维度的乘积对得上卡数，整除关系自洽</td><td>启动器当场拒绝，秒级失败</td></tr>
+                        <tr><td>切得开</td><td>切分维度整除得了被它切的模型结构</td><td>框架建图时报错，分钟级失败</td></tr>
+                        <tr><td>跑得下</td><td>最紧的那张卡装得下</td><td>前几个 step OOM —— 而这时通常已经排了几小时队</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <p>
+                    越靠后的关卡，失败成本越高：前两关是确定性的整数运算，开训前就能算死；
+                    第三关要把权重、梯度、优化器状态、激活和运行时开销逐项估出来，
+                    但它同样是<b>算得出来的</b> —— 不必等 OOM 才知道。
+                  </p>
+                </section>
+
+                <!-- ── 2 ── -->
+                <section class="cro-doc__section" id="doc-glossary">
+                  <h3 class="cro-doc__h">配置项逐条详解</h3>
+                  <p>
+                    下面按关系视图里表单出现的顺序逐条展开：先说这一项<b>是什么</b>、<b>拿它解决什么问题</b>，
+                    再用一幅图给出它的联动关系 —— 左边是「什么情况下该动它」，右边是「动了会牵动谁」。
+                  </p>
+                  <p>
+                    整网区那个「模型」下拉不在其中：它选的是一整套预设（层数、hidden size、专家规格、注意力形态…），
+                    是这张约束网的<b>输入</b>，而不是网上的一个可调节点。
+                  </p>
+                  <p>
+                    这一章当速查表用即可 —— 条目里出现的「正交 / 切出口径」「1F1B 在飞的 micro-batch」
+                    「all-to-all」这些说法，都在后面几章展开。
+                  </p>
+                  <!-- 图例给的就是连线上那四个词本身（同字体同色），不另造一套记号 -->
+                  <dl class="cro-doc__legend" aria-label="联动图图例">
+                    <dt data-flow="up">调大</dt>
+                    <dd>左上 —— 什么情况下该把它往大了调</dd>
+                    <dt data-flow="down">调小</dt>
+                    <dd>左下 —— 什么情况下该把它往小了调</dd>
+                    <dt data-flow="must">一定联调</dt>
+                    <dd>右上 —— 硬绑定，动了它这些必然跟着变（实线）</dd>
+                    <dt data-flow="often">考虑再调</dt>
+                    <dd>右下 —— 可选，实践中通常要一并权衡（虚线）</dd>
+                  </dl>
+
+                  <!-- ═ Model Architecture 区 ═ -->
+
+                  <div class="cro-doc__term" id="term-total-layer">
+                    <div class="cro-doc__term-head">
+                      <code class="cro-doc__term-name">Total Layer</code>
+                      <span class="cro-doc__term-full">decoder 层数 · num_layers</span>
+                      <span class="cro-doc__term-where">Model Architecture</span>
+                    </div>
+                    <p>
+                      堆叠多少个 transformer decoder block。它是<b>模型结构参数，不是并行参数</b> ——
+                      改并行度只是换个方式跑同一个模型，改层数则是换了一个模型，权重不再通用。
+                    </p>
+                    <p>
+                      它与 hidden size 一起决定模型有多深多大。深度带来的是表达能力的层次，
+                      所以同参数量下「深而窄」和「浅而宽」是两种不同的取舍，而不是等价的。
+                    </p>
+                    <div class="cro-doc__map">
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="up">
+                          <div class="cro-doc__map-box-title">调大</div>
+                          <ul>
+                            <li>要更强的模型容量，且倾向于加深而非加宽</li>
+                            <li>复现某个已发布的模型规格</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="down">
+                          <div class="cro-doc__map-box-title">调小</div>
+                          <ul>
+                            <li>只想跑通流程做冒烟验证</li>
+                            <li>显存实在不够，且并行度已无处可加</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div class="cro-doc__map-node">Total<br>Layer</div>
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="must">
+                          <div class="cro-doc__map-box-title">一定联调</div>
+                          <ul>
+                            <li><code>PP</code> —— 必须满足 层数 ≥ PP</li>
+                            <li>每 stage 背的层数 → 单卡显存</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="often">
+                          <div class="cro-doc__map-box-title">考虑再调</div>
+                          <ul>
+                            <li><code>Routed Expert</code> —— 一起决定总参数量</li>
+                            <li>学习率与 warmup（深度变了要重调）</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="cro-doc__term" id="term-dp">
+                    <div class="cro-doc__term-head">
+                      <code class="cro-doc__term-name">DP</code>
+                      <span class="cro-doc__term-full">Data Parallel · 数据并行度</span>
+                      <span class="cro-doc__term-where">Model Architecture</span>
+                    </div>
+                    <p>
+                      同一份完整模型被复制多少份，每份吃不同的数据分片，每步末把梯度 all-reduce 到一致。
+                      副本之间是<b>复制关系而不是切分关系</b>。
+                    </p>
+                    <p>
+                      它解决的是「算得太慢」，不是「装不下」 ——
+                      这是五个维度里唯一一个加了<b>不省显存</b>的。把 DP 从 2 拉到 8，总卡数翻两番，
+                      每张卡上的权重、梯度、优化器状态一个字节都没少。唯一的例外是开了优化器并行，
+                      那时优化器状态会沿 DP 维分片。
+                    </p>
+                    <div class="cro-doc__map">
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="up">
+                          <div class="cro-doc__map-box-title">调大</div>
+                          <ul>
+                            <li>要提高吞吐、缩短一个 epoch 的墙钟时间</li>
+                            <li>全局 batch 需要更大</li>
+                            <li>开了优化器并行，想让优化器状态分得更细</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="down">
+                          <div class="cro-doc__map-box-title">调小</div>
+                          <ul>
+                            <li>卡要让给真正能省显存的维度</li>
+                            <li>全局 batch 已过大，收敛质量下降</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div class="cro-doc__map-node">DP</div>
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="must">
+                          <div class="cro-doc__map-box-title">一定联调</div>
+                          <ul>
+                            <li><code>Total Rank</code> —— 乘积变了</li>
+                            <li>全局 batch = MBS × DP × 累积步数</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="often">
+                          <div class="cro-doc__map-box-title">考虑再调</div>
+                          <ul>
+                            <li><code>Micro Batch</code> —— 反向补回全局 batch</li>
+                            <li><code>EP</code> —— 切出口径下要满足 DP % EP</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="cro-doc__term" id="term-pp">
+                    <div class="cro-doc__term-head">
+                      <code class="cro-doc__term-name">PP</code>
+                      <span class="cro-doc__term-full">Pipeline Parallel · 流水线并行度</span>
+                      <span class="cro-doc__term-where">Model Architecture</span>
+                    </div>
+                    <p>
+                      把模型按层切成若干段（stage），每段放一组卡上，micro-batch 像流水线一样依次流过：
+                      第一段算完把激活传给第二段，自己接着算下一个 micro-batch。
+                    </p>
+                    <p>
+                      它解决的是<b>「单卡放不下这么多层」</b>。在五个维度里它的<b>通信量最小</b> ——
+                      相邻 stage 之间只传一份边界激活，而且是点对点，不是集合通信。
+                      正因如此，PP 是最适合切在节点边界上的一维。
+                      代价是流水线气泡：首尾填充与排空阶段有卡在空转，比例约
+                      <code>(PP − 1) / micro_batch_num</code>。
+                    </p>
+                    <div class="cro-doc__map">
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="up">
+                          <div class="cro-doc__map-box-title">调大</div>
+                          <ul>
+                            <li>单卡装不下这么多层，且不想加通信更密的 TP</li>
+                            <li>要跨节点扩展 —— PP 通信最稀，最扛得住跨机</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="down">
+                          <div class="cro-doc__map-box-title">调小</div>
+                          <ul>
+                            <li>气泡占比过高（micro-batch 数喂不满流水线）</li>
+                            <li>层数不够分，出现空 stage</li>
+                            <li>stage0 在飞的激活反成瓶颈（PP 越大它压得越多）</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div class="cro-doc__map-node">PP</div>
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="must">
+                          <div class="cro-doc__map-box-title">一定联调</div>
+                          <ul>
+                            <li><code>Total Rank</code> —— 乘积变了</li>
+                            <li><code>Total Layer</code> —— 必须 ≥ PP</li>
+                            <li>各 stage 的层数划分与首末段的额外负担</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="often">
+                          <div class="cro-doc__map-box-title">考虑再调</div>
+                          <ul>
+                            <li><code>Micro Batch</code> —— 压气泡要更多 micro-batch</li>
+                            <li><code>Node</code> —— PP 最适合切在节点边界</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="cro-doc__term" id="term-tp">
+                    <div class="cro-doc__term-head">
+                      <code class="cro-doc__term-name">TP</code>
+                      <span class="cro-doc__term-full">Tensor Parallel · 张量并行度</span>
+                      <span class="cro-doc__term-where">Model Architecture</span>
+                    </div>
+                    <p>
+                      把单个算子的权重矩阵按行或列切开，多张卡各算一片，再把结果拼回去。
+                      切的是注意力头和 FFN 的 intermediate 维。
+                    </p>
+                    <p>
+                      它是见效最直接的一维 —— <b>参数和激活一起降</b>，而 PP 只降参数、CP 只降激活。
+                      代价也最重：每层前向反向各要 all-reduce 一次激活，是通信最密的维度，
+                      而且这些通信都在关键路径上、无法与计算重叠掉。
+                      所以 TP 组一旦跨出节点就是性能悬崖 —— 吞吐可能掉一半以上。
+                    </p>
+                    <div class="cro-doc__map">
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="up">
+                          <div class="cro-doc__map-box-title">调大</div>
+                          <ul>
+                            <li>显存缺口大且要立刻见效（两头一起降）</li>
+                            <li>单层权重本身超过单卡容量</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="down">
+                          <div class="cro-doc__map-box-title">调小</div>
+                          <ul>
+                            <li>TP 组被迫跨节点</li>
+                            <li>头数 / KV 头数 / intermediate 除不尽</li>
+                            <li>切得太碎，矩阵乘掉出高效区间</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div class="cro-doc__map-node">TP</div>
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="must">
+                          <div class="cro-doc__map-box-title">一定联调</div>
+                          <ul>
+                            <li><code>Total Rank</code> —— 乘积变了</li>
+                            <li>单卡显存（参数与激活同时变）</li>
+                            <li>受 <code>num_heads</code> / <code>n_kv_heads</code> / <code>intermediate</code> 整除约束</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="often">
+                          <div class="cro-doc__map-box-title">考虑再调</div>
+                          <ul>
+                            <li><code>Node</code> —— TP 组必须收在节点内</li>
+                            <li>序列并行开关（决定激活还能不能再切一刀）</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="cro-doc__term" id="term-cp">
+                    <div class="cro-doc__term-head">
+                      <code class="cro-doc__term-name">CP</code>
+                      <span class="cro-doc__term-full">Context Parallel · 上下文并行度</span>
+                      <span class="cro-doc__term-where">Model Architecture</span>
+                    </div>
+                    <p>
+                      把一条序列按 token 位置切成若干段分给不同卡。
+                      attention 要看全局，所以各卡之间用 ring 的方式轮转传递 KV。
+                    </p>
+                    <p>
+                      它<b>专治长序列</b>。激活随序列长度线性增长，attention 的中间量甚至是平方级 ——
+                      CP 是唯一直接压这一项的维度。序列不长时它没有意义：白付一轮 ring 通信，
+                      而省下的激活本来就不是瓶颈。要求 <code>seq % (2×CP) == 0</code> 而不只是 CP，
+                      是因为因果注意力下序列前段计算量远小于后段，得对半交叉分配才能均衡负载。
+                    </p>
+                    <div class="cro-doc__map">
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="up">
+                          <div class="cro-doc__map-box-title">调大</div>
+                          <ul>
+                            <li>序列拉长后激活爆了</li>
+                            <li>attention 的中间量已是显存主要来源</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="down">
+                          <div class="cro-doc__map-box-title">调小</div>
+                          <ul>
+                            <li>序列本来就不长，CP 只是白付通信</li>
+                            <li>序列长度除不尽 2×CP</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div class="cro-doc__map-node">CP</div>
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="must">
+                          <div class="cro-doc__map-box-title">一定联调</div>
+                          <ul>
+                            <li><code>Total Rank</code> —— 乘积变了</li>
+                            <li>受 <code>Seq Length</code> 整除约束</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="often">
+                          <div class="cro-doc__map-box-title">考虑再调</div>
+                          <ul>
+                            <li><code>Seq Length</code> —— 两者是同一件事的两头</li>
+                            <li><code>Micro Batch</code> —— 都在压激活，先动便宜的那个</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- ═ MoE 区 ═ -->
+
+                  <div class="cro-doc__term" id="term-routed">
+                    <div class="cro-doc__term-head">
+                      <code class="cro-doc__term-name">Routed Expert</code>
+                      <span class="cro-doc__term-full">路由专家总数 · 表单标注 Routed</span>
+                      <span class="cro-doc__term-where">MoE</span>
+                    </div>
+                    <p>
+                      每个 MoE 层里可供路由的专家个数。每个 token 经 router 打分后，
+                      只激活其中得分最高的 Top-K 个，其余专家这一步不参与计算。
+                    </p>
+                    <p>
+                      它是 MoE 的核心手段：<b>用总参数量换模型容量，而单 token 的计算量不变</b>。
+                      解决的是「想要更大的模型，但不想让每个 token 都付更多算力」。
+                      代价全部落在显存与通信上 —— 一个 92B 的 MoE 模型可能有 97% 的参数在专家里。
+                    </p>
+                    <div class="cro-doc__map">
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="up">
+                          <div class="cro-doc__map-box-title">调大</div>
+                          <ul>
+                            <li>要提高模型容量，又不想增加单 token 计算量</li>
+                            <li>专家已经分化充分，还有余量继续细分</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="down">
+                          <div class="cro-doc__map-box-title">调小</div>
+                          <ul>
+                            <li>总参数量装不下，且 EP 已加到通信划不来</li>
+                            <li>专家过多导致 token 被摊薄，单个专家训练不充分</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div class="cro-doc__map-node">Routed<br>Expert</div>
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="must">
+                          <div class="cro-doc__map-box-title">一定联调</div>
+                          <ul>
+                            <li><code>EP</code> —— 必须能被 EP 整除</li>
+                            <li>单卡显存（MoE 模型的参数大头）</li>
+                            <li><code>Top-K</code> 的上限</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="often">
+                          <div class="cro-doc__map-box-title">考虑再调</div>
+                          <ul>
+                            <li><code>Top-K</code> —— 两者之比即激活率</li>
+                            <li>负载均衡损失的权重</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="cro-doc__term" id="term-topk">
+                    <div class="cro-doc__term-head">
+                      <code class="cro-doc__term-name">Top-K</code>
+                      <span class="cro-doc__term-full">每 token 激活几个专家 · num_experts_chosen</span>
+                      <span class="cro-doc__term-where">MoE</span>
+                    </div>
+                    <p>
+                      router 为每个 token 打分后选出前 K 个专家，token 被复制 K 份分别送过去，
+                      算完再按权重加权合并回来。
+                    </p>
+                    <p>
+                      它是「容量 / 算力」这条杠杆上的支点：<b>K 直接决定 MoE 层的实际计算量，
+                      也直接决定 all-to-all 要搬多少 token</b>。
+                      K 和专家总数之比就是激活率 —— 同样 256 个专家，K=8 和 K=2 是两种完全不同的模型。
+                    </p>
+                    <div class="cro-doc__map">
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="up">
+                          <div class="cro-doc__map-box-title">调大</div>
+                          <ul>
+                            <li>要提升效果，让更多专家参与每个 token</li>
+                            <li>专家利用率过低，大量专家长期收不到 token</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="down">
+                          <div class="cro-doc__map-box-title">调小</div>
+                          <ul>
+                            <li>MoE 层耗时过长，计算量压不下来</li>
+                            <li>all-to-all 搬运量成为瓶颈</li>
+                            <li>算子临时区峰值把显存顶穿</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div class="cro-doc__map-node">Top-K</div>
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="must">
+                          <div class="cro-doc__map-box-title">一定联调</div>
+                          <ul>
+                            <li>MoE 层的计算量与 all-to-all 搬运量</li>
+                            <li>算子 workspace 峰值（∝ K × 一层 token 张量）</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="often">
+                          <div class="cro-doc__map-box-title">考虑再调</div>
+                          <ul>
+                            <li><code>Routed Expert</code> —— 保持激活率不变</li>
+                            <li><code>EP</code> —— K 大则跨卡搬得更多</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="cro-doc__term" id="term-shared">
+                    <div class="cro-doc__term-head">
+                      <code class="cro-doc__term-name">Shared Expert</code>
+                      <span class="cro-doc__term-full">共享专家数 · 表单标注 Shared</span>
+                      <span class="cro-doc__term-where">MoE</span>
+                    </div>
+                    <p>
+                      不参与路由、所有 token 都要过的专家。它和被选中的 K 个路由专家的输出相加。
+                    </p>
+                    <p>
+                      它承接<b>通用知识</b>，让路由专家腾出容量去学差异化的部分，
+                      同时给每个 token 一条恒定存在的通路 —— 这在训练早期尤其重要，
+                      那时 router 还没学好，路由结果不稳定甚至塌缩。
+                      注意它在 EP 域内<b>每张卡都有一份完整副本</b>，EP 帮不上忙，显存吃紧时它是纯负担。
+                    </p>
+                    <div class="cro-doc__map">
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="up">
+                          <div class="cro-doc__map-box-title">调大</div>
+                          <ul>
+                            <li>出现路由塌缩或长期负载不均</li>
+                            <li>希望有一条不依赖 router 的稳定通路</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="down">
+                          <div class="cro-doc__map-box-title">调小</div>
+                          <ul>
+                            <li>显存吃紧 —— 它是唯一不被 EP 摊薄的专家</li>
+                            <li>路由已足够稳定，通用通路的收益在递减</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div class="cro-doc__map-node">Shared<br>Expert</div>
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="must">
+                          <div class="cro-doc__map-box-title">一定联调</div>
+                          <ul>
+                            <li>单卡显存 —— 每卡一份完整副本，不随 EP 摊薄</li>
+                            <li>每 token 实际过的 FFN 数 = K + 共享数</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="often">
+                          <div class="cro-doc__map-box-title">考虑再调</div>
+                          <ul>
+                            <li><code>Top-K</code> —— 一起看总激活量</li>
+                            <li>负载均衡损失的权重</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="cro-doc__term" id="term-ep">
+                    <div class="cro-doc__term-head">
+                      <code class="cro-doc__term-name">EP</code>
+                      <span class="cro-doc__term-full">Expert Parallel · 专家并行度</span>
+                      <span class="cro-doc__term-where">MoE</span>
+                    </div>
+                    <p>
+                      把一个 MoE 层的专家分散到多张卡上，每张卡只持有 <code>专家总数 / EP</code> 个。
+                      token 先按路由结果 all-to-all 发到专家所在的卡，算完再 all-to-all 收回来。
+                    </p>
+                    <p>
+                      它是 <b>MoE 模型减少单卡显存的主力</b> —— 专家参数常占全模型 95% 以上，
+                      而这一维正好切在这块最大的肉上。代价是每个 MoE 层要做两次 all-to-all，
+                      而 all-to-all 是全连接通信模式，对拓扑最敏感：EP 域一旦跨出超节点，
+                      省下的显存很可能被通信时间吃回去，表现为 MoE 层耗时随 EP 增大不降反升。
+                    </p>
+                    <div class="cro-doc__map">
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="up">
+                          <div class="cro-doc__map-box-title">调大</div>
+                          <ul>
+                            <li>专家权重装不下 —— 这是最主要的理由</li>
+                            <li>想扩规模又不动模型结构</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="down">
+                          <div class="cro-doc__map-box-title">调小</div>
+                          <ul>
+                            <li>all-to-all 跨机后 MoE 层耗时不降反升</li>
+                            <li>专家数不够分（除不尽）</li>
+                            <li>EP 域跨出了超节点边界</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div class="cro-doc__map-node">EP</div>
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="must">
+                          <div class="cro-doc__map-box-title">一定联调</div>
+                          <ul>
+                            <li><code>Routed Expert</code> —— 必须被 EP 整除</li>
+                            <li>正交口径下 <code>Total Rank</code>；切出口径下 <code>DP</code></li>
+                            <li>单卡显存（专家那一段 ÷ EP）</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="often">
+                          <div class="cro-doc__map-box-title">考虑再调</div>
+                          <ul>
+                            <li><code>Node</code> —— 把 all-to-all 收在超节点内</li>
+                            <li><code>Top-K</code> —— 一起决定搬运量</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- ═ Cluster 区 ═ -->
+
+                  <div class="cro-doc__term" id="term-total-rank">
+                    <div class="cro-doc__term-head">
+                      <code class="cro-doc__term-name">Total Rank</code>
+                      <span class="cro-doc__term-full">总卡数 · world_size</span>
+                      <span class="cro-doc__term-where">Cluster</span>
+                    </div>
+                    <p>
+                      这次训练占用的 NPU 总数，等于各并行维度的乘积，也必须等于启动器实际拉起的进程数
+                      （msrun 的 <code>--worker_num</code>）。
+                    </p>
+                    <p>
+                      它<b>不是一个独立旋钮，而是五个维度的结果</b>。直接给它一个目标值，
+                      等于反过来要求系统配平其他维度 —— 而配平的方式不唯一：
+                      同样是 2048 卡，可以是 DP 大而 PP 小，也可以反过来，两者的显存与吞吐完全不同。
+                      所以它更适合当作「预算」来看：先定预算，再决定怎么花。
+                    </p>
+                    <div class="cro-doc__map">
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="up">
+                          <div class="cro-doc__map-box-title">调大</div>
+                          <ul>
+                            <li>要更快跑完，或模型/序列变大后必须扩容</li>
+                            <li>申请到了更多资源</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="down">
+                          <div class="cro-doc__map-box-title">调小</div>
+                          <ul>
+                            <li>集群紧张，大规模作业排队时间过长</li>
+                            <li>只做小规模验证，不需要全量资源</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div class="cro-doc__map-node">Total<br>Rank</div>
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="must">
+                          <div class="cro-doc__map-box-title">一定联调</div>
+                          <ul>
+                            <li><code>DP/PP/TP/CP/EP</code> 中至少一项 —— 乘积必须对上</li>
+                            <li><code>Node</code> —— 必须整除</li>
+                            <li>启动命令里的 worker_num</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="often">
+                          <div class="cro-doc__map-box-title">考虑再调</div>
+                          <ul>
+                            <li>几乎没有「可选」联动 —— 它的联动全是硬绑定</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="cro-doc__term" id="term-node">
+                    <div class="cro-doc__term-head">
+                      <code class="cro-doc__term-name">Node</code>
+                      <span class="cro-doc__term-full">节点数 · 物理服务器台数</span>
+                      <span class="cro-doc__term-where">Cluster</span>
+                    </div>
+                    <p>
+                      参与这次训练的服务器台数。每节点卡数 = 总卡数 / 节点数，
+                      而这个数由硬件形态定死（昇腾 910B 一节点 8 卡），不是可以随意填的量。
+                    </p>
+                    <p>
+                      它真正决定的是<b>并行维度落在哪一侧的互联上</b>：同节点内走高速片间互联，
+                      跨节点走网络，两者带宽差着数量级。所以「节点数」不只是个规模数字 ——
+                      通信最密的 TP 该收在节点内，all-to-all 的 EP 域该收在超节点内，
+                      通信最稀的 PP 才适合切在节点边界上。
+                    </p>
+                    <div class="cro-doc__map">
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="up">
+                          <div class="cro-doc__map-box-title">调大</div>
+                          <ul>
+                            <li>总卡数变大后必然增加（每节点卡数是定值）</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="down">
+                          <div class="cro-doc__map-box-title">调小</div>
+                          <ul>
+                            <li>想把通信密集的维度收进更少的节点里</li>
+                            <li>减少跨机网络上的通信域个数</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div class="cro-doc__map-node">Node</div>
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="must">
+                          <div class="cro-doc__map-box-title">一定联调</div>
+                          <ul>
+                            <li>每节点卡数 = <code>Total Rank</code> / Node，必须整除</li>
+                            <li>启动命令里的 local_worker_num 与 node_rank 范围</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="often">
+                          <div class="cro-doc__map-box-title">考虑再调</div>
+                          <ul>
+                            <li><code>TP</code> —— TP 组不该跨节点</li>
+                            <li><code>PP</code> —— 最适合切在节点边界</li>
+                            <li><code>EP</code> —— all-to-all 域尽量收在超节点内</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="cro-doc__term" id="term-card">
+                    <div class="cro-doc__term-head">
+                      <code class="cro-doc__term-name">卡型号</code>
+                      <span class="cro-doc__term-full">NPU 硬件规格</span>
+                      <span class="cro-doc__term-where">Cluster</span>
+                    </div>
+                    <p>
+                      选定的 NPU 型号。它是枚举而不是量 —— 影响这份配置的主要是<b>单卡 HBM 容量</b>，
+                      其次是算力与互联形态。
+                    </p>
+                    <p>
+                      它是第三关的<b>分母</b>：同一份配置换一款 HBM 更大的卡，所有并行度都能松一档。
+                      现实中它往往是给定的而不是可选的 —— 集群里有什么卡就用什么卡，
+                      所以它更多是作为「已知条件」进入这张约束网，而不是作为调节手段。
+                    </p>
+                    <div class="cro-doc__map">
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="up">
+                          <div class="cro-doc__map-box-title">换大卡</div>
+                          <ul>
+                            <li>显存反复吃紧，并行度已无处可加</li>
+                            <li>为省显存而付的通信代价已经划不来</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="down">
+                          <div class="cro-doc__map-box-title">通常不可选</div>
+                          <ul>
+                            <li>集群只有这一种卡 —— 多数情况下它不可选</li>
+                            <li>混合型号会让负载均衡与通信都变复杂</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div class="cro-doc__map-node">卡型号</div>
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="must">
+                          <div class="cro-doc__map-box-title">一定联调</div>
+                          <ul>
+                            <li>单卡显存上限 —— 三条警戒线全部按它算</li>
+                            <li>框架可用显存上限（要留一截给通信与工作区）</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="often">
+                          <div class="cro-doc__map-box-title">考虑再调</div>
+                          <ul>
+                            <li>每节点卡数 —— 不同型号的整机形态不同</li>
+                            <li>计算精度（不同代次支持的 FP8 / FP4 不同）</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="cro-doc__term" id="term-mbs">
+                    <div class="cro-doc__term-head">
+                      <code class="cro-doc__term-name">Micro Batch</code>
+                      <span class="cro-doc__term-full">单次前向的样本数 · MBS</span>
+                      <span class="cro-doc__term-where">Cluster</span>
+                    </div>
+                    <p>
+                      一次前向/反向真正喂进去的样本数。<b>注意它不是全局 batch</b> ——
+                      全局 batch = MBS × DP × 梯度累积步数，而只有 MBS 直接进显存。
+                    </p>
+                    <p>
+                      激活显存与它<b>成正比</b>，而且它不参与任何切分、不撞任何整除约束 ——
+                      这使它成为压显存时最容易先试的一项。反过来，它太小则算子跑不满算力，
+                      单卡效率下降；在流水线里它还与 micro-batch 数一起决定气泡占比。
+                    </p>
+                    <div class="cro-doc__map">
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="up">
+                          <div class="cro-doc__map-box-title">调大</div>
+                          <ul>
+                            <li>算子效率低，小 batch 喂不满算力</li>
+                            <li>想减少梯度累积步数、缩短一步的墙钟时间</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="down">
+                          <div class="cro-doc__map-box-title">调小</div>
+                          <ul>
+                            <li>激活爆了 —— 这是最便宜的一刀</li>
+                            <li>stage0 在飞的 micro-batch 压得太多</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div class="cro-doc__map-node">Micro<br>Batch</div>
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="must">
+                          <div class="cro-doc__map-box-title">一定联调</div>
+                          <ul>
+                            <li>激活显存（线性）与算子 workspace 峰值</li>
+                            <li>全局 batch = MBS × DP × 累积步数</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="often">
+                          <div class="cro-doc__map-box-title">考虑再调</div>
+                          <ul>
+                            <li>梯度累积步数 —— 把全局 batch 补回来</li>
+                            <li><code>PP</code> —— micro-batch 数决定气泡占比</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="cro-doc__term" id="term-seq">
+                    <div class="cro-doc__term-head">
+                      <code class="cro-doc__term-name">Seq Length</code>
+                      <span class="cro-doc__term-full">序列长度 · seq_length</span>
+                      <span class="cro-doc__term-where">Cluster</span>
+                    </div>
+                    <p>
+                      一条训练样本的 token 数。它同时是这个模型训练出来之后的<b>上下文长度上限</b> ——
+                      不是一个纯粹的性能参数，而是能力参数。
+                    </p>
+                    <p>
+                      它是激活显存的主导因子：常规激活随它线性增长，
+                      而 attention 的中间量在不开 FlashAttention 时随它<b>平方</b>增长。
+                      拉长序列几乎必然要同时动 CP 或重计算，否则显存曲线会陡起来。
+                    </p>
+                    <div class="cro-doc__map">
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="up">
+                          <div class="cro-doc__map-box-title">调大</div>
+                          <ul>
+                            <li>目标场景需要更长上下文</li>
+                            <li>做长序列续训（通常是分阶段逐步拉长）</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="down">
+                          <div class="cro-doc__map-box-title">调小</div>
+                          <ul>
+                            <li>激活装不下，且 CP 已经加到通信划不来</li>
+                            <li>attention 耗时占比过高</li>
+                          </ul>
+                        </div>
+                      </div>
+                      <div class="cro-doc__map-node">Seq<br>Length</div>
+                      <div class="cro-doc__map-col">
+                        <div class="cro-doc__map-box" data-flow="must">
+                          <div class="cro-doc__map-box-title">一定联调</div>
+                          <ul>
+                            <li>激活显存与 attention 耗时</li>
+                            <li>必须被 <code>2 × CP</code> 整除</li>
+                            <li>位置编码的外推设置（RoPE base 等）</li>
+                          </ul>
+                        </div>
+                        <div class="cro-doc__map-box" data-flow="often">
+                          <div class="cro-doc__map-box-title">考虑再调</div>
+                          <ul>
+                            <li><code>CP</code> —— 长序列的正规解法</li>
+                            <li><code>Micro Batch</code> —— 两者乘积是每卡 token 数</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+                <!-- ── 3 ── -->
+                <section class="cro-doc__section" id="doc-dims">
+                  <h3 class="cro-doc__h">五个并行维度各切什么</h3>
+                  <p>
+                    五个维度切的是完全不同的东西，这决定了它们各自的通信代价，
+                    也决定了加它到底能不能换来显存余量：
+                  </p>
+                  <div class="cro-doc__table-wrap">
+                    <table class="cro-doc__table">
+                      <thead>
+                        <tr><th>维度</th><th>切什么</th><th>通信</th><th>省显存？</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr><td>DP</td><td>切数据，每副本一份完整权重</td><td>每步末 all-reduce 梯度一次</td><td>不省</td></tr>
+                        <tr><td>PP</td><td>切层，每卡只背本 stage 那几层</td><td>相邻 stage 点对点传激活，最稀</td><td>省</td></tr>
+                        <tr><td>TP</td><td>切张量：注意力头、FFN 的 intermediate</td><td>每层前反向各 all-reduce 一次激活，最密</td><td>省</td></tr>
+                        <tr><td>CP</td><td>切序列长度</td><td>attention 内部 ring 传 KV</td><td>省激活</td></tr>
+                        <tr><td>EP</td><td>切专家，每卡只持有一部分路由专家</td><td>MoE 层 all-to-all 收发 token</td><td>MoE 下省得最多</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <p>
+                    <b>「显存不够就加卡」只有加 TP / PP / EP / CP 时才成立。</b>
+                    把 DP 从 2 拉到 8，总卡数翻两番，每张卡上的权重、梯度、优化器状态一个字节都没少 ——
+                    DP 副本之间是复制关系而不是切分关系。DP 买的是吞吐，不是余量。
+                  </p>
+                  <p>
+                    这条有一个重要的例外：开了<b>优化器并行</b>（ZeRO-1 / FSDP 一类）之后，
+                    优化器状态会沿 DP 维分片。由于优化器状态通常占权重相关字节的四分之三
+                    （fp32 master weight + momentum + variance 共 12 字节，对 bf16 的 2 字节权重），
+                    这一开关对显存的影响往往比再加一维并行还大。
+                  </p>
+                </section>
+
+                <!-- ── 4 ── -->
+                <section class="cro-doc__section" id="doc-world">
+                  <h3 class="cro-doc__h">world_size 与 rank 编址</h3>
+                  <p>
+                    并行维度的乘积就是这次训练要占的卡数，它必须等于启动器实际拉起的进程数
+                    （msrun 的 <code>--worker_num</code>、torchrun 的 <code>nproc × nnodes</code>）。
+                    对不上时启动器不会替你猜，直接失败。
+                  </p>
+                  <div class="cro-doc__formula">world_size = DP × PP × TP × CP × EP     ← EP 独占 rank 的口径
+world_size = DP × PP × TP × CP          ← EP 从 DP 切出的口径（见下一节）</div>
+                  <p class="cro-doc__sub">全局 rank 号怎么排</p>
+                  <p>把五个维度的坐标压成一个整数，通常按这个顺序展开 —— stage 最外，EP / TP / CP 最内：</p>
+                  <div class="cro-doc__formula">r = s·(DP·EP·TP·CP) + d·(EP·TP·CP) + p·(TP·CP) + c·TP + t
+n = ⌊r / 每节点卡数⌋
+
+s  层所在 PP stage      d  DP 序号      p  EP rank
+t  TP 序号              c  CP 序号      n  物理节点号</div>
+                  <p>
+                    <b>这个顺序不是随意的。</b>越靠内的维度，同组的 rank 号越连续，
+                    也就越可能落在同一个物理节点内、走机内互联而不是跨机网络。
+                    所以通信最密的维度（TP）排在最内层，通信最稀的维度（PP）排在最外层 ——
+                    <b>编址顺序本身就是一次通信优化</b>，而不只是编号习惯。
+                  </p>
+                  <p class="cro-doc__sub">层与专家怎么落到维度上</p>
+                  <ul>
+                    <li>
+                      <b>层 → PP stage</b>：尽量均分，前 <code>L mod PP</code> 段各多 1 层。
+                      46 层切 4 段 → 12, 12, 11, 11。首段还要多背 embedding，末段多背 LM head，
+                      所以各 stage 天然不等重。
+                    </li>
+                    <li>
+                      <b>专家 → EP rank</b>：等分连续切，<code>p = ⌊e / (E / EP)⌋</code>。
+                      每个 EP rank 拿到 <code>E / EP</code> 个专家。
+                    </li>
+                  </ul>
+                </section>
+
+                <!-- ── 5 ── -->
+                <section class="cro-doc__section" id="doc-ep">
+                  <h3 class="cro-doc__h">EP 与 DP：正交还是从 DP 切出</h3>
+                  <p>
+                    读任何一份 MoE 训练配置，第一件要确认的事是：<b>EP 占不占自己的 rank。</b>
+                    两种口径都存在，而它们对同一组数字的解释完全不同 —— 搞反了，卡数会差出一个 EP 倍。
+                  </p>
+                  <div class="cro-doc__table-wrap">
+                    <table class="cro-doc__table">
+                      <thead>
+                        <tr><th></th><th>正交</th><th>从 DP 切出</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr><td>world_size</td><td><code>DP×PP×TP×CP×EP</code></td><td><code>DP×PP×TP×CP</code></td></tr>
+                        <tr><td>EP 的 rank</td><td>独占</td><td>与 DP 复用同一批卡</td></tr>
+                        <tr><td>额外约束</td><td>只要 <code>E % EP == 0</code></td><td>再加 <code>DP % EP == 0</code></td></tr>
+                        <tr><td>专家的数据并行度</td><td>等于 DP</td><td>EDP = <code>DP / EP</code></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <p>
+                    切出式的意思是：一张卡<b>既</b>是某个数据并行副本的成员，<b>又</b>是某个 EP rank 的持有者。
+                    这也是 Megatron 系（含 MindSpeed-LLM）与 MindFormers 的做法 —— EP 不进 world_size 的乘积，
+                    而是把已有的 DP 组再切一刀。切完之后专家权重只在剩下的 <code>DP / EP</code> 维上复制，
+                    这一维就叫 <b>EDP（expert data parallel）</b>。
+                  </p>
+                  <p class="cro-doc__sub">同一组数字的两种读法</p>
+                  <p>
+                    以 openPangu 2.0 flash 的参考配置为例：
+                    <code>DP=8, PP=4, TP=1, CP=1, EP=64</code>，总共 2048 张卡。
+                  </p>
+                  <div class="cro-doc__formula">正交读法：  8 × 4 × 1 × 1 × 64 = 2048       DP 就是 8
+
+切出读法：  DP  = 2048 / (4 × 1 × 1) = 512
+            EDP = 512 / 64           = 8      ← 配置里写的那个 "8"</div>
+                  <p>
+                    两种读法算出来的总卡数一样，但<b>「DP」指的不是同一个东西</b>：
+                    正交读法里它是数据并行度，切出读法里那个 8 是专家的数据并行度，真正的 DP 是 512。
+                    看一份配置时，判断依据是它跑在什么框架上，而不是字面。
+                  </p>
+                  <div class="cro-doc__note">
+                    <b>值得注意的是：</b>两种口径下<b>卡的排布是同一个</b>。
+                    那 512 张卡本来就该排成 <code>8 × 64</code> 的网格 ——
+                    区别只在于你把行叫做「DP」还是「EDP」。
+                    也正因为如此，这个混淆很难被卡数对不上暴露出来，只能靠事先问清楚。
+                  </div>
+                </section>
+
+                <!-- ── 6 ── -->
+                <section class="cro-doc__section" id="doc-divide">
+                  <h3 class="cro-doc__h">切分维度与模型结构的整除关系</h3>
+                  <p>
+                    每个切分维度都在切某个具体的模型结构量，切不整就无处安放。
+                    这一组是最常见的「配置看着合理、一建图就报错」的来源。
+                  </p>
+
+                  <div class="cro-doc__rule" data-kind="hard">
+                    <div class="cro-doc__rule-head">
+                      <code class="cro-doc__rule-expr">num_layers ≥ PP</code>
+                      <span class="cro-doc__kind">硬约束</span>
+                    </div>
+                    <p>每个 pipeline stage 至少要分到 1 层，否则会有空 stage 占着卡什么也不算，还要在流水线里占一拍。</p>
+                    <p class="cro-doc__effect">层数除不尽 PP 是允许的（多出来的层分给靠前的 stage），少于 PP 才是错。</p>
+                  </div>
+
+                  <div class="cro-doc__rule" data-kind="hard">
+                    <div class="cro-doc__rule-head">
+                      <code class="cro-doc__rule-expr">num_heads % TP == 0</code>
+                      <span class="cro-doc__kind">硬约束</span>
+                    </div>
+                    <p>
+                      TP 切的是注意力头，每张卡分到整数个头。
+                      头数常常不是 2 的幂（如 48、28），而 TP 习惯上按 2 的幂取，两者很容易对不上。
+                    </p>
+                    <p class="cro-doc__effect">建图阶段报维度不匹配，报错信息通常指向 QKV 投影的权重形状。</p>
+                  </div>
+
+                  <div class="cro-doc__rule" data-kind="hard">
+                    <div class="cro-doc__rule-head">
+                      <code class="cro-doc__rule-expr">n_kv_heads % TP == 0　（GQA / MQA 模型）</code>
+                      <span class="cro-doc__kind">硬约束</span>
+                    </div>
+                    <p>
+                      GQA 的 KV 头数远少于 Q 头数（如 28 Q : 4 KV），它才是真正卡住 TP 上限的那个数。
+                      TP 超过 KV 头数就得把 KV 复制到多张卡上 —— 显存与带宽都白付，多数框架直接拒绝。
+                    </p>
+                    <p class="cro-doc__effect">这是 GQA 模型 TP 开不大的根本原因，和参数量无关。</p>
+                  </div>
+
+                  <div class="cro-doc__rule" data-kind="hard">
+                    <div class="cro-doc__rule-head">
+                      <code class="cro-doc__rule-expr">intermediate_size % TP == 0</code>
+                      <span class="cro-doc__kind">硬约束</span>
+                    </div>
+                    <p>
+                      FFN 沿 intermediate 维切。MoE 模型的 <code>moe_intermediate_size</code> 往往比 dense 的小一个数量级
+                      （典型值 1024 对 9216），所以<b>同一个模型里 MoE 层比 dense 层更早卡住 TP</b>。
+                    </p>
+                    <p class="cro-doc__effect">即使整除得开，切得过碎也会让矩阵乘掉出高效区间，性能先垮在切分粒度上。</p>
+                  </div>
+
+                  <div class="cro-doc__rule" data-kind="hard">
+                    <div class="cro-doc__rule-head">
+                      <code class="cro-doc__rule-expr">seq_length % (2 × CP) == 0</code>
+                      <span class="cro-doc__kind">硬约束</span>
+                    </div>
+                    <p>
+                      CP 沿序列维切分。要求 2 倍而不只是 CP，是因为因果注意力下序列前段的计算量远小于后段，
+                      ring attention 要把序列对半交叉分配才能让各 rank 负载均衡。
+                    </p>
+                  </div>
+
+                  <div class="cro-doc__rule" data-kind="hard">
+                    <div class="cro-doc__rule-head">
+                      <code class="cro-doc__rule-expr">num_experts % EP == 0</code>
+                      <span class="cro-doc__kind">硬约束</span>
+                    </div>
+                    <p>
+                      路由专家要能均分到每个 EP rank。除不尽意味着有的卡多背一个专家，
+                      这一维的显存与计算量当场就不齐了 —— 而 all-to-all 是同步的，最慢的那张卡决定整层的耗时。
+                    </p>
+                  </div>
+
+                  <div class="cro-doc__rule" data-kind="hard">
+                    <div class="cro-doc__rule-head">
+                      <code class="cro-doc__rule-expr">top_k ≤ num_experts</code>
+                      <span class="cro-doc__kind">硬约束</span>
+                    </div>
+                    <p>一个 token 选不出比总数还多的专家。</p>
+                    <p class="cro-doc__effect">Top-K 还决定 all-to-all 要搬多少 token，以及 MoE 算子临时区的峰值 —— 见「单卡显存由什么构成」。</p>
+                  </div>
+
+                  <div class="cro-doc__rule" data-kind="impl">
+                    <div class="cro-doc__rule-head">
+                      <code class="cro-doc__rule-expr">DP % EP == 0</code>
+                      <span class="cro-doc__kind">依实现而定</span>
+                    </div>
+                    <p>
+                      只在「EP 从 DP 切出」的口径下成立：专家组要能在数据并行组内均分，
+                      否则某些 DP 副本拿不到完整的专家集。EP 正交的口径下没有这条。
+                      严格写法还要把专家内部的张量并行算进去：<code>DP × TP % (EP × ETP) == 0</code>。
+                    </p>
+                  </div>
+                </section>
+
+                <!-- ── 7 ── -->
+                <section class="cro-doc__section" id="doc-topo">
+                  <h3 class="cro-doc__h">并行维度落到物理拓扑上</h3>
+                  <p>
+                    前一组约束来自模型，这一组来自机器。它们的共同点是：都不在模型定义文件里，
+                    却同样能让一份配置跑不起来 —— 或者跑起来慢得没意义。
+                  </p>
+
+                  <div class="cro-doc__rule" data-kind="hard">
+                    <div class="cro-doc__rule-head">
+                      <code class="cro-doc__rule-expr">总卡数 % 节点数 == 0</code>
+                      <span class="cro-doc__kind">硬约束</span>
+                    </div>
+                    <p>每节点卡数要是整数，且这个数由硬件形态定死（昇腾 910B 一节点 8 卡），不是可以随便填的量。</p>
+                  </div>
+
+                  <div class="cro-doc__rule" data-kind="soft">
+                    <div class="cro-doc__rule-head">
+                      <code class="cro-doc__rule-expr">TP 组不跨节点：TP ≤ 每节点卡数</code>
+                      <span class="cro-doc__kind">软约束</span>
+                    </div>
+                    <p>
+                      TP 每层前反向都要 all-reduce 一次激活，是通信最密的一维，必须吃机内互联。
+                      一旦 TP 组跨出节点，这些 all-reduce 全部落到跨机网络上 —— 带宽差着数量级，
+                      而它们又都在关键路径上，无法与计算重叠掉。
+                    </p>
+                    <p class="cro-doc__effect">这是典型的性能悬崖：配置合法、训练能跑，但吞吐可能掉一半以上。</p>
+                  </div>
+
+                  <div class="cro-doc__rule" data-kind="soft">
+                    <div class="cro-doc__rule-head">
+                      <code class="cro-doc__rule-expr">EP 的 all-to-all 域尽量收在超节点内</code>
+                      <span class="cro-doc__kind">软约束</span>
+                    </div>
+                    <p>
+                      EP 越大，MoE 层 dispatch/combine 的 all-to-all 参与方越多。
+                      all-to-all 的代价随参与节点数增长，而且它天然是全连接通信模式，对拓扑最敏感。
+                      大 EP 省下的显存，可能被跨机 all-to-all 的时间吃回去。
+                    </p>
+                    <p class="cro-doc__effect">表现为 MoE 层耗时随 EP 增大不降反升，而计算量并没有变。</p>
+                  </div>
+
+                  <div class="cro-doc__rule" data-kind="soft">
+                    <div class="cro-doc__rule-head">
+                      <code class="cro-doc__rule-expr">PP 的 micro-batch 数 ≥ PP</code>
+                      <span class="cro-doc__kind">软约束</span>
+                    </div>
+                    <p>
+                      流水线的 micro-batch 数太少，气泡（bubble）占比就上去了：
+                      1F1B 下气泡比例约 <code>(PP − 1) / micro_batch_num</code>。
+                      要把气泡压到 10% 以下，micro-batch 数大致得是 PP 的十倍。
+                    </p>
+                    <p class="cro-doc__effect">但 micro-batch 数受全局 batch 约束，两头都紧时只能回头压 PP。</p>
+                  </div>
+                </section>
+
+                <!-- ── 8 ── -->
+                <section class="cro-doc__section" id="doc-memory">
+                  <h3 class="cro-doc__h">单卡显存由什么构成</h3>
+                  <p>
+                    第三关是唯一一个「配得通、也切得开，却仍然跑不起来」的关卡。
+                    要估它，得先把一张卡上的显存拆成六段，再看每一段被哪一维切：
+                  </p>
+                  <div class="cro-doc__table-wrap">
+                    <table class="cro-doc__table">
+                      <thead>
+                        <tr><th>段</th><th>大小</th><th>被谁切</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr><td>权重</td><td>参数量 × 2（bf16）</td><td rowspan="3">见下表</td></tr>
+                        <tr><td>梯度</td><td>参数量 × 2</td></tr>
+                        <tr><td>优化器状态</td><td>参数量 × 12（fp32 master + momentum + variance）</td></tr>
+                        <tr><td>激活</td><td>≈ 34 · mb · s · h 每层（不重计算时）</td><td>÷ TP、÷ CP，× 在飞的 micro-batch 数</td></tr>
+                        <tr><td>运行时底座</td><td>驱动 + context + kernel binary，几个 GB</td><td>不随配置变</td></tr>
+                        <tr><td>预留 buffer / 碎片</td><td>通信 buffer + 算子临时区 + 分配器碎片</td><td>随并行配置变，见下</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <p class="cro-doc__sub">参数相关的三段各自被谁切</p>
+                  <p>
+                    MoE 模型不能套 dense 的 <code>12H²/层</code> 经验公式：
+                    一个 92B 的 MoE 模型可能有 97% 的参数在专家里，套 dense 公式会算出一个完全错的数。
+                    必须逐项分算：
+                  </p>
+                  <div class="cro-doc__table-wrap">
+                    <table class="cro-doc__table">
+                      <thead>
+                        <tr><th>这一项</th><th>被谁切</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr><td>路由专家</td><td>÷ EP，再 ÷ ETP（若有）　← MoE 下减容器的主力</td></tr>
+                        <tr><td>共享专家</td><td>÷ TP。在 EP 域内每卡复制一份完整的，EP 帮不上忙</td></tr>
+                        <tr><td>Attention / Dense MLP</td><td>÷ TP</td></tr>
+                        <tr><td>router / gate</td><td>不切。量级小，但逐层累加不完全可忽略</td></tr>
+                        <tr><td>Embedding / LM Head</td><td>看是否沿词表维做 TP —— 这是个开关，不是默认行为</td></tr>
+                        <tr><td>以上全部</td><td>÷ PP，体现为「这张卡只背本 stage 那几层」</td></tr>
+                        <tr><td>DP</td><td><b>不切</b>，除非开了优化器并行（那时优化器状态 ÷ DP）</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <p class="cro-doc__sub">三条不能省的细节</p>
+                  <ul>
+                    <li>
+                      <b>各 stage 不等重。</b>层数本来就可能不均（46/4 → 12,12,11,11），
+                      首段还多背 embedding、末段多背 LM head。
+                      看平均值没有意义 —— <b>OOM 只需要一张卡爆</b>，要看的是最紧的那张。
+                    </li>
+                    <li>
+                      <b>激活要乘在飞的 micro-batch 数。</b>1F1B 下 stage <i>s</i> 同时压着 <code>PP − s</code> 份未反向的激活，
+                      stage0 最紧。忽略这一项会系统性低估最危险的那张卡，而且 PP 越大低估越多。
+                    </li>
+                    <li>
+                      <b>运行时开销不是固定百分比。</b>按已用量抽一个比例，等于把一个几乎不随模型变的量做成正比项：
+                      大 EP / 大 PP 的轻卡被低估（光驱动加通信域就不止那点），重卡又虚高。
+                    </li>
+                  </ul>
+                  <p class="cro-doc__sub">预留那一段随什么变</p>
+                  <div class="cro-doc__table-wrap">
+                    <table class="cro-doc__table">
+                      <thead>
+                        <tr><th>项</th><th>跟着什么走</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr><td>通信 buffer</td><td>∝ 通信域个数。每个 &gt;1 的并行维一个，MoE 的 all-to-all 另起一条</td></tr>
+                        <tr><td>算子 workspace</td><td>∝ <b>一层</b>的 token 张量。峰值由单个最大算子决定，不是全部层的和</td></tr>
+                        <tr><td>分配器碎片</td><td>∝ 已用量。六段里只有这一项本来就该按比例算</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <p class="cro-doc__sub">为什么不能卡到 100%</p>
+                  <p>
+                    上面算的都是<b>稳态值</b>，而通信 buffer 与碎片本身还在逐 step 波动。
+                    经验上越过 <code>70%</code> 之后这点波动就足以把余量吃光，越过 <code>88%</code> 基本是在等 OOM ——
+                    那时候「还没满」并不等于「跑得下」。留出的那一截不是浪费，是波动的容身之处。
+                  </p>
+                </section>
+
+                <!-- ── 9 ── -->
+                <section class="cro-doc__section" id="doc-tune">
+                  <h3 class="cro-doc__h">显存不够时该动哪一维</h3>
+                  <p>
+                    这是前面所有约束真正咬合的地方：每一项都能换来显存，但每一项的代价落在不同的地方，
+                    而且都会反过来触发前两关的约束。
+                  </p>
+                  <div class="cro-doc__table-wrap">
+                    <table class="cro-doc__table">
+                      <thead>
+                        <tr><th>动这个</th><th>省下什么</th><th>代价</th><th>会撞上</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>提 EP</td><td>路由专家的权重/梯度/优化器状态，MoE 模型里最大的一块</td>
+                          <td>all-to-all 通信域变大</td><td><code>E % EP</code>、可能还有 <code>DP % EP</code></td>
+                        </tr>
+                        <tr>
+                          <td>提 PP</td><td>每卡少背几层，三段参数一起降</td>
+                          <td>流水线气泡变大；stage0 的在飞激活反而增加</td><td><code>num_layers ≥ PP</code>、micro-batch 数</td>
+                        </tr>
+                        <tr>
+                          <td>提 TP</td><td>参数与激活一起降，见效最直接</td>
+                          <td>通信最密的一维，跨节点即悬崖</td><td>头数 / KV 头数 / intermediate 的整除，以及每节点卡数</td>
+                        </tr>
+                        <tr>
+                          <td>提 CP</td><td>只降激活，长序列下才有意义</td>
+                          <td>attention 内部多一轮 ring 通信</td><td><code>seq % (2×CP)</code></td>
+                        </tr>
+                        <tr>
+                          <td>开重计算</td><td>激活大幅下降，可到原来的十分之一量级</td>
+                          <td>多一次前向，算力换显存</td><td>不撞整除约束，是最容易先试的一项</td>
+                        </tr>
+                        <tr>
+                          <td>开优化器并行</td><td>优化器状态 ÷ DP，权重相关字节里最大的一块</td>
+                          <td>每步多一轮 all-gather</td><td>需要 DP &gt; 1 才有效</td>
+                        </tr>
+                        <tr>
+                          <td>降 micro-batch</td><td>激活线性下降</td>
+                          <td>算子效率下降，且要靠梯度累积把全局 batch 补回来</td><td>micro-batch 数与流水线气泡</td>
+                        </tr>
+                        <tr>
+                          <td>加 DP</td><td><b>什么都不省</b></td>
+                          <td>—</td><td>只增吞吐，是这张表里唯一的例外</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="cro-doc__note">
+                    <b>顺序上的经验：</b>先试不撞任何整除约束的那两项（重计算、优化器并行），
+                    它们只在算力和一轮通信上付账；再考虑 EP / PP，它们要重新对整除关系；
+                    TP 放到最后 —— 它同时被模型结构和节点边界两头夹住，是最容易一提就撞墙的一维。
+                  </div>
+                </section>
+
+              </article>
+            </section>
+
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <!-- 关系连线 overlay 宿主（配置仿真模式专用），置于 frame 之上、pointer-events:none。
+       事件详情模式下四域收起，没有可连的锚点，这层会被清空。 -->
+  <svg class="cro-link-layer" id="croLinkLayer" aria-hidden="true"></svg>
+
+  <script src="./js/workbench-shell-pattern.js"></script>
+  <script src="./js/ide-frame-pattern.js"></script>
+  <script src="./js/model-graphviz-pattern.js"></script>
+  <script src="./js/model-architecture-3d-deck-pattern.js"></script>
+  <script src="./js/config-relation-observer-old.js?v=20260821-archive"></script>
+  <!-- 单卡容量：必须排在主脚本之后（要读它导出的 croObserver / croSelect） -->
+  <script src="./js/config-relation-capacity.js?v=20260821-edp"></script>
+  <!-- YAML 视图：同样排在主脚本之后（要读它导出的 croObserver.topology）。
+       它同时是 #croViewTabs 三档切换的唯一监听方。 -->
+  <script src="./js/config-relation-yaml.js?v=20260821-ep-mode"></script>
+  <!-- 文档视图：只从正文的章节标题建目录 + 滚动高亮，不依赖 croObserver，
+       所以排在哪里都行；跟着另两个视图模块放在一起便于对照。 -->
+  <script src="./js/config-relation-doc.js?v=20260821-doc-arrow"></script>
+  <script>
+    // 主题切换：与 training-monitoring-v2.html 同款单图标按钮，只改 data-theme。
+    (() => {
+      const btn = document.getElementById("themeToggle");
+      const icon = document.getElementById("themeToggleIcon");
+      const MOON = "M12 3a6.5 6.5 0 0 0 7.8 8.8A8 8 0 1 1 12 3z";
+      const SUN = "M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 1v3M12 20v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M1 12h3M20 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1";
+      const apply = (theme) => {
+        document.documentElement.dataset.theme = theme;
+        document.body.dataset.theme = theme;
+        btn.setAttribute("aria-pressed", String(theme === "light"));
+        icon.querySelector("path").setAttribute("d", theme === "light" ? SUN : MOON);
+        window.croDeckController?.setTheme(theme);
+        // deck 重算了 --pto-model-deck-* 调色板，通知结构条重新取色
+        document.dispatchEvent(new CustomEvent("cro:theme", { detail: { theme } }));
+      };
+      btn.addEventListener("click", () => {
+        apply(document.documentElement.dataset.theme === "light" ? "dark" : "light");
+      });
+    })();
+
+    // 整网视图三档：只看整网 / 只看典型 Layer / 两者并看（默认，= 改动前现状）。
+    // 「只看典型 Layer」把 .cro-section--structure **整节搬进**整网列，而不是在
+    // 那边另画一份 —— 搬的是 DOM 节点本身，#croStructure 的 id、每根算子条的
+    // click 监听、is-selected / is-related 类和关系连线的锚点选择器全部原样有效，
+    // 主脚本一行都不用动。退出该档时 appendChild 回 arch 列：它本来就是那一列的
+    // 最后一个子节点，位置自动还原。
+    (() => {
+      const board = document.getElementById("croBoard");
+      const tabs = document.getElementById("croNetView");
+      const net = document.getElementById("croNetRegion");
+      const arch = document.querySelector(".cro-region--arch");
+      const structure = document.querySelector(".cro-section--structure");
+      if (!board || !tabs || !net || !arch || !structure) return;
+
+      const apply = (view) => {
+        board.classList.toggle("is-view-net", view === "net");
+        board.classList.toggle("is-view-layer", view === "layer");
+        /* 第三个类：只看一边（net / layer 都算）。两档的共同事实是「典型 Layer
+           不占 arch 列了」，右半边（Layer 导航拉满、集群矩阵折 4 行放大）该长
+           得一模一样 —— 切档时右侧不动，只有左边那块在换。挂成一个类而不是把
+           每条规则都写两遍，就是为了让这份「两档相同」在样式里只有一处来源。
+           is-view-net / is-view-layer 只留给两档真正不同的显隐。 */
+        board.classList.toggle("is-view-single", view !== "both");
+        (view === "layer" ? net : arch).appendChild(structure);
+        tabs.querySelectorAll("[data-net-view]").forEach((btn) => {
+          const on = btn.dataset.netView === view;
+          btn.classList.toggle("is-selected", on);
+          btn.setAttribute("aria-pressed", String(on));
+        });
+        // 集群矩阵每个 DP 折几行是建 DOM 时定的（renderCluster 的 epRows），
+        // 只加类改不动，得让主脚本重建一次。
+        document.dispatchEvent(new CustomEvent("cro:view", { detail: { view } }));
+        // 版面变了：关系连线画在 viewport 坐标上、刻度带宽度也是实测的，
+        // 借主脚本已有的 resize 通路重排一次，别在这儿另写一份重画逻辑。
+        window.dispatchEvent(new Event("resize"));
+      };
+
+      tabs.addEventListener("click", (event) => {
+        const btn = event.target.closest("[data-net-view]");
+        if (btn) apply(btn.dataset.netView);
+      });
+    })();
+
+    // rail 底部互跳组：跳转另两页（本页「配置关系」键即当前页，不绑定）。
+    (() => {
+      const go = (id, href) => {
+        const btn = document.getElementById(id);
+        if (btn) btn.addEventListener("click", () => { window.location.href = href; });
+      };
+      go("navMonitoring", "./training-monitoring-v2.html");
+      go("navTaskCompare", "./TaskCompare.html");
+    })();
+  </script>
+</body>
+</html>

@@ -6,7 +6,10 @@ import {
 } from "@modelcontextprotocol/ext-apps";
 
 import "./styles.css";
+import "./plane/plane.css";
+import { PREVIEW_RESULTS, PREVIEW_VIEWS } from "./preview-results.js";
 import { createWorkbench } from "./workbench.js";
+import { createPlaneView } from "./plane/plane-view.js";
 
 const title = document.getElementById("title");
 const summary = document.getElementById("summary");
@@ -15,6 +18,11 @@ const metrics = document.getElementById("metrics");
 const primary = document.getElementById("primary");
 const traceBody = document.getElementById("traceBody");
 let workbench;
+const selectionDetail = document.getElementById("selectionDetail");
+const planeView = createPlaneView({
+  host: document.getElementById("planePanel"),
+  onSelect: renderPlaneSelection,
+});
 
 const TITLES = {
   validate_parallel_config: "并行配置校验",
@@ -45,7 +53,7 @@ function resultSummary(result) {
   switch (result.tool) {
     case "validate_parallel_config":
       return result.data.valid
-        ? `从已建模的数学约束看，这个配置合法；world size = ${result.data.world_size}。这不代表目标环境已经实机运行通过。`
+        ? `配置合法，符合已建模的数学约束；world size = ${result.data.world_size}。这不代表目标环境已经实机运行通过。`
         : `配置未通过静态校验，共发现 ${result.errors.length} 个问题。`;
     case "compute_rank_topology":
       return result.data.valid
@@ -56,7 +64,7 @@ function resultSummary(result) {
         ? "当前配置已经合法，不需要修改。"
         : result.data.solved ? `找到 ${result.data.suggestions.length} 个经过复验的方案。` : "当前搜索范围内没有找到合法方案。";
     case "parse_training_config":
-      return `识别 ${result.data.mapped_count} 个字段，未识别 ${result.data.unmapped_count} 个；未识别字段没有被静默忽略。`;
+      return `原文映射 ${result.data.explicit_mapped_count} 个，同文件推导 ${result.data.derived_count} 个，省略态默认 ${result.data.defaulted_count} 个；未识别 ${result.data.unmapped_count} 个。`;
     case "estimate_training_capacity": {
       if (!result.data.valid) return "配置不合法，因此没有生成容量数字。";
       const stage = result.data.stages[result.data.bottleneck_stage];
@@ -104,31 +112,30 @@ function panelTitle(text, note) {
 }
 
 function renderTopology(result) {
-  if (!result.data.valid) return renderValidation(result);
+  if (!result.data.valid) {
+    planeView.clear();
+    return renderValidation(result);
+  }
   const rows = result.data.ranks;
+  planeView.setTopology(result.data);
+  planeView.showTopology();
   setMetrics([
     [rows.length, "Rank"],
     [result.data.stages.length, "PP Stage"],
     [result.data.counts.nodes, "节点"],
     [result.data.semantics, "语义"]
   ]);
-  const wrap = element("div", "table-wrap");
-  const table = element("table");
-  const head = element("thead");
-  const headRow = element("tr");
-  for (const cell of ["Rank", "节点", "Stage", "DP", "EDP", "TP", "CP", "EP"]) headRow.append(element("th", "", cell));
-  head.append(headRow);
-  const body = element("tbody");
-  for (const rank of rows) {
-    const row = element("tr");
-    for (const value of [rank.rank, rank.node, rank.stage, rank.dp_index, rank.edp_index, rank.tp_index, rank.cp_index, rank.ep_index]) {
-      row.append(element("td", "code", value));
-    }
-    body.append(row);
+  const list = element("div", "stage-summary-list");
+  for (const stage of result.data.stages) {
+    const row = element("article", "stage-summary");
+    row.append(
+      element("strong", "", `Stage ${stage.stage}`),
+      element("span", "code", `Layer ${stage.layer_start}–${stage.layer_end}`),
+      element("span", "code", `${stage.ranks.length} Rank`),
+    );
+    list.append(row);
   }
-  table.append(head, body);
-  wrap.append(table);
-  primary.replaceChildren(panelTitle("Rank 坐标", "可滚动查看全部 Rank"), wrap);
+  primary.replaceChildren(panelTitle("拓扑摘要", "点击中间画布查看 Rank 坐标"), list);
 }
 
 function renderFixes(result) {
@@ -198,6 +205,7 @@ function renderParse(result) {
 function renderCapacity(result) {
   if (!result.data.valid) return renderValidation(result);
   const stages = result.data.stages;
+  planeView.setCapacity(result.data);
   const peak = Math.max(...stages.map((stage) => stage.capacity_gib));
   setMetrics([
     [`Stage ${result.data.bottleneck_stage}`, "理论瓶颈"],
@@ -229,12 +237,17 @@ function renderTrace(result) {
 function render(result) {
   if (!result?.tool) return;
   if (result.tool === "open_config_workbench") {
+    const targetTool = result.data?.target_tool ?? null;
     metrics.replaceChildren();
-    primary.replaceChildren(panelTitle("分析结果", "完成上方三步后显示"), element("div", "empty-state", "请选择或粘贴配置文件开始分析。"));
+    primary.replaceChildren(
+      panelTitle("分析结果", "完成上方输入后显示"),
+      element("div", "empty-state", targetTool ? `填写输入后运行“${TITLES[targetTool]}”。` : "请选择、粘贴或直接填写配置开始分析。")
+    );
     traceBody.replaceChildren();
-    workbench.open();
+    workbench.open(targetTool);
     return;
   }
+  if (!workbench.active) workbench.open(result.tool);
   title.textContent = TITLES[result.tool] ?? result.tool;
   summary.textContent = resultSummary(result);
   status.textContent = result.status;
@@ -250,20 +263,85 @@ function render(result) {
   renderTrace(result);
 }
 
+function renderPlaneSelection({ rank, column, expertSlice, memory }) {
+  const rows = [
+    ["Rank", rank.rank], ["节点", rank.node], ["Stage", rank.stage],
+    ["DP / EDP", `${rank.dp_index} / ${rank.edp_index}`],
+    ["TP / CP / EP", `${rank.tp_index} / ${rank.cp_index} / ${rank.ep_index}`],
+    [column.layer === undefined ? "列" : "Layer", column.layer ?? `Stage ${column.stage}`],
+    ["FFN", column.ffn === "moe" ? "MoE" : column.ffn === "dense" ? "Dense" : "Stage 汇总"],
+  ];
+  if (expertSlice) rows.push(["专家切片", `${expertSlice.expert_start}–${expertSlice.expert_end}`]);
+  if (memory) rows.push(["理论显存", `${memory.total_gib.toFixed(2)} / ${memory.capacity_gib} GiB（${memory.level}）`]);
+  selectionDetail.replaceChildren(...rows.map(([label, value]) => {
+    const row = element("div", "selection-row");
+    row.append(element("span", "", label), element("strong", "code", String(value)));
+    return row;
+  }));
+}
+
 function applyHostContext(context) {
   if (context?.theme) applyDocumentTheme(context.theme);
   if (context?.styles?.variables) applyHostStyleVariables(context.styles.variables);
   if (context?.styles?.css?.fonts) applyHostFonts(context.styles.css.fonts);
 }
 
-const app = new App({ name: "MindSpeed Config Result View", version: "0.1.0" });
-workbench = createWorkbench({ app, renderResult: render });
-app.ontoolresult = (result) => render(result.structuredContent);
-app.onhostcontextchanged = applyHostContext;
-app.onerror = (error) => {
-  status.textContent = "界面错误";
-  status.dataset.status = "error";
-  summary.textContent = error instanceof Error ? error.message : String(error);
-};
+const previewKey = new URLSearchParams(window.location.search).get("preview");
+const standalonePreview = previewKey !== null;
 
-app.connect().then(() => applyHostContext(app.getHostContext())).catch(app.onerror);
+if (standalonePreview) {
+  const previewApp = {
+    async callServerTool(request) {
+      if (request.name === "parse_training_config") {
+        return { isError: false, structuredContent: PREVIEW_RESULTS.parse_training_config };
+      }
+      throw new Error("独立预览未连接 MCP Host；请在 Inspector 或支持 MCP Apps 的客户端中运行分析。");
+    },
+  };
+  workbench = createWorkbench({ app: previewApp, renderResult: render });
+  const previewNav = document.getElementById("previewNav");
+  previewNav.hidden = false;
+
+  function selectPreview(toolName) {
+    const selected = PREVIEW_VIEWS.some(([name]) => name === toolName) ? toolName : "open_config_workbench";
+    for (const button of previewNav.querySelectorAll("button")) {
+      button.setAttribute("aria-selected", String(button.dataset.previewTool === selected));
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set("preview", selected);
+    window.history.replaceState({}, "", url);
+    if (selected === "open_config_workbench") {
+      render({ tool: selected, data: { target_tool: null } });
+      workbench.showPreview();
+      title.textContent = "MindSpeed 中文配置工作台";
+      summary.textContent = "独立预览已展开完整三步工作台；演示值不参与正式 MCP 计算。";
+      status.textContent = "本地预览";
+      status.dataset.status = "valid";
+      return;
+    }
+    render({ tool: "open_config_workbench", data: { target_tool: selected } });
+    workbench.showPreview();
+    render(PREVIEW_RESULTS[selected]);
+  }
+
+  for (const [toolName, label] of PREVIEW_VIEWS) {
+    const button = element("button", "preview-tab", label);
+    button.type = "button";
+    button.dataset.previewTool = toolName;
+    button.addEventListener("click", () => selectPreview(toolName));
+    previewNav.append(button);
+  }
+  selectPreview(previewKey === "1" ? "open_config_workbench" : previewKey);
+} else {
+  const app = new App({ name: "MindSpeed Config Result View", version: "0.1.0" });
+  workbench = createWorkbench({ app, renderResult: render });
+  app.ontoolresult = (result) => render(result.structuredContent);
+  app.onhostcontextchanged = applyHostContext;
+  app.onerror = (error) => {
+    status.textContent = "界面错误";
+    status.dataset.status = "error";
+    summary.textContent = error instanceof Error ? error.message : String(error);
+  };
+
+  app.connect().then(() => applyHostContext(app.getHostContext())).catch(app.onerror);
+}

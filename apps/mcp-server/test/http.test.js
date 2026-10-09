@@ -65,7 +65,7 @@ test("健康检查无需 Token，但 MCP 端点拒绝无 Token 请求", async ()
     assert.equal(healthBody.service, "mindspeed-config-mcp");
     assert.equal(healthBody.version, "0.1.0");
     assert.equal(healthBody.transport, "streamable-http");
-    assert.equal(healthBody.tools, 6);
+    assert.equal(healthBody.tools, 11);
     assert.ok(Number.isInteger(healthBody.uptime_seconds));
 
     const unauthorized = await fetch(`${base}/mcp`, {
@@ -94,7 +94,12 @@ test("携带 Bearer Token 的 Streamable HTTP 客户端可调用 Tool 并读取�
     assert.deepEqual(tools.tools.map((tool) => tool.name).sort(), [
       "compute_rank_topology",
       "estimate_training_capacity",
+      "open_compute_rank_topology",
       "open_config_workbench",
+      "open_estimate_training_capacity",
+      "open_parse_training_config",
+      "open_suggest_config_fixes",
+      "open_validate_parallel_config",
       "parse_training_config",
       "suggest_config_fixes",
       "validate_parallel_config",
@@ -113,6 +118,9 @@ test("携带 Bearer Token 的 Streamable HTTP 客户端可调用 Tool 并读取�
 
     const workbench = await client.callTool({ name: "open_config_workbench", arguments: {} });
     assert.equal(workbench.structuredContent.status, "ready");
+
+    const capacityApp = await client.callTool({ name: "open_estimate_training_capacity", arguments: {} });
+    assert.equal(capacityApp.structuredContent.data.target_tool, "estimate_training_capacity");
 
     const resource = await client.readResource({ uri: "ui://mindspeed-config/result-view.html" });
     assert.equal(resource.contents[0].mimeType, "text/html;profile=mcp-app");

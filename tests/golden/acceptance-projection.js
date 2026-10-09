@@ -4,7 +4,11 @@ import {
   suggestConfigFixes,
   validateParallelConfig,
 } from "../../packages/config-core/src/index.js";
-import { ACCEPTANCE_SCENARIOS, createDenseTrainingConfig } from "../fixtures/acceptance-scenarios.js";
+import {
+  ACCEPTANCE_SCENARIOS,
+  DYNAMIC_PP_TOPOLOGY,
+  createDenseTrainingConfig,
+} from "../fixtures/acceptance-scenarios.js";
 
 const round = (value) => Number(value.toFixed(6));
 const errorCodes = (result) => result.errors.map((item) => item.code).sort();
@@ -16,6 +20,9 @@ const capacitySummary = (result) => result.data.stages.map((stage) => ({
   gradient_gib: round(stage.values_gib.gradient),
   optimizer_gib: round(stage.values_gib.optimizer),
   activation_gib: round(stage.values_gib.activation),
+  micro_batch_count: stage.micro_batch_count,
+  vpp_chunks: stage.vpp_chunks,
+  recomputed_layers: stage.recomputed_layers,
 }));
 
 export function projectAcceptanceScenarios() {
@@ -43,6 +50,7 @@ export function projectAcceptanceScenarios() {
     memory: { shard_mode: "fsdp2" },
   }));
   const a15 = estimateTrainingCapacity(ACCEPTANCE_SCENARIOS.A15);
+  const dynamicPpTopology = computeRankTopology(DYNAMIC_PP_TOPOLOGY);
 
   return {
     A01: {
@@ -73,6 +81,11 @@ export function projectAcceptanceScenarios() {
     A10: {
       solved: a10.data.solved,
       locked_fields: a10.data.locked_fields,
+      confidence: a10.confidence,
+      objective: a10.data.score.objective,
+      primary_metric: a10.data.score.primary_metric,
+      first_score: a10.data.suggestions[0]?.score ?? null,
+      max_changed_fields: a10.data.max_changed_fields,
       first_changes: a10.data.suggestions[0]?.changes.map(({ path, old_value, new_value }) => ({
         path, old_value, new_value,
       })) ?? [],
@@ -98,6 +111,10 @@ export function projectAcceptanceScenarios() {
       bottleneck_stage: a15.data.bottleneck_stage,
       stage_weights_gib: a15.data.stages.map((stage) => round(stage.values_gib.weight)),
     },
+    dynamic_pp_topology: {
+      status: dynamicPpTopology.status,
+      stage_layer_counts: dynamicPpTopology.data.stages.map((stage) => stage.layer_count),
+      stage_layer_ranges: dynamicPpTopology.data.stages.map((stage) => [stage.layer_start, stage.layer_end]),
+    },
   };
 }
-

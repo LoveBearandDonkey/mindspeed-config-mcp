@@ -227,6 +227,11 @@ export function estimateTrainingCapacity(input) {
       level: levelOf(ratio),
       inflight_micro_batches: inflight.actual,
       full_pipeline_inflight: inflight.full_pipeline,
+      micro_batch_count: input.batch.micro_batch_count,
+      vpp_chunks: input.parallel.vpp,
+      recomputed_layers: input.memory.recompute_mode === "layers"
+        ? Math.min(stageInfo.count, input.memory.recompute_layers ?? 0)
+        : 0,
       values_gib: {
         base: gib(base),
         weight: gib(weight),
@@ -281,4 +286,3 @@ export function estimateTrainingCapacity(input) {
     },
   });
 }
-

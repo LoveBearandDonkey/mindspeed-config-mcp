@@ -1,0 +1,4 @@
+interface:
+  display_name: "MindSpeed Config MCP 本地服务"
+  short_description: "一键拉起、预览、刷新本地 MCP 配置工作台"
+  default_prompt: "使用 $mindspeed-config-mcp-local 拉起服务并打开中文配置工作台。"

@@ -91,6 +91,14 @@
         "cp": { "type": "integer", "minimum": 1 },
         "ep": { "type": "integer", "minimum": 1 },
         "vpp": { "type": "integer", "minimum": 1 },
+        "pipeline_layer_mode": {
+          "enum": ["uniform", "dynamic"]
+        },
+        "num_layer_list": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "integer", "minimum": 1 }
+        },
         "ep_mode": { "enum": ["split", "orthogonal", "mf"] },
         "cp_mode": { "enum": ["ulysses", "ring"] },
         "sequence_parallel": { "type": "boolean" },
@@ -150,7 +158,16 @@
           "items": { "type": "string", "minLength": 1 }
         },
         "objective": {
-          "enum": ["minimal-change", "fit-current-ranks", "reduce-memory", "balanced"]
+          "enum": [
+            "mindspeed-compatible",
+            "keep-current-resources",
+            "memory-safe",
+            "pipeline-balanced",
+            "minimal-change",
+            "fit-current-ranks",
+            "reduce-memory",
+            "balanced"
+          ]
         }
       }
     }

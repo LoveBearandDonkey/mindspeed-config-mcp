@@ -1,0 +1,422 @@
+/* MCP 适配层：只补宿主与 structuredContent 的连接样式，主体视觉沿用上游页面。 */
+html,
+body,
+.pto-ide-frame {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body { margin: 0; }
+
+.pto-ide-frame__activity-rail,
+.cro-event-rail,
+.cro-incident-banner,
+.cro-incident-view,
+.pto-ide-frame__topbar-center,
+#croRankIntro,
+#croMindSpeedIntro,
+.pto-ide-frame__topbar-right > a,
+.cro-link-layer {
+  display: none !important;
+}
+
+.pto-ide-frame__body,
+.pto-ide-frame__workarea,
+.pto-ide-frame__pane[data-ide-pane="observer"] {
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  flex: 1 1 auto;
+}
+
+.pto-ide-frame__workarea {
+  display: flex;
+  overflow: hidden;
+}
+
+.pto-ide-frame__pane[data-ide-pane="observer"] {
+  display: flex;
+  overflow: hidden;
+}
+
+.cro-board.is-plane {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.crop-toolbar {
+  min-height: 44px;
+}
+
+.crop-tool-select {
+  width: 168px;
+  min-width: 150px;
+}
+
+.crop-run-tool { white-space: nowrap; }
+
+.crop-mcp-status {
+  min-width: 0;
+  margin-left: auto;
+  color: var(--foreground-muted);
+  font-size: var(--font-size-label-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crop-mcp-status[data-kind="ok"] { color: var(--success); }
+.crop-mcp-status[data-kind="error"] { color: var(--danger); }
+
+.cro-board[data-busy="true"] .crop-mcp-status::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: crop-pulse 900ms ease-in-out infinite alternate;
+}
+
+@keyframes crop-pulse { to { opacity: 0.25; } }
+
+.crop-left__intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+}
+
+.crop-left__intro > .cro-stepper,
+.crop-left__intro > .crop-tabs { grid-column: 1 / -1; }
+
+.crop-sample-parse {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  white-space: nowrap;
+}
+
+.crop-left__intro > .cro-stepper {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.cro-board.is-plane .crop-left .cro-stepper__control {
+  width: 100%;
+}
+
+.cro-board.is-plane .crop-left .cro-stepper__input {
+  appearance: textfield;
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  text-align: center;
+  font: inherit;
+  outline: 0;
+}
+
+.cro-stepper__input::-webkit-inner-spin-button { display: none; }
+
+.cro-board.is-plane .crop-pane--form .cro-layer-nav,
+.cro-board.is-plane .crop-pane--form .cro-section--structure,
+.cro-board.is-plane .crop-pane--form .cro-cluster__grid,
+.cro-board.is-plane .crop-pane--form #croCapacity,
+.cro-board.is-plane .crop-pane--form #croMoeBind,
+.cro-board.is-plane .crop-pane--net .cro-stepper,
+.cro-board.is-plane .crop-pane--net #croDeckHost > :not(.crop-net-summary) {
+  display: none !important;
+}
+
+.cro-board.is-plane .crop-pane--net #croDeckHost::before {
+  content: "整网图由 MCP Rank 拓扑承载；中栏按 Stage × Layer × Rank 展开。";
+  display: block;
+  padding: var(--space-4);
+  color: var(--foreground-secondary);
+  line-height: 1.7;
+}
+
+.crop-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--foreground-secondary);
+  font-size: var(--font-size-label-xs);
+}
+
+.cro-config-error {
+  display: block;
+  margin: 0 var(--space-3) var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--foreground-secondary);
+  font-size: var(--font-size-label-xs);
+  line-height: 1.55;
+}
+
+.cro-config-error[hidden] { display: none; }
+.cro-config-error[data-kind="ok"] { border-color: color-mix(in srgb, var(--success) 42%, transparent); color: var(--success); }
+.cro-config-error[data-kind="warning"] { border-color: color-mix(in srgb, var(--warning) 42%, transparent); color: var(--warning); }
+.cro-config-error[data-kind="error"] { border-color: color-mix(in srgb, var(--danger) 52%, transparent); color: var(--danger); }
+
+.crop-empty {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  max-width: 320px;
+  color: var(--foreground-muted);
+  font-size: var(--font-size-body-sm);
+  line-height: 1.6;
+  text-align: center;
+}
+
+.crop-ruler--top {
+  left: 66px !important;
+  right: 0 !important;
+  height: 58px !important;
+  overflow: hidden;
+}
+
+.crop-ruler--left {
+  top: 58px !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 66px !important;
+  overflow: hidden;
+}
+
+.crop-ruler__corner {
+  display: grid;
+  place-items: center;
+  position: absolute;
+  z-index: var(--z-raised);
+  top: 0;
+  left: 0;
+  width: 66px;
+  height: 58px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-1);
+  color: var(--foreground-muted);
+  font-size: 9px;
+}
+
+.crop-tick--col {
+  top: 0 !important;
+  height: 56px !important;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--foreground-muted);
+  font: 9px/1 var(--font-mono);
+  cursor: pointer;
+}
+
+.crop-tick--col[data-ffn="moe"] { color: var(--pto-model-deck-moe, #f59e0b); }
+
+.crop-rowlabel {
+  left: 0 !important;
+  width: 64px !important;
+  border: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--foreground-muted);
+  font: 9px/1 var(--font-mono);
+  cursor: pointer;
+}
+
+.crop-block {
+  border: 1px solid color-mix(in srgb, var(--foreground) 22%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--foreground) 2%, transparent);
+  pointer-events: none;
+}
+
+.crop-cell {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.crop-cell[data-paint="bg"] {
+  background: color-mix(in srgb, var(--crop-set) 30%, transparent);
+}
+
+.crop-cell.is-related { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 72%, transparent); }
+.crop-cell.is-selected { z-index: 2; box-shadow: inset 0 0 0 2px var(--primary); }
+
+.crop-memory-stack {
+  display: flex;
+  position: absolute;
+  inset: 2px;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 1px;
+}
+
+.crop-memory-stack--scene {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: 116px;
+  flex-direction: column-reverse;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.crop-memory-part { min-width: 1px; min-height: 1px; }
+
+.crop-facts,
+.crop-mcp-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.crop-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.crop-fact span { color: var(--foreground-muted); font-size: var(--font-size-label-xs); }
+.crop-fact strong { overflow: hidden; color: var(--foreground); font-family: var(--font-mono); font-size: var(--font-size-body-sm); text-overflow: ellipsis; }
+
+.crop-fix-card {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.crop-muted { color: var(--foreground-muted); }
+
+.cro-board.is-plane:not(.is-focused) .crop-right .cro-section--structure { display: block; }
+
+.crop-structure-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 88px;
+  padding: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--foreground-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.crop-structure-item span { font-size: 10px; }
+
+.crop-capacity-legend-item {
+  --crop-memory-color: var(--primary);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.crop-capacity-legend-item::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-top: 4px;
+  border-radius: 2px;
+  background: var(--crop-memory-color);
+}
+
+.crop-capacity-legend-item span { margin-right: auto; }
+
+.crop-capacity-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: var(--foreground-secondary);
+  font: 10px/1.2 var(--font-mono);
+}
+
+.crop-capacity-stage::before {
+  content: "";
+  grid-column: 2;
+  grid-row: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-3);
+}
+
+.crop-capacity-stage i {
+  grid-column: 2;
+  grid-row: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--primary);
+}
+
+.crop-parse-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.crop-mapping-list { display: flex; flex-direction: column; gap: 4px; }
+
+.crop-mapping-row {
+  display: grid;
+  grid-template-columns: minmax(120px, .8fr) minmax(0, 1.4fr);
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: var(--font-size-label-xs);
+}
+
+.crop-mapping-row code,
+.crop-mapping-row span { overflow-wrap: anywhere; }
+.crop-mapping-row[data-kind="warning"] { color: var(--warning); }
+.crop-mapping-row[data-kind="error"] { color: var(--danger); }
+.crop-error-text { color: var(--danger); }
+
+.cro-board.is-plane .crop-pane--code #croYamlCode {
+  display: block;
+  margin: 0;
+  padding: var(--space-4);
+  white-space: pre;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-body-sm);
+  line-height: 1.65;
+}
+
+@media (max-width: 980px) {
+  .cro-board.is-plane { --crop-left-w: 288px; --crop-right-w: 260px; }
+  .crop-mcp-status { display: none; }
+  .crop-tool-select { width: 130px; }
+}

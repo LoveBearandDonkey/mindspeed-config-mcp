@@ -8,9 +8,11 @@
 - `parse_training_config`
 - `estimate_training_capacity`
 
-五个 Tool 都关联 `ui://mindspeed-config/result-view.html`。支持 MCP Apps 的客户端会在
-Tool 返回后展示校验卡片、Rank 表格、修复差异、字段映射或容量条形图；不支持界面的
-客户端仍可使用文本说明和 `structuredContent`。
+五个计算 Tool 保留完整 `inputSchema`，供模型、普通 MCP 客户端和 MCP App 调用。另注册
+六个零参数界面入口：统一工作台以及五个分析页入口。支持 MCP Apps 的客户端通过这些入口
+打开 `ui://mindspeed-config/result-view.html`，在自定义中文输入区中填写或导入配置，再由
+App 调用对应计算 Tool；用户无需操作宿主自动生成的 JSON Schema 表单。不支持界面的客户端
+仍可直接调用五个计算 Tool，获取文本说明和 `structuredContent`。
 
 启动：
 

@@ -5,8 +5,8 @@
 ## 当前状态
 
 项目处于第一阶段：`集成分析.md` 表中第 1、2、3、4、6 项已经形成第一版并通过
-单元测试。stdio MCP Server 已注册五个只读分析 Tool，另提供一个无需填写 JSON 的
-`open_config_workbench` 中文工作台入口；远程 Streamable HTTP、健康检查和静态 Bearer
+单元测试。stdio MCP Server 已注册五个只读计算 Tool，并提供六个无需填写宿主 JSON 的
+自定义中文界面入口；远程 Streamable HTTP、健康检查和静态 Bearer
 Token 鉴权已经实现。生产
 服务器的 TLS、反向代理和进程托管仍待按目标环境落地。
 
@@ -18,8 +18,9 @@ Token 鉴权已经实现。生产
 4. `parse_training_config`
 5. `estimate_training_capacity`（对应分析表第 6 项）
 
-面向用户的推荐入口是 `open_config_workbench`：可选择或拖入多份 YAML、JSON、Shell
-配置，在中文表单中核对合并结果、补齐缺项，再调用上述五项分析能力。
+面向用户的入口包括统一工作台 `open_config_workbench` 和五个 `open_<分析 Tool>` 页面：
+可选择、拖入或直接填写 YAML、JSON、Shell 配置，在统一中文表单中核对并补齐缺项，再调用
+上述五项分析能力。底层计算 Tool 继续用同一份 `inputSchema` 做协议校验。
 
 纯计算入口由 `packages/config-core/src/index.js` 统一导出。当前 Rank 语义为
 `page-derived`，容量置信等级为 `theoretical`。

@@ -16,7 +16,24 @@
         </div>
         <span class="status" id="status" data-status="idle">等待中</span>
       </header>
+      <nav class="preview-nav panel" id="previewNav" aria-label="六个 MCP App 界面预览" hidden></nav>
       <section class="workbench" id="workbench" hidden>
+        <aside class="workspace-left">
+        <section class="panel builtin-panel">
+          <div class="panel-title">
+            <div>
+              <h2>内置配置</h2>
+              <small>选择后立即调用 MCP 解析，可直接开始体验</small>
+            </div>
+          </div>
+          <label class="builtin-select">配置样例<select id="builtinConfigSelect"></select></label>
+          <p class="builtin-description" id="builtinDescription"></p>
+          <div class="builtin-analysis" id="builtinAnalysis">选择一个样例查看解析覆盖情况。</div>
+          <div class="button-row">
+            <button class="button secondary" id="previewBuiltin" type="button">解析预览</button>
+            <button class="button primary" id="applyBuiltin" type="button" disabled>采用并填入表单</button>
+          </div>
+        </section>
         <section class="panel source-panel">
           <div class="panel-title">
             <div>
@@ -69,18 +86,53 @@
           </div>
           <p class="inline-message" id="actionMessage" role="status"></p>
         </section>
-      </section>
+        </aside>
+
+        <section class="panel plane-panel" id="planePanel">
+          <div class="plane-head">
+            <div><h2>配置关系平面</h2><small>数据只来自 MCP structuredContent</small></div>
+            <div class="segmented" aria-label="画布模式">
+              <button id="planeModeTopology" type="button" aria-selected="true">拓扑</button>
+              <button id="planeModeMemory" type="button" aria-selected="false">理论显存</button>
+            </div>
+          </div>
+          <div class="plane-toolbar">
+            <div class="plane-controls">
+              <label class="plane-toggle"><input id="toggleLayers" type="checkbox" checked>层标注</label>
+              <label class="plane-toggle"><input id="toggleExperts" type="checkbox" checked>专家着色</label>
+              <label class="plane-toggle"><input id="toggleTp" type="checkbox" checked>TP / EP</label>
+            </div>
+            <div class="zoom-controls plane-controls">
+              <button id="zoomOut" type="button" aria-label="缩小">−</button>
+              <button id="zoomReset" type="button"><span id="planeZoomLabel">100%</span></button>
+              <button id="zoomIn" type="button" aria-label="放大">＋</button>
+            </div>
+          </div>
+          <div class="plane-empty" id="planeEmpty">
+            <strong>选择一个内置配置开始</strong>
+            <p>解析并运行“查看 Rank 矩阵”后，这里会按 Stage、Layer、Rank 与专家切片呈现关系；大规模拓扑只渲染可视区域。</p>
+          </div>
+          <div class="plane-viewport" id="planeViewport" hidden><div class="plane-world" id="planeWorld"></div></div>
+        </section>
+
+        <aside class="workspace-right">
       <section class="metrics" id="metrics" aria-label="结果摘要"></section>
-      <section class="panel" id="primary">
+      <section class="panel result-panel" id="primary">
         <div class="empty-state">
           <span>⌁</span>
           <p>支持配置校验、Rank 矩阵、修复建议、配置文件解析和理论容量估算。</p>
         </div>
       </section>
+      <section class="panel selection-panel">
+        <div class="panel-title"><h2>画布详情</h2><small>点击 Rank 单元格</small></div>
+        <div id="selectionDetail" class="selection-detail">尚未选择画布元素。</div>
+      </section>
       <details class="panel trace" id="trace">
         <summary>规则来源、假设与原始结果</summary>
         <div id="traceBody"></div>
       </details>
+        </aside>
+      </section>
     </main>
   </body>
 </html>

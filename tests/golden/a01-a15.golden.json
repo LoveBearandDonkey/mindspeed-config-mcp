@@ -11,6 +11,11 @@
   "A10": {
     "solved": true,
     "locked_fields": ["cluster.total_ranks", "parallel.ep"],
+    "confidence": "deterministic",
+    "objective": "mindspeed-compatible",
+    "primary_metric": "compatibility_warning_count",
+    "first_score": 0,
+    "max_changed_fields": 4,
     "first_changes": [{ "path": "parallel.cp", "old_value": 1, "new_value": 2 }]
   },
   "A11": { "solved": false, "suggestion_count": 0 },
@@ -18,16 +23,16 @@
     "confidence": "theoretical",
     "bottleneck_level": "safe",
     "stages": [
-      { "stage": 0, "level": "safe", "total_gib": 4.581702, "weight_gib": 0.092285, "gradient_gib": 0.092285, "optimizer_gib": 0.046143, "activation_gib": 0.132813 },
-      { "stage": 1, "level": "safe", "total_gib": 4.511975, "weight_gib": 0.092285, "gradient_gib": 0.092285, "optimizer_gib": 0.046143, "activation_gib": 0.066406 }
+      { "stage": 0, "level": "safe", "total_gib": 4.581702, "weight_gib": 0.092285, "gradient_gib": 0.092285, "optimizer_gib": 0.046143, "activation_gib": 0.132813, "micro_batch_count": 4, "vpp_chunks": 1, "recomputed_layers": 0 },
+      { "stage": 1, "level": "safe", "total_gib": 4.511975, "weight_gib": 0.092285, "gradient_gib": 0.092285, "optimizer_gib": 0.046143, "activation_gib": 0.066406, "micro_batch_count": 4, "vpp_chunks": 1, "recomputed_layers": 0 }
     ]
   },
   "A13": { "confidence": "theoretical", "bottleneck_level": "over", "bottleneck_stage": 0, "total_gib": 162.080615 },
   "A14": {
-    "none": { "stage": 0, "level": "safe", "total_gib": 4.727051, "weight_gib": 0.092285, "gradient_gib": 0.092285, "optimizer_gib": 0.18457, "activation_gib": 0.132813 },
-    "zero1": { "stage": 0, "level": "safe", "total_gib": 4.581702, "weight_gib": 0.092285, "gradient_gib": 0.092285, "optimizer_gib": 0.046143, "activation_gib": 0.132813 },
-    "fsdp2": { "stage": 0, "level": "safe", "total_gib": 4.558423, "weight_gib": 0.023071, "gradient_gib": 0.023071, "optimizer_gib": 0.046143, "activation_gib": 0.132813 }
+    "none": { "stage": 0, "level": "safe", "total_gib": 4.727051, "weight_gib": 0.092285, "gradient_gib": 0.092285, "optimizer_gib": 0.18457, "activation_gib": 0.132813, "micro_batch_count": 4, "vpp_chunks": 1, "recomputed_layers": 0 },
+    "zero1": { "stage": 0, "level": "safe", "total_gib": 4.581702, "weight_gib": 0.092285, "gradient_gib": 0.092285, "optimizer_gib": 0.046143, "activation_gib": 0.132813, "micro_batch_count": 4, "vpp_chunks": 1, "recomputed_layers": 0 },
+    "fsdp2": { "stage": 0, "level": "safe", "total_gib": 4.558423, "weight_gib": 0.023071, "gradient_gib": 0.023071, "optimizer_gib": 0.046143, "activation_gib": 0.132813, "micro_batch_count": 4, "vpp_chunks": 1, "recomputed_layers": 0 }
   },
-  "A15": { "bottleneck_stage": 0, "stage_weights_gib": [0.07666, 0.015625, 0.015625, 0.07666] }
+  "A15": { "bottleneck_stage": 0, "stage_weights_gib": [0.07666, 0.015625, 0.015625, 0.07666] },
+  "dynamic_pp_topology": { "status": "valid", "stage_layer_counts": [20, 12], "stage_layer_ranges": [[0, 19], [20, 31]] }
 }
-

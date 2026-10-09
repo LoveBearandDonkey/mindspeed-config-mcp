@@ -81,3 +81,14 @@ export const ACCEPTANCE_SCENARIOS = Object.freeze({
   }),
 });
 
+export const DYNAMIC_PP_TOPOLOGY = createTrainingConfig({
+  rule_profile: {
+    framework: "mindspeed-llm-mcore",
+    version: "master@7826e88",
+    source_commit: "7826e883ab40f06dd54f0fa2ce6508d18036843c",
+  },
+  parallel: {
+    pipeline_layer_mode: "dynamic",
+    num_layer_list: [20, 12],
+  },
+});

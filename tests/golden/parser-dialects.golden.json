@@ -1,0 +1,141 @@
+{
+  "mindformers": {
+    "values": {
+      "parallel.tp": 4,
+      "parallel.pp": 2,
+      "parallel.ep": 8,
+      "parallel.ep_mode": "mf",
+      "parallel.sequence_parallel": true,
+      "cluster.total_ranks": 16,
+      "batch.micro_batch_count": 16,
+      "memory.compute_dtype": "bf16",
+      "memory.parameter_dtype": "fp32",
+      "memory.shard_mode": "zero1"
+    },
+    "coverage": {
+      "source_fields": 15,
+      "filled_required": 25,
+      "required_fields": 30
+    },
+    "missing": [
+      "cluster.ranks_per_node",
+      "cluster.card_model",
+      "cluster.card_memory_gib",
+      "batch.micro_batch_size",
+      "batch.sequence_length"
+    ],
+    "warnings": ["PARSE_INCOMPLETE"]
+  },
+  "shell": {
+    "values": {
+      "model.id": "variable-model",
+      "model.total_layers": 32,
+      "parallel.dp": 4,
+      "parallel.tp": 2,
+      "parallel.pp": 2,
+      "parallel.cp": 1,
+      "parallel.sequence_parallel": true,
+      "cluster.total_ranks": 16,
+      "cluster.ranks_per_node": 8,
+      "batch.micro_batch_count": 16,
+      "memory.compute_dtype": "fp8"
+    },
+    "coverage": {
+      "source_fields": 14,
+      "filled_required": 26,
+      "required_fields": 30
+    },
+    "missing": [
+      "cluster.card_model",
+      "cluster.card_memory_gib",
+      "batch.sequence_length",
+      "memory.parameter_dtype"
+    ],
+    "warnings": ["PARSE_INCOMPLETE"]
+  },
+  "llama_factory": {
+    "values": {
+      "model.id": "Qwen/Qwen3-4B",
+      "batch.micro_batch_size": 1,
+      "batch.sequence_length": 2048,
+      "batch.micro_batch_count": 8,
+      "memory.compute_dtype": "bf16",
+      "memory.lora_enabled": true,
+      "memory.lora_rank": 8
+    },
+    "coverage": {
+      "source_fields": 7,
+      "filled_required": 6,
+      "required_fields": 30
+    },
+    "missing": [
+      "model.total_layers",
+      "model.hidden_size",
+      "model.num_attention_heads",
+      "model.routed_experts",
+      "model.top_k",
+      "model.shared_experts",
+      "parallel.dp",
+      "parallel.pp",
+      "parallel.tp",
+      "parallel.cp",
+      "parallel.ep",
+      "parallel.vpp",
+      "parallel.ep_mode",
+      "parallel.cp_mode",
+      "parallel.sequence_parallel",
+      "parallel.vocab_embedding_data_parallel",
+      "parallel.expert_tensor_parallel",
+      "cluster.total_ranks",
+      "cluster.ranks_per_node",
+      "cluster.card_model",
+      "cluster.card_memory_gib",
+      "memory.parameter_dtype",
+      "memory.recompute_mode",
+      "memory.shard_mode"
+    ],
+    "warnings": ["PARSE_INCOMPLETE"]
+  },
+  "deepspeed_zero3": {
+    "values": {
+      "memory.shard_mode": "fsdp2"
+    },
+    "coverage": {
+      "source_fields": 1,
+      "filled_required": 1,
+      "required_fields": 30
+    },
+    "missing": [
+      "model.id",
+      "model.total_layers",
+      "model.hidden_size",
+      "model.num_attention_heads",
+      "model.routed_experts",
+      "model.top_k",
+      "model.shared_experts",
+      "parallel.dp",
+      "parallel.pp",
+      "parallel.tp",
+      "parallel.cp",
+      "parallel.ep",
+      "parallel.vpp",
+      "parallel.ep_mode",
+      "parallel.cp_mode",
+      "parallel.sequence_parallel",
+      "parallel.vocab_embedding_data_parallel",
+      "parallel.expert_tensor_parallel",
+      "cluster.total_ranks",
+      "cluster.ranks_per_node",
+      "cluster.card_model",
+      "cluster.card_memory_gib",
+      "batch.micro_batch_size",
+      "batch.sequence_length",
+      "batch.micro_batch_count",
+      "memory.compute_dtype",
+      "memory.parameter_dtype",
+      "memory.recompute_mode",
+      "memory.lora_enabled"
+    ],
+    "warnings": ["PARSE_ZERO3_APPROXIMATED_AS_FSDP2", "PARSE_INCOMPLETE"]
+  }
+}

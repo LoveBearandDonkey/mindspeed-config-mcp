@@ -26,10 +26,16 @@ const outputSchema = z.fromJSONSchema(toolResultSchema);
 const workbenchOutputSchema = z.object({
   tool: z.literal("open_config_workbench"),
   status: z.literal("ready"),
-  data: z.object({ analysis_tools: z.array(z.string()) }),
+  data: z.object({
+    analysis_tools: z.array(z.string()),
+    target_tool: z.string().nullable(),
+  }),
 });
 const APP_RESOURCE_URI = "ui://mindspeed-config/result-view.html";
-const APP_HTML_URL = new URL("../dist/ui/mcp-app.html", import.meta.url);
+const APP_HTML_URL = new URL(
+  "../ui/dist/ui-shell-v1/training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html",
+  import.meta.url,
+);
 const WORKBENCH_TOOL_NAME = "open_config_workbench";
 
 const TOOL_DEFINITIONS = Object.freeze([
@@ -75,10 +81,25 @@ const TOOL_DEFINITIONS = Object.freeze([
   },
 ]);
 
+const LAUNCHER_DEFINITIONS = Object.freeze([
+  {
+    name: WORKBENCH_TOOL_NAME,
+    title: "打开中文配置工作台",
+    description: "打开统一中文工作台，自主导入、填写和分析训练配置。无需填写宿主生成的 JSON 表单。",
+    targetTool: null,
+  },
+  ...TOOL_DEFINITIONS.map((definition) => ({
+    name: `open_${definition.name}`,
+    title: `打开${definition.title}`,
+    description: `打开自定义中文输入界面，再调用 ${definition.name}。无需填写宿主生成的 JSON 表单。`,
+    targetTool: definition.name,
+  })),
+]);
+
 function summaryOf(result) {
   if (result.tool === "validate_parallel_config") {
     return result.data.valid
-      ? `从已建模的数学约束看，这个配置合法；world size = ${result.data.world_size}。这不代表目标环境已经实机运行通过。`
+      ? `配置合法，符合已建模的数学约束；world size = ${result.data.world_size}。这不代表目标环境已经实机运行通过。`
       : `配置未通过静态校验，共发现 ${result.errors.length} 个问题：${result.errors.map((item) => item.code).join("、")}。`;
   }
   if (result.tool === "compute_rank_topology") {
@@ -99,7 +120,7 @@ function summaryOf(result) {
   }
   if (result.tool === "parse_training_config") {
     if (result.status === "error") return result.errors[0]?.message ?? "配置内容解析失败。";
-    return `已识别 ${result.data.mapped_count} 个字段，未识别 ${result.data.unmapped_count} 个，忽略 ${result.data.ignored_count} 个；未识别字段没有被静默丢弃。`;
+    return `原文映射 ${result.data.explicit_mapped_count} 个字段，同文件推导 ${result.data.derived_count} 个，省略态默认 ${result.data.defaulted_count} 个；未识别 ${result.data.unmapped_count} 个，未被静默丢弃。`;
   }
   return JSON.stringify(result);
 }
@@ -117,27 +138,34 @@ function runTool(definition, args) {
 export function createMcpServer() {
   const server = new McpServer({ name: "mindspeed-config-mcp", version: "0.1.0" });
 
-  registerAppTool(server, WORKBENCH_TOOL_NAME, {
-    title: "打开中文配置工作台",
-    description: "无需填写 JSON，直接打开中文工作台，上传或粘贴 YAML、JSON、Shell 配置，再调用五个分析工具。",
-    outputSchema: workbenchOutputSchema,
-    _meta: {
-      ui: { resourceUri: APP_RESOURCE_URI },
-    },
-    annotations: {
-      readOnlyHint: true,
-      destructiveHint: false,
-      idempotentHint: true,
-      openWorldHint: false,
-    },
-  }, async () => ({
-    content: [{ type: "text", text: "已打开 MindSpeed 中文配置工作台。请在界面中上传或粘贴训练配置。" }],
-    structuredContent: {
-      tool: WORKBENCH_TOOL_NAME,
-      status: "ready",
-      data: { analysis_tools: TOOL_DEFINITIONS.map(({ name }) => name) },
-    },
-  }));
+  for (const launcher of LAUNCHER_DEFINITIONS) {
+    registerAppTool(server, launcher.name, {
+      title: launcher.title,
+      description: launcher.description,
+      outputSchema: workbenchOutputSchema,
+      _meta: {
+        ui: { resourceUri: APP_RESOURCE_URI, visibility: ["model"] },
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    }, async () => ({
+      content: [{ type: "text", text: launcher.targetTool
+        ? `已打开${launcher.title.replace(/^打开/, "")}自定义输入界面。`
+        : "已打开 MindSpeed 中文配置工作台。请在界面中上传或填写训练配置。" }],
+      structuredContent: {
+        tool: WORKBENCH_TOOL_NAME,
+        status: "ready",
+        data: {
+          analysis_tools: TOOL_DEFINITIONS.map(({ name }) => name),
+          target_tool: launcher.targetTool,
+        },
+      },
+    }));
+  }
 
   for (const definition of TOOL_DEFINITIONS) {
     registerAppTool(server, definition.name, {
@@ -146,7 +174,7 @@ export function createMcpServer() {
       inputSchema: definition.inputSchema,
       outputSchema,
       _meta: {
-        ui: { resourceUri: APP_RESOURCE_URI },
+        ui: { visibility: ["model", "app"] },
       },
       annotations: {
         readOnlyHint: true,
@@ -158,7 +186,7 @@ export function createMcpServer() {
   }
 
   registerAppResource(server, "MindSpeed 配置分析结果界面", APP_RESOURCE_URI, {
-    description: "以校验卡片、Rank 表格、修复差异、字段映射和容量条形图展示五个 Tool 的结果。",
+    description: "以上游配置关系平面为界面基线，采集或解析训练配置，并用三栏画布展示校验、Rank 拓扑、修复差异、字段映射和理论容量。",
   }, async () => ({
     contents: [{
       uri: APP_RESOURCE_URI,
@@ -175,6 +203,6 @@ export function createMcpServer() {
   return server;
 }
 
-const REGISTERED_TOOL_COUNT = TOOL_DEFINITIONS.length + 1;
+const REGISTERED_TOOL_COUNT = TOOL_DEFINITIONS.length + LAUNCHER_DEFINITIONS.length;
 
-export { APP_RESOURCE_URI, REGISTERED_TOOL_COUNT, TOOL_DEFINITIONS, WORKBENCH_TOOL_NAME };
+export { APP_RESOURCE_URI, LAUNCHER_DEFINITIONS, REGISTERED_TOOL_COUNT, TOOL_DEFINITIONS, WORKBENCH_TOOL_NAME };

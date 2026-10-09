@@ -28,7 +28,7 @@ test("并行度乘积与总 Rank 不一致时返回公式和字段", () => {
   assert.ok(issue.fields.includes("parallel.dp"));
 });
 
-test("MindSpeed 口径下层数必须被 PP 整除", () => {
+test("均匀 PP 口径下层数必须被 PP 整除", () => {
   const result = validateParallelConfig(createTrainingConfig({
     model: { total_layers: 30 },
   }));
@@ -39,6 +39,43 @@ test("MindSpeed 口径下层数必须被 PP 整除", () => {
     model: { total_layers: 31 },
   }));
   assert.ok(invalid.errors.some((item) => item.code === "MINDSPEED_LAYERS_DIVISIBLE_BY_PP"));
+});
+
+test("MindSpeed-LLM MCore 动态 PP 接受 46 层按 12/12/11/11 分给 PP4", () => {
+  const result = validateParallelConfig(createTrainingConfig({
+    rule_profile: { framework: "mindspeed-llm-mcore", version: "master" },
+    model: { total_layers: 46 },
+    parallel: {
+      pp: 4,
+      dp: 2,
+      pipeline_layer_mode: "dynamic",
+      num_layer_list: [12, 12, 11, 11],
+    },
+  }));
+
+  assert.equal(result.status, "valid");
+  assert.equal(result.data.pipeline_layer_mode, "dynamic");
+  assert.deepEqual(result.data.pipeline_stage_layers, [12, 12, 11, 11]);
+  assert.equal(result.errors.some((item) => item.code === "MINDSPEED_LAYERS_DIVISIBLE_BY_PP"), false);
+});
+
+test("动态 PP 校验 Stage 数量、层数总和以及与 VPP 的互斥关系", () => {
+  const result = validateParallelConfig(createTrainingConfig({
+    rule_profile: { framework: "mindspeed-llm-mcore", version: "master" },
+    model: { total_layers: 46 },
+    parallel: {
+      pp: 4,
+      dp: 2,
+      vpp: 2,
+      pipeline_layer_mode: "dynamic",
+      num_layer_list: [12, 12, 11],
+    },
+  }));
+
+  const codes = new Set(result.errors.map((item) => item.code));
+  assert.ok(codes.has("MINDSPEED_DYNAMIC_PP_LIST_LENGTH_MATCHES_PP"));
+  assert.ok(codes.has("MINDSPEED_DYNAMIC_PP_LIST_SUM_MATCHES_LAYERS"));
+  assert.ok(codes.has("MINDSPEED_DYNAMIC_PP_INCOMPATIBLE_WITH_VPP"));
 });
 
 test("generic 页面口径保留不均匀 Stage，但显式报告兼容差异", () => {

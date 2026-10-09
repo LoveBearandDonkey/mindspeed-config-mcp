@@ -20,13 +20,16 @@ function materializeGroups(groups) {
   ]));
 }
 
-function buildStages(totalLayers, pp) {
+function buildStages(totalLayers, pp, stageLayers) {
   const base = Math.floor(totalLayers / pp);
   const remainder = totalLayers % pp;
+  const layerCounts = Array.isArray(stageLayers) && stageLayers.length === pp
+    ? stageLayers
+    : Array.from({ length: pp }, (_, stage) => base + (stage < remainder ? 1 : 0));
   const stages = [];
   let cursor = 0;
   for (let stage = 0; stage < pp; stage += 1) {
-    const layerCount = base + (stage < remainder ? 1 : 0);
+    const layerCount = layerCounts[stage];
     stages.push({
       stage,
       layer_start: cursor,
@@ -36,6 +39,31 @@ function buildStages(totalLayers, pp) {
     cursor += layerCount;
   }
   return stages;
+}
+
+function buildLayers(input, stages) {
+  const firstDense = Math.max(0, input.model.first_k_dense_layers ?? 0);
+  const hasExperts = input.model.routed_experts > 0;
+  return stages.flatMap((stage) => Array.from({ length: stage.layer_count }, (_, offset) => {
+    const layer = stage.layer_start + offset;
+    return {
+      layer,
+      stage: stage.stage,
+      stage_offset: offset,
+      ffn: hasExperts && layer >= firstDense ? "moe" : "dense",
+    };
+  }));
+}
+
+function buildExpertSlices(routedExperts, ep) {
+  if (!routedExperts) return [];
+  const expertsPerSlice = routedExperts / ep;
+  return Array.from({ length: ep }, (_, epIndex) => ({
+    ep_index: epIndex,
+    expert_start: epIndex * expertsPerSlice,
+    expert_end: (epIndex + 1) * expertsPerSlice - 1,
+    experts: Array.from({ length: expertsPerSlice }, (_, offset) => epIndex * expertsPerSlice + offset),
+  }));
 }
 
 export function computeRankTopology(input) {
@@ -117,13 +145,32 @@ export function computeRankTopology(input) {
     });
   }
 
-  const stages = buildStages(input.model.total_layers, config.pp).map((stage) => ({
+  const stages = buildStages(
+    input.model.total_layers,
+    config.pp,
+    validation.data?.pipeline_stage_layers,
+  ).map((stage) => ({
     ...stage,
     ranks: Array.from(
       { length: ranksPerStage },
       (_, offset) => rankOf(stage.stage, 0, 0, offset),
     ),
   }));
+  const layers = buildLayers(input, stages);
+  const expertSlices = buildExpertSlices(input.model.routed_experts, config.ep);
+  const nodes = Array.from(
+    { length: Math.ceil(input.cluster.total_ranks / input.cluster.ranks_per_node) },
+    (_, node) => {
+      const rankStart = node * input.cluster.ranks_per_node;
+      const rankEnd = Math.min(input.cluster.total_ranks, rankStart + input.cluster.ranks_per_node) - 1;
+      return {
+        node,
+        rank_start: rankStart,
+        rank_end: rankEnd,
+        ranks: Array.from({ length: rankEnd - rankStart + 1 }, (_, offset) => rankStart + offset),
+      };
+    },
+  );
 
   return toolResult({
     tool: "compute_rank_topology",
@@ -142,12 +189,19 @@ export function computeRankTopology(input) {
         ranks_per_stage: ranksPerStage,
         ranks_per_edp_block: ranksPerDp,
         ranks_per_ep_slice: ranksPerEp,
-        nodes: Math.ceil(input.cluster.total_ranks / input.cluster.ranks_per_node),
+        nodes: nodes.length,
+        total_layers: input.model.total_layers,
+        dense_layers: layers.filter(({ ffn }) => ffn === "dense").length,
+        moe_layers: layers.filter(({ ffn }) => ffn === "moe").length,
+        routed_experts: input.model.routed_experts,
+        experts_per_ep_slice: expertSlices[0]?.experts.length ?? 0,
       },
       stages,
+      layers,
+      expert_slices: expertSlices,
+      nodes,
       ranks,
       groups: materializeGroups(groupMaps),
     },
   });
 }
-

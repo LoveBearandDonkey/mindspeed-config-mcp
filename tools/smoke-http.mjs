@@ -14,7 +14,11 @@ const EXPECTED_TOOLS = [
   "parse_training_config",
   "estimate_training_capacity",
 ];
-const REGISTERED_TOOLS = [...EXPECTED_TOOLS, "open_config_workbench"];
+const APP_LAUNCHERS = [
+  "open_config_workbench",
+  ...EXPECTED_TOOLS.map((name) => `open_${name}`),
+];
+const REGISTERED_TOOLS = [...EXPECTED_TOOLS, ...APP_LAUNCHERS];
 const FETCH_FORBIDDEN_PORTS = new Set([
   1, 7, 9, 11, 13, 15, 17, 19, 20, 21, 22, 23, 25, 37, 42, 43, 53, 69, 77, 79,
   87, 95, 101, 102, 103, 104, 109, 110, 111, 113, 115, 117, 119, 123, 135, 137,
@@ -64,11 +68,17 @@ try {
   await client.connect(transport);
   const listed = await client.listTools();
   assert.deepEqual(listed.tools.map(({ name }) => name).sort(), [...REGISTERED_TOOLS].sort());
-  checks.push({ check: "MCP 握手与枚举", result: "通过", detail: "五个分析 Tool 和中文工作台已注册" });
+  checks.push({ check: "MCP 握手与枚举", result: "通过", detail: "五个 Schema Tool 和六个自定义界面入口已注册" });
 
   const workbench = await client.callTool({ name: "open_config_workbench", arguments: {} });
   assert.equal(workbench.structuredContent?.status, "ready");
   checks.push({ check: "中文工作台零输入入口", result: "通过", detail: "无需填写 JSON" });
+
+  for (const name of EXPECTED_TOOLS) {
+    const launcher = await client.callTool({ name: `open_${name}`, arguments: {} });
+    assert.equal(launcher.structuredContent?.data?.target_tool, name);
+  }
+  checks.push({ check: "五个分析页面入口", result: "通过", detail: "全部为零输入自定义界面" });
 
   for (const name of EXPECTED_TOOLS) {
     const response = await client.callTool({

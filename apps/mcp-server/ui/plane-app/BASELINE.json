@@ -1,0 +1,245 @@
+{
+    "schema_version":  "1.0",
+    "captured_at":  "2026-09-30T15:40:38+08:00",
+    "upstream_commit":  "485d5206ce4c0cd4719f5d28dd5cbbeb04680be1",
+    "source_root":  "D:\\Projects\\compute-graph-viewer-wzh\\Profiling_Insight_and_Tool\\training-run-twin-standalone",
+    "source_worktree":  "dirty",
+    "content_note":  "The hashes and byte counts below describe the captured upstream files before MCP adaptation. Vendored CSS, config-test files and view-only JS match that capture apart from normalized EOF newlines; config-relation-plane.html is intentionally adapted to load mcp-plane-entry.js instead of upstream business-rule scripts.",
+    "integration_files":  [
+                               "mcp-plane-entry.js",
+                               "mcp-plane-view.js",
+                               "mcp-plane.css",
+                               "sample-catalog.js"
+                           ],
+    "excluded_runtime_files":  {
+                                   "js/config-relation-observer.js":  "config-core is the only business-rule source",
+                                   "js/config-relation-capacity.js":  "capacity comes from estimate_training_capacity structuredContent",
+                                   "js/config-relation-yaml.js":  "MCP UI does not generate authoritative configuration in-browser",
+                                   "js/config-relation-import.js":  "parsing comes from parse_training_config",
+                                   "js/config-relation-plane.js":  "mixed rendering and business simulation; replaced by a structuredContent-only view adapter"
+                               },
+    "files":  [
+                  {
+                      "path":  "config-relation-plane.html",
+                      "sha256":  "067563ebfa2e584488a4c852b0889a498becb46e20eeecc61a668849a473a6b2",
+                      "bytes":  218177,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "css/foundation.css",
+                      "sha256":  "e5f1e32a96d3417a7d2a6b85db746dec1009353ce2ac373ae94de798d6feb785",
+                      "bytes":  5019,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "css/semantic.css",
+                      "sha256":  "cf61fec543a3b9d8765021b4ac67132eb95b3fcc283f2926dc81ac2033ece6bd",
+                      "bytes":  5753,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "css/components.css",
+                      "sha256":  "d31680927d048c540fb80942d97f93bc3d775f564c63f6e0c8aa242e14bbabbb",
+                      "bytes":  13763,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "css/style.css",
+                      "sha256":  "2dcec34f011b31a22791303815705826de0fc93bed5d10f0acb6885df3968382",
+                      "bytes":  71370,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "css/workbench-shell-pattern.css",
+                      "sha256":  "8c6bc95d49559798b192355938dbd3720d75f425c8934473cc313f97c8336e6b",
+                      "bytes":  2809,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "css/ide-frame-pattern.css",
+                      "sha256":  "84f3b7fa926ed9c3d8aa02eba1fa40d83e038075d00d2cb2d406b952317ef477",
+                      "bytes":  26427,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "css/model-graphviz-pattern.css",
+                      "sha256":  "c6bd6eab58171ffd5c79e30317db635fb67c395fe4b73f157871ea6f56518414",
+                      "bytes":  19858,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "css/model-architecture-3d-deck-pattern.css",
+                      "sha256":  "7eb6a4bc2caf8e1fca175d669f9769e426aed82371b648c8a321c2a5dde7f927",
+                      "bytes":  22972,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "css/training-run-twin.css",
+                      "sha256":  "30b0d2f51c15fa63cb3c7e58515da2967a6cb449f88bc8a483112d315de9a2b3",
+                      "bytes":  56710,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "css/config-relation-observer.css",
+                      "sha256":  "fe4f3f1881b1db407664fc66ff758e75e7b9282ef4e92820f872533bbbcdcbd6",
+                      "bytes":  153442,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "css/config-relation-capacity.css",
+                      "sha256":  "41ec5ad914e9759234de22cf3e770b5b0cdcc9e8a8b1ad4ce532fe623e212ac3",
+                      "bytes":  20426,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "css/config-relation-yaml.css",
+                      "sha256":  "86bf6d29cafd387d9d704e7f9787075ac009b8faa8481d66db8d5bbc6a15e991",
+                      "bytes":  16997,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "css/config-relation-doc.css",
+                      "sha256":  "a20a381d6d03b2a723e0f287ea2c8514e5bf1b5a54d21e8117a26f083f02e902",
+                      "bytes":  29059,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "css/config-relation-plane.css",
+                      "sha256":  "bc194544dbda160600546ef9871f56104f72b2de33b901e7e1cac2a46d470d7c",
+                      "bytes":  149434,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "js/workbench-shell-pattern.js",
+                      "sha256":  "0587ffab135b49314a8151221630887db5825868603c96514e5b1fa73ffc94d1",
+                      "bytes":  17578,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "js/ide-frame-pattern.js",
+                      "sha256":  "5bdf12333586a4c849b9889ebeb6eea6314414e3586ce8854cf2ee132df73026",
+                      "bytes":  19511,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "js/model-graphviz-pattern.js",
+                      "sha256":  "24c83acd1b983ecb55b931871f639e869b6281535283c6e5e0bfe79e6757faad",
+                      "bytes":  52697,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "js/model-architecture-3d-deck-pattern.js",
+                      "sha256":  "1668919e51c8e39477cee5cf563bb2b46cf449a58ed0e7ae582f567f7b3a0def",
+                      "bytes":  46949,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "js/config-relation-observer.js",
+                      "sha256":  "3061d794d95963ef9533e2c9d950e81751e512d96bd941770481c79bb3377e6d",
+                      "bytes":  568617,
+                      "copied":  false
+                  },
+                  {
+                      "path":  "js/config-relation-capacity.js",
+                      "sha256":  "2b00d864f6f87aa25ddb006688fc2663cc823e2a9496a566ca876dab23553eef",
+                      "bytes":  94669,
+                      "copied":  false
+                  },
+                  {
+                      "path":  "js/config-relation-yaml.js",
+                      "sha256":  "18e679acb1012044de5f6b5cd37c5aa9e3b314e7014981701d927f95586bd15a",
+                      "bytes":  44875,
+                      "copied":  false
+                  },
+                  {
+                      "path":  "js/config-relation-doc.js",
+                      "sha256":  "d2b3a99f235a1f45386e37511a23a7274adedd24c2356c8520ddd7df6e675f57",
+                      "bytes":  14999,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "js/config-relation-import.js",
+                      "sha256":  "3dad8689e9651af0d4e717b5035f7d2b509949ae437defe8646c944d5b41923c",
+                      "bytes":  90124,
+                      "copied":  false
+                  },
+                  {
+                      "path":  "js/config-relation-plane.js",
+                      "sha256":  "f8939f9433faf84033d737d370cc0fd429a480e955269028f166836d42e81892",
+                      "bytes":  418998,
+                      "copied":  false
+                  },
+                  {
+                      "path":  "config-test/ds_z3_config.json",
+                      "sha256":  "6e2753c870561658babe45922114f14ad899d5e4cfb6deb38fe47935ee60dc6f",
+                      "bytes":  789,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "config-test/hf_deepseekv3_config.json",
+                      "sha256":  "cbf0b95dc614de208a109bb5fd4e7eed11385e9c68411d2c17db5319443035d9",
+                      "bytes":  1660,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "config-test/hf_mixtral_config.json",
+                      "sha256":  "9d56d04b36d0fd12ff54ae4c5bac769cc176e254e64ff71144614b6318b40793",
+                      "bytes":  720,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "config-test/hf_qwen2_7b_config.json",
+                      "sha256":  "d318b49c4a29771e259d93053084eb752f5bfe69c20c4f2e041bd1017884f810",
+                      "bytes":  664,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "config-test/lf_qwen3_full_sft.yaml",
+                      "sha256":  "55c2e16e8efa8df9052420f7b74370bd16da1938243c8a7a2907d2111515ad29",
+                      "bytes":  995,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "config-test/lf_qwen3_lora_sft.yaml",
+                      "sha256":  "783c247613e0c46c4b4ea5c6627acd5387d939af91f22a9d6a9efdb4996147ae",
+                      "bytes":  907,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "config-test/megatron_175b.sh",
+                      "sha256":  "4bc0e0194fef6cdaf578fcf81259ec7de34b26fc1892741ab314827e23059952",
+                      "bytes":  1925,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "config-test/megatron_llama3_8b_fp8.sh",
+                      "sha256":  "fddc588ca15f24384465f16e171147204feeb691f8fbc54b2a797cf135adc9cc",
+                      "bytes":  5780,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "config-test/mf_pretrain_deepseek3_671b.yaml",
+                      "sha256":  "91b7f74c5da116253d9a16f58c17fcddbfbf18b6383e06fefaf3ad6051b53c8f",
+                      "bytes":  6179,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "config-test/mf_pretrain_qwen3_30b_a3b.yaml",
+                      "sha256":  "ba3f336bcf5777285417b248b03e9ae2b87473c6763f4e28353afae4e6ac3c8f",
+                      "bytes":  5662,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "config-test/mixtral_8x7b.sh",
+                      "sha256":  "5146f17ce599a10a7e307dbfc140c1ed1056d3eb14ad8cc539a4f5ab62fc3a18",
+                      "bytes":  2563,
+                      "copied":  true
+                  },
+                  {
+                      "path":  "config-test/README.md",
+                      "sha256":  "432f4117c5b884ad0b0433f57ca9f1e88cd73e1437e9de5fb51d8918546f30ce",
+                      "bytes":  2818,
+                      "copied":  true
+                  }
+              ]
+}

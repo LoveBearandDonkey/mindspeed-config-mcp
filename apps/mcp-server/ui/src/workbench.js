@@ -1,4 +1,7 @@
+import { BUILTIN_CONFIGS } from "./builtin-configs.js";
+
 const REQUIRED_PATHS = new Set([
+  "rule_profile.framework", "rule_profile.version",
   "model.id", "model.total_layers", "model.hidden_size", "model.num_attention_heads",
   "model.routed_experts", "model.top_k", "model.shared_experts",
   "parallel.dp", "parallel.pp", "parallel.tp", "parallel.cp", "parallel.ep", "parallel.vpp",
@@ -14,6 +17,7 @@ const FIELD_GROUPS = [
   ["规则口径", [
     field("rule_profile.framework", "框架口径", "select", ["generic", "mindspeed-core", "mindspeed-llm-mcore", "mindspeed-llm-fsdp2", "mindspeed-bridge", "mindformers"]),
     field("rule_profile.version", "规则版本"),
+    field("rule_profile.source_commit", "来源 Commit", "text", undefined, true),
   ]],
   ["模型结构", [
     field("model.id", "模型名称"), field("model.total_layers", "总层数", "number"),
@@ -22,6 +26,7 @@ const FIELD_GROUPS = [
     field("model.ffn_hidden_size", "FFN 隐藏维度", "number", undefined, true),
     field("model.expert_ffn_hidden_size", "专家 FFN 维度", "number", undefined, true),
     field("model.vocab_size", "词表大小", "number", undefined, true),
+    field("model.first_k_dense_layers", "前置 Dense 层", "number", undefined, true),
     field("model.routed_experts", "路由专家数", "number"), field("model.top_k", "TopK", "number"),
     field("model.shared_experts", "共享专家数", "number"),
   ]],
@@ -29,6 +34,8 @@ const FIELD_GROUPS = [
     field("parallel.dp", "DP", "number"), field("parallel.pp", "PP", "number"),
     field("parallel.tp", "TP", "number"), field("parallel.cp", "CP", "number"),
     field("parallel.ep", "EP", "number"), field("parallel.vpp", "VPP", "number"),
+    field("parallel.pipeline_layer_mode", "PP 分层", "select", ["uniform", "dynamic"], true),
+    field("parallel.num_layer_list", "各 Stage 层数", "integer-csv", undefined, true),
     field("parallel.ep_mode", "EP 口径", "select", ["split", "orthogonal", "mf"]),
     field("parallel.cp_mode", "CP 模式", "select", ["ulysses", "ring"]),
     field("parallel.sequence_parallel", "序列并行", "boolean"),
@@ -51,7 +58,14 @@ const FIELD_GROUPS = [
     field("memory.lora_enabled", "启用 LoRA", "boolean"),
     field("memory.lora_rank", "LoRA Rank", "number", undefined, true),
   ]],
+  ["修复策略", [
+    field("policy.locked_fields", "锁定字段", "csv", undefined, true),
+    field("policy.objective", "优化目标", "select", ["mindspeed-compatible", "keep-current-resources", "memory-safe", "pipeline-balanced"], true),
+  ]],
 ];
+
+export const WORKBENCH_FIELD_PATHS = Object.freeze(FIELD_GROUPS.flatMap(([, fields]) => fields.map(({ path }) => path)).sort());
+export const WORKBENCH_REQUIRED_PATHS = Object.freeze([...REQUIRED_PATHS].sort());
 
 const DEFAULTS = {
   "rule_profile.framework": "generic",
@@ -65,6 +79,7 @@ const DEFAULTS = {
   "parallel.cp": 1,
   "parallel.ep": 1,
   "parallel.vpp": 1,
+  "parallel.pipeline_layer_mode": "uniform",
   "parallel.ep_mode": "split",
   "parallel.cp_mode": "ulysses",
   "parallel.sequence_parallel": false,
@@ -92,6 +107,8 @@ const OPTION_LABELS = {
   mf: "MindFormers 口径",
   ulysses: "Ulysses",
   ring: "Ring",
+  uniform: "均匀 PP",
+  dynamic: "动态 PP",
   bf16: "BF16",
   fp16: "FP16",
   fp8: "FP8",
@@ -102,6 +119,18 @@ const OPTION_LABELS = {
   full: "全量重计算",
   zero1: "ZeRO-1",
   fsdp2: "FSDP2",
+  "mindspeed-compatible": "MindSpeed 合法优先",
+  "keep-current-resources": "保持资源规模",
+  "memory-safe": "显存安全优先",
+  "pipeline-balanced": "流水线均衡优先",
+};
+
+const TOOL_LABELS = {
+  validate_parallel_config: "校验配置",
+  compute_rank_topology: "查看 Rank 矩阵",
+  suggest_config_fixes: "生成修复建议",
+  parse_training_config: "解析训练配置",
+  estimate_training_capacity: "估算理论容量",
 };
 
 function field(path, label, type = "text", options, optional = false) {
@@ -110,6 +139,7 @@ function field(path, label, type = "text", options, optional = false) {
 
 export function createWorkbench({ app, renderResult }) {
   const root = document.getElementById("workbench");
+  const sourcePanel = root.querySelector(".source-panel");
   const fileInput = document.getElementById("fileInput");
   const dropZone = document.getElementById("dropZone");
   const pasteName = document.getElementById("pasteName");
@@ -124,7 +154,21 @@ export function createWorkbench({ app, renderResult }) {
   const actionPanel = document.getElementById("actionPanel");
   const actionHint = document.getElementById("actionHint");
   const actionMessage = document.getElementById("actionMessage");
-  const state = { sources: [], config: emptyConfig(), provenance: new Map(), conflicts: [], active: false };
+  const builtinSelect = document.getElementById("builtinConfigSelect");
+  const builtinDescription = document.getElementById("builtinDescription");
+  const builtinAnalysis = document.getElementById("builtinAnalysis");
+  const applyBuiltin = document.getElementById("applyBuiltin");
+  const state = { sources: [], config: emptyConfig(), provenance: new Map(), conflicts: [], active: false, targetTool: null, builtinResult: null };
+
+  renderBuiltinOptions();
+  builtinSelect.addEventListener("change", () => {
+    state.builtinResult = null;
+    applyBuiltin.disabled = true;
+    updateBuiltinDescription();
+    parseBuiltin();
+  });
+  document.getElementById("previewBuiltin").addEventListener("click", parseBuiltin);
+  applyBuiltin.addEventListener("click", adoptBuiltin);
 
   fileInput.addEventListener("change", () => addFiles(fileInput.files));
   dropZone.addEventListener("dragover", (event) => {
@@ -145,18 +189,142 @@ export function createWorkbench({ app, renderResult }) {
   }
 
   return {
-    open() {
+    open(targetTool = null) {
       state.active = true;
+      state.targetTool = targetTool;
       root.hidden = false;
-      document.getElementById("title").textContent = "中文训练配置工作台";
-      document.getElementById("summary").textContent = "上传或粘贴真实配置，自动识别字段；缺什么会直接在表单中标出来。无需手写 MCP JSON。";
+      document.getElementById("title").textContent = targetTool ? TOOL_LABELS[targetTool] : "中文训练配置工作台";
+      document.getElementById("summary").textContent = targetTool
+        ? "使用统一中文输入区填写或导入配置；提交时仍由 MCP Tool 的 inputSchema 校验。"
+        : "上传、粘贴或直接填写真实配置，缺什么会直接标出来。无需手写 MCP JSON。";
       const status = document.getElementById("status");
       status.textContent = "可以开始";
       status.dataset.status = "valid";
       if (!state.sources.length) renderSources();
+      for (const button of document.querySelectorAll("[data-tool]")) {
+        button.hidden = Boolean(targetTool && button.dataset.tool !== targetTool);
+        button.dataset.selected = String(button.dataset.tool === targetTool);
+      }
+      sourcePanel.hidden = false;
+      if (targetTool && targetTool !== "parse_training_config") {
+        renderConfigForm();
+        configPanel.hidden = false;
+        actionPanel.hidden = false;
+      } else if (targetTool === "parse_training_config") {
+        configPanel.hidden = true;
+        actionPanel.hidden = true;
+      } else {
+        configPanel.hidden = true;
+        actionPanel.hidden = true;
+      }
+    },
+    close() {
+      state.active = false;
+      root.hidden = true;
+    },
+    showPreview() {
+      const previewValues = {
+        ...DEFAULTS,
+        "model.id": "preview-model",
+        "model.total_layers": 32,
+        "model.hidden_size": 4096,
+        "model.num_attention_heads": 32,
+        "model.routed_experts": 8,
+        "model.top_k": 2,
+        "parallel.tp": 2,
+        "parallel.pp": 2,
+        "cluster.total_ranks": 8,
+        "cluster.card_model": "昇腾 910B",
+        "cluster.card_memory_gib": 64,
+        "batch.sequence_length": 4096,
+      };
+      for (const [path, value] of Object.entries(previewValues)) {
+        setPath(state.config, path, value);
+        state.provenance.set(path, "独立预览演示值");
+      }
+      if (state.targetTool === "parse_training_config") {
+        pasteContent.value = "model:\n  total_layers: 32\nparallel:\n  tp: 2\n  pp: 2";
+      } else {
+        renderConfigForm();
+        configPanel.hidden = false;
+        actionPanel.hidden = false;
+        coverageSummary.textContent = "已填入独立预览演示值；真实 MCP App 会显示配置文件的解析来源";
+        updateActions();
+      }
     },
     get active() { return state.active; },
+    getConfig() { return cleanConfig(state.config); },
   };
+
+  function renderBuiltinOptions() {
+    builtinSelect.replaceChildren();
+    for (const groupName of [...new Set(BUILTIN_CONFIGS.map(({ group }) => group))]) {
+      const group = document.createElement("optgroup");
+      group.label = groupName;
+      for (const sample of BUILTIN_CONFIGS.filter(({ group: value }) => value === groupName)) {
+        group.append(new Option(sample.name, sample.id));
+      }
+      builtinSelect.append(group);
+    }
+    updateBuiltinDescription();
+  }
+
+  function selectedBuiltin() {
+    return BUILTIN_CONFIGS.find(({ id }) => id === builtinSelect.value) ?? BUILTIN_CONFIGS[0];
+  }
+
+  function updateBuiltinDescription() {
+    const sample = selectedBuiltin();
+    builtinDescription.textContent = `${sample.description} · ${sample.format.toUpperCase()} · ${formatBytes(sample.content.length)}`;
+    builtinAnalysis.textContent = "等待 MCP 解析……";
+  }
+
+  async function parseBuiltin() {
+    const sample = selectedBuiltin();
+    setBusy(true, `正在解析内置配置 ${sample.name}……`);
+    try {
+      const response = await app.callServerTool({
+        name: "parse_training_config",
+        arguments: {
+          schema_version: "1.0",
+          rule_profile: { framework: "generic", version: "v1-workbench" },
+          source: { format: sample.format, name: sample.name, content: sample.content },
+        },
+      });
+      if (response.isError || !response.structuredContent?.data) throw new Error(toolError(response));
+      state.builtinResult = response.structuredContent.data;
+      const data = state.builtinResult;
+      builtinAnalysis.replaceChildren(
+        make("strong", "", data.complete ? "可直接分析" : `还缺 ${data.missing_required_fields.length} 项`),
+        make("span", "", `映射 ${data.mapped_count} · 未识别 ${data.unmapped_count} · 忽略 ${data.ignored_count}`),
+      );
+      applyBuiltin.disabled = false;
+      renderResult(response.structuredContent);
+    } catch (error) {
+      builtinAnalysis.textContent = `解析失败：${error.message}`;
+      builtinAnalysis.dataset.kind = "error";
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function adoptBuiltin() {
+    if (!state.builtinResult) return;
+    const sample = selectedBuiltin();
+    state.sources = [{ id: crypto.randomUUID(), name: sample.name, format: sample.format, content: sample.content, result: state.builtinResult }];
+    state.config = emptyConfig();
+    state.provenance = new Map();
+    state.conflicts = [];
+    for (const item of state.builtinResult.mapped_fields) mergeValue(item.target_path, item.value, `内置：${sample.name}`);
+    renderSources();
+    renderConfigForm();
+    configPanel.hidden = false;
+    actionPanel.hidden = state.targetTool === "parse_training_config";
+    coverageSummary.textContent = state.builtinResult.complete
+      ? `内置配置已解析为完整统一配置，共映射 ${state.builtinResult.mapped_count} 个字段`
+      : `内置配置已解析，仍缺 ${missingPaths(state.config).length} 个必填项；可与其他文件合并`;
+    showMessage(sourceMessage, `已采用 ${sample.name}，解析来源已保留。`, "ok");
+  }
 
   async function addFiles(fileList) {
     const files = [...fileList];
@@ -238,6 +406,9 @@ export function createWorkbench({ app, renderResult }) {
     state.provenance = new Map();
     state.conflicts = [];
     let mapped = 0;
+    let explicitMapped = 0;
+    let derived = 0;
+    let defaulted = 0;
     let unmapped = 0;
     try {
       for (const source of state.sources) {
@@ -253,8 +424,12 @@ export function createWorkbench({ app, renderResult }) {
         const data = response.structuredContent.data;
         source.result = data;
         mapped += data.mapped_count;
+        explicitMapped += data.explicit_mapped_count ?? data.mapped_count;
+        derived += data.derived_count ?? 0;
+        defaulted += data.defaulted_count ?? 0;
         unmapped += data.unmapped_count;
         for (const item of data.mapped_fields) mergeValue(item.target_path, item.value, source.name);
+        if (state.targetTool === "parse_training_config") renderResult(response.structuredContent);
       }
       if (!getPath(state.config, "model.id")) {
         setPath(state.config, "model.id", state.sources[0].name.replace(/\.[^.]+$/, ""));
@@ -263,8 +438,8 @@ export function createWorkbench({ app, renderResult }) {
       renderSources();
       renderConfigForm();
       configPanel.hidden = false;
-      actionPanel.hidden = false;
-      coverageSummary.textContent = `共识别 ${mapped} 个字段，未识别 ${unmapped} 个；合并后仍缺 ${missingPaths(state.config).length} 个必填项`;
+      actionPanel.hidden = state.targetTool === "parse_training_config";
+      coverageSummary.textContent = `共得到 ${mapped} 个字段（原文 ${explicitMapped}、推导 ${derived}、默认 ${defaulted}），未识别 ${unmapped} 个；合并后仍缺 ${missingPaths(state.config).length} 个必填项`;
       showMessage(sourceMessage, "解析完成。请在第二步核对自动合并结果，并补齐红色必填项。", "ok");
     } catch (error) {
       showMessage(sourceMessage, `解析失败：${error.message}`, "error");
@@ -329,9 +504,10 @@ export function createWorkbench({ app, renderResult }) {
       if (value !== undefined) control.value = String(value);
     } else {
       control = document.createElement("input");
-      control.type = definition.type;
+      control.type = ["csv", "integer-csv"].includes(definition.type) ? "text" : definition.type;
       if (definition.type === "number") { control.min = "0"; control.step = "1"; }
-      if (value !== undefined) control.value = value;
+      if (value !== undefined) control.value = ["csv", "integer-csv"].includes(definition.type) && Array.isArray(value)
+        ? value.join(", ") : value;
     }
     return control;
   }
@@ -370,6 +546,10 @@ export function createWorkbench({ app, renderResult }) {
     setBusy(true, "正在分析……");
     showMessage(actionMessage, "正在调用 MCP Tool……", "ok");
     try {
+      if (toolName === "estimate_training_capacity") {
+        const topology = await app.callServerTool({ name: "compute_rank_topology", arguments: cleanConfig(state.config) });
+        if (!topology.isError && topology.structuredContent?.data?.valid) renderResult(topology.structuredContent);
+      }
       const response = await app.callServerTool({ name: toolName, arguments: cleanConfig(state.config) });
       if (response.isError || !response.structuredContent) throw new Error(toolError(response));
       renderResult(response.structuredContent);
@@ -384,7 +564,11 @@ export function createWorkbench({ app, renderResult }) {
 
   function setBusy(busy, message = "") {
     for (const button of root.querySelectorAll("button")) button.disabled = busy;
-    if (!busy) updateActions();
+    if (!busy) {
+      for (const button of root.querySelectorAll("button")) button.disabled = false;
+      applyBuiltin.disabled = !state.builtinResult;
+      updateActions();
+    }
     if (message) showMessage(sourceMessage, message, "ok");
   }
 }
@@ -393,7 +577,7 @@ function emptyConfig() {
   return {
     schema_version: "1.0",
     rule_profile: { framework: "generic", version: "v1-workbench" },
-    policy: { locked_fields: [], objective: "minimal-change" },
+    policy: { locked_fields: [], objective: "mindspeed-compatible" },
   };
 }
 
@@ -428,6 +612,11 @@ function readControl(control, type) {
   if (control.value === "") return undefined;
   if (type === "number") return Number(control.value);
   if (type === "boolean") return control.value === "true";
+  if (type === "csv") return control.value.split(",").map((item) => item.trim()).filter(Boolean);
+  if (type === "integer-csv") {
+    const values = control.value.split(",").map((item) => Number(item.trim())).filter(Number.isInteger);
+    return values.length ? values : undefined;
+  }
   return control.value;
 }
 

@@ -1,0 +1,3537 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   config-relation-plane.css —— 「平面视图」专属版式（只服务 config-relation-plane.html）
+
+   为什么另起一份而不是改 config-relation-observer.css：
+   两页共用同一套 DOM、同一套 JS（配置/校验/关系解析一行没动），差别只在**怎么摆**。
+   原版是「四域并置 + 关系连线」，配置一大就摆不下、也读不出交叉关系；这一版按
+   pic/新视图.png 改成三栏：
+
+       左：配置（表单 / 代码 / 整网图 三档）
+       中：无限画布 —— stage × layer × rank × 专家 穿插在同一个平面里，
+           交叉关系直接由「同一格」表达，不再需要连线
+       右：选中对象的详情（rank / layer / stage / 专家）
+
+   规则一律写成 `.cro-board.is-plane …`（两个类）压过原版的 `.cro-board …`（一个类），
+   原文件因此完全不必改动，两页可以各自演进。
+   ⚠️ is-plane 由 js/config-relation-plane.js 在 boot 之前挂上：脚本没加载成功时
+   这一份的所有规则都不生效，页面自动退回原版四域排布。
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ══ 骨架：三个独立面板 + 一个离屏引擎区 ══════════════════════════════════ */
+/* 三栏已经各自承担面板视觉，workarea 内通用 pane 不再垫第四层背景板。 */
+.pto-ide-frame__workarea > .pto-ide-frame__pane[data-ide-pane="observer"] {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* syncBoardRows 会继续在 board 上写原版页面所需的内联 grid-template-rows；平面页的
+   单行骨架与它不是一套含义，所以这里用 important 固定为一行。 */
+.cro-board.is-plane {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) !important;
+  gap: 8px;
+  padding: 0 0 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 右栏关闭时连同第三条网格轨一起撤掉，否则 0 宽栏位前仍会留下一个 8px gap。 */
+.cro-board.is-plane:has(> .crop-right.is-collapsed) {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.cro-board.is-plane > .crop-right.is-collapsed {
+  display: none;
+}
+
+/* 三个主面板在暗黑主题下共用同一层深色底；亮色主题继续走各自的语义色变量。 */
+html[data-theme="dark"] .cro-board.is-plane .crop-left,
+html[data-theme="dark"] .cro-board.is-plane .crop-stage,
+html[data-theme="dark"] .cro-board.is-plane .crop-right {
+  background: #080a0f;
+}
+
+/* 导入弹窗：说明和操作占整行，代码输入与校验报告固定为左右两栏。
+   只命中使用共享 cro-code 组件的平面页，不改变旧 observer 页的导入框。 */
+.cro-import__box:has(.cro-import__text.cro-code) {
+  width: min(1080px, 100%);
+  height: min(720px, calc(100vh - 48px));
+}
+
+.cro-import__body:has(> .cro-import__text.cro-code) {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-areas:
+    "intro intro"
+    "actions actions"
+    "code report";
+  overflow: hidden;
+}
+
+.cro-import__body:has(> .cro-import__text.cro-code) > .cro-import__intro {
+  grid-area: intro;
+}
+
+.cro-import__body:has(> .cro-import__text.cro-code) > .cro-import__actions {
+  grid-area: actions;
+}
+
+.cro-import__body:has(> .cro-import__text.cro-code) > .cro-import__text {
+  grid-area: code;
+  align-self: stretch;
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  max-height: none;
+  resize: none;
+}
+
+.cro-import__body:has(> .cro-import__text.cro-code) > .cro-import__report {
+  grid-area: report;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--space-3);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+
+@media (max-width: 720px) {
+  .cro-import__box:has(.cro-import__text.cro-code) {
+    height: calc(100vh - 32px);
+  }
+
+  .cro-import__body:has(> .cro-import__text.cro-code) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto 240px minmax(180px, 1fr);
+    grid-template-areas:
+      "intro"
+      "actions"
+      "code"
+      "report";
+    overflow: auto;
+  }
+}
+
+/* 四个区被搬进三栏之后，原来的 grid-column / grid-row 全部作废 */
+.cro-board.is-plane .cro-region--net,
+.cro-board.is-plane .cro-region--arch,
+.cro-board.is-plane .cro-region--moe,
+.cro-board.is-plane .cro-region--cluster,
+.cro-board.is-plane .cro-region--yaml,
+.cro-board.is-plane .cro-region--doc {
+  grid-column: auto;
+  grid-row: auto;
+  min-height: 0;
+}
+
+/* ── 离屏引擎区 ───────────────────────────────────────────────────────────
+   集群矩阵 / Layer 刻度带 / MoE 宫格三块的**视觉职责**被中间那幅平面接管了，
+   但它们本身没有删、也照常渲染 —— 主脚本的 applyRelation 每次都要往这三处铺
+   is-selected / is-related，MoE 宫格更是「绑定态」的存放处（moeBoundOf 读的是
+   它 dataset 上的值）。删掉就得改主脚本，而这一页的前提是不改。
+   所以只是把它们挪出视野。 */
+.cro-board.is-plane .crop-engine {
+  position: absolute;
+  left: -20000px;
+  top: 0;
+  width: 1180px;
+  height: 640px;
+  overflow: hidden;
+  /* visibility:hidden 而不是 display:none / opacity:0：
+     · display:none —— 布局全塌，上面说的那些实测退化成 0；
+     · opacity:0 —— 元素仍在 Tab 序里，2048 个格子的 roving tabindex 会把焦点
+       送到屏幕外（enableGridKeyboard 给它们挂了方向键导航）。
+     visibility:hidden 两头都占：盒子照常参与布局、量得到宽高，却既不绘制也不可聚焦。 */
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.cro-board.is-plane .crop-engine .cro-region {
+  height: 100%;
+}
+
+/* 离屏也要给出**真实的**高度：主脚本按 .cro-cluster__grid 的 clientHeight 倒推
+   每个 DP 折几行、格子多高（pickEpRows / verticalCellHeight）。给 0 的话那两处
+   全部退化到下限，MoE 宫格与集群矩阵虽然看不见，键盘导航与绑定态却还要靠它们，
+   建成一条实心色带是没必要的退化。 */
+.cro-board.is-plane .crop-engine .cro-cluster__grid {
+  height: 520px;
+  overflow: hidden;
+}
+
+.cro-board.is-plane .crop-engine .cro-moe-groups,
+.cro-board.is-plane .crop-engine .cro-layer-nav {
+  height: auto;
+  max-height: 260px;
+  overflow: hidden;
+}
+
+/* 平面视图不再用连线表达关系（交叉关系由「同一格」承担），整层收掉。
+   主脚本仍会往里画，但它是 aria-hidden 的装饰层，隐掉不影响任何逻辑。 */
+body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
+
+/* ══ 左栏：配置 ════════════════════════════════════════════════════════════ */
+.cro-board.is-plane .crop-left {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 var(--crop-left-w, 344px);
+  width: var(--crop-left-w, 344px);
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-1);
+  overflow: hidden;
+}
+
+.crop-left__head {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) 0;
+}
+
+/* 左栏静态文字标题；切换控件只保留下方「表单 / 代码」一组。 */
+.crop-left__tabs {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--foreground);
+  font-size: var(--font-size-title-sm);
+  font-weight: var(--font-weight-semibold);
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+/* 配置预设下拉 + 「表单 / 代码」两档：只属于「训练配置」这一页。
+   整网查询把它们连同表单一起顶掉 —— 那一档只有 deck。 */
+.crop-left__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3);
+}
+
+.crop-left[data-pane="net"] .crop-left__intro { display: none; }
+
+.crop-left__intro .cro-stepper { width: 100%; }
+.crop-left__intro .cro-select { width: 100%; }
+
+.crop-tabs { width: 100%; }
+.crop-tabs .btn { flex: 1; min-width: 0; }
+
+.crop-left__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-4) * 1.5);
+}
+
+/* 三个内容档：表单 / 代码 / 整网图（前两档挂在「训练配置」之下，整网图是栏顶另一页）。当前档之外的整块不渲染。
+   代码档的显隐额外由 config-relation-yaml.css 的 .cro-board:not(.is-yaml) 把关，
+   两条规则方向一致（代码档 = 顶栏切到 YAML 视图），不会打架。 */
+.crop-pane { display: none; flex-direction: column; gap: calc(var(--space-4) * 1.5); min-height: 0; }
+.crop-left[data-pane="form"] .crop-pane--form,
+.crop-left[data-pane="net"]  .crop-pane--net,
+.crop-left[data-pane="code"] .crop-pane--code { display: flex; }
+
+/* Model Architecture / MoE / Cluster 之间在原 24px 基础上再增加 8px；
+   只作用于相邻配置组，不拉大顶部提示横幅与首组的距离。 */
+.cro-board.is-plane .crop-pane--form > .cro-region + .cro-region {
+  margin-top: var(--space-2);
+}
+
+/* 阻断错误是整份表单的全局状态：静止在顶部时仍按普通文档流排版；表单一滚动，
+   它就停在滚动区的上内边距处，并压在后续 stepper 上方。只吸附 is-blocking，性能
+   警告仍随所属内容正常滚走，避免低优先级提示长期占用狭窄侧栏。 */
+.cro-board.is-plane .crop-pane--form > .cro-config-error.is-blocking {
+  position: sticky;
+  top: var(--space-3);
+  z-index: var(--z-raised);
+  box-shadow: var(--shadow-md);
+}
+
+/* ── 纵向不许被压：谁高谁自己撑着，栏体滚动 ─────────────────────────────────
+   .cro-region / .cro-section 自带 min-height:0（原版要它们在 grid 里能收），
+   搬进这两条**纵向 flex** 的栏之后，同一条属性变成了「可以被压到比内容还矮」：
+   一压，区里的表单行、容量框、结构条就各自溢出自己的盒子，读起来正是「内容
+   交叉重叠」。这里把栏里的每一节钉成 flex:0 0 auto —— 高度一律由内容定，
+   放不下就由 .crop-left__body / .crop-right__body 纵向滚。
+   ⚠️ 整网 / 代码两档例外：deck 与 yaml 框要吃满剩余高度，它们仍是 1 1 auto。 */
+.cro-board.is-plane .crop-left__body > .crop-pane--form { flex: 0 0 auto; }
+.cro-board.is-plane .crop-left__body > .crop-pane--net,
+.cro-board.is-plane .crop-left__body > .crop-pane--code { flex: 1 1 auto; }
+.cro-board.is-plane .crop-pane--form > *,
+.cro-board.is-plane .crop-pane--form .cro-section,
+.cro-board.is-plane .crop-pane--form .cro-region__heading,
+.cro-board.is-plane .crop-right__body > *,
+.cro-board.is-plane .crop-right__body .cro-section {
+  flex: 0 0 auto;
+  min-height: auto;
+}
+
+/* ── 两栏的滚动条：细、无轨、不悬浮时几乎看不见 ─────────────────────────────
+   浏览器默认那条 15px 带轨道的灰条在 344px 的栏里是一块**版式元素**：它自带
+   一条竖直边界，读起来像给表单又划了一列。这里照抄集群矩阵 / 结构条那套
+   （config-relation-observer.css 里 .cro-cluster__grid 那段）—— 同一页面里
+   滚动条只该有一种长相。 */
+.cro-board.is-plane .crop-left__body,
+.cro-board.is-plane .crop-right__body {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--foreground) 14%, transparent) transparent;
+  overscroll-behavior: contain;
+}
+
+.cro-board.is-plane .crop-left__body::-webkit-scrollbar,
+.cro-board.is-plane .crop-right__body::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.cro-board.is-plane .crop-left__body::-webkit-scrollbar-track,
+.cro-board.is-plane .crop-right__body::-webkit-scrollbar-track,
+.cro-board.is-plane .crop-left__body::-webkit-scrollbar-corner,
+.cro-board.is-plane .crop-right__body::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* 2px 透明边 + background-clip:content-box = 一条 2px 的细杆，而不是贴边的实心块 */
+.cro-board.is-plane .crop-left__body::-webkit-scrollbar-thumb,
+.cro-board.is-plane .crop-right__body::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--foreground) 14%, transparent);
+  background-clip: content-box;
+}
+
+.cro-board.is-plane .crop-left__body:hover,
+.cro-board.is-plane .crop-right__body:hover {
+  scrollbar-color: color-mix(in srgb, var(--foreground) 30%, transparent) transparent;
+}
+
+.cro-board.is-plane .crop-left__body:hover::-webkit-scrollbar-thumb,
+.cro-board.is-plane .crop-right__body:hover::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--foreground) 30%, transparent);
+  background-clip: content-box;
+}
+
+.cro-board.is-plane .crop-left__body::-webkit-scrollbar-thumb:hover,
+.cro-board.is-plane .crop-right__body::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--foreground) 46%, transparent);
+  background-clip: content-box;
+}
+
+/* 左栏里的区标题降一号：这里不再是「四大区」的层级，而是一列小节 */
+.cro-board.is-plane .crop-left .cro-region__title {
+  font-size: var(--font-size-body-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* 整网 deck 在左栏里要有确定高度，否则 pattern 量不到宿主会塌成 0 */
+.cro-board.is-plane .crop-pane--net .cro-region--net { height: 100%; }
+.cro-board.is-plane .crop-pane--net .cro-deck-host { min-height: 420px; }
+/* 整网列的三档（整网 / 典型 Layer / 两者并看）在这一版里没有位置可切：
+   典型 Layer 已经常驻右栏「计算节点」，deck 独占「整网图」这一档。 */
+.cro-board.is-plane .cro-net-view { display: none; }
+
+/* 代码档：yaml 区在窄栏里改成上下两段，代码行自己横向滚 */
+.cro-board.is-plane .crop-pane--code .cro-region--yaml { height: 100%; }
+.cro-board.is-plane.is-yaml .crop-left {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  flex: 1 1 auto;
+  width: auto;
+}
+.cro-board.is-plane.is-yaml .crop-stage,
+.cro-board.is-plane.is-yaml .crop-right { display: none; }
+
+/* 代码页变宽后不能让「配置」select 与页签一起拉到整板宽。两者仍从左侧起排，
+   控件保持侧栏语境下的可读尺寸，剩余宽度留给代码区。 */
+.cro-board.is-plane.is-yaml .crop-left__intro {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+.cro-board.is-plane.is-yaml .crop-left__intro > .cro-stepper {
+  flex: 0 1 360px;
+  width: min(360px, 42vw);
+}
+
+.cro-board.is-plane.is-yaml .crop-left__intro > .crop-tabs {
+  flex: 0 0 200px;
+  width: 200px;
+}
+
+/* 代码档右上角那两枚「复制」键只留图标（yaml 全文 / 启动命令各一枚）：
+   文字 label 收成读屏文案；点完 1.6s 内 data-copy-state 由 config-relation-yaml.js
+   挂上 —— ok 换成对勾并染成功色，fail 留原图标、染危险色。 */
+.cro-board.is-plane .cro-yaml__copy {
+  position: relative;
+  width: var(--button-height-sm);
+  min-width: var(--button-height-sm);
+  padding: 0;
+}
+.cro-board.is-plane .cro-yaml__copy .cro-yaml__copy-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.cro-board.is-plane .cro-yaml__copy-icon { flex: none; }
+.cro-board.is-plane .cro-yaml__copy-icon--done { display: none; }
+.cro-board.is-plane .cro-yaml__copy[data-copy-state="ok"] { color: var(--success); }
+.cro-board.is-plane .cro-yaml__copy[data-copy-state="ok"] .cro-yaml__copy-icon--copy { display: none; }
+.cro-board.is-plane .cro-yaml__copy[data-copy-state="ok"] .cro-yaml__copy-icon--done { display: block; }
+.cro-board.is-plane .cro-yaml__copy[data-copy-state="fail"] { color: var(--danger); }
+
+/* 文件样例已经并入上面的配置 select，代码标题里不再重复放第二个下拉入口。 */
+.cro-board.is-plane #croYamlPicker { display: none; }
+
+/* 文档档：整板让位，三栏一起收起 */
+.cro-board.is-plane.is-doc .crop-left,
+.cro-board.is-plane.is-doc .crop-stage,
+.cro-board.is-plane.is-doc .crop-right,
+.cro-board.is-plane.is-doc .crop-engine { display: none; }
+.cro-board.is-plane.is-doc .cro-region--doc {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+}
+
+/* Cluster 区搬进左栏后只剩表单那一行：矩阵与单卡容量各自去了中栏和右栏 */
+.cro-board.is-plane .crop-left .cro-cluster { display: block; }
+.cro-board.is-plane .crop-left .cro-cluster__main { display: block; }
+.cro-board.is-plane .crop-left .cro-cluster__grid { display: none; }
+
+/* ── 表单：一行最多两格 ─────────────────────────────────────────────────────
+   原版那几行是 flex-wrap，在 1400px 的通栏里横排七格读得下来；搬进 344px 之后
+   同一套 wrap 会按剩余宽度**随机**折行，格与格的标签互相挤，展开「高级」时那一
+   整片更是叠在一起。这里换成固定两列的网格：每一格宽度确定、标签不再互相压，
+   折行位置也不再随窗口宽度跳。
+   ⚠️ Cluster 那一行的两个挂载点（#croClusterSteppers / #croBatchSteppers）保持
+   display:contents —— 它们是 JS 的挂载点、不能改结构，contents 让里面的控件成为
+   .cro-cluster__form 自己的网格项，七格才落在同一套两列轨道上。 */
+.cro-board.is-plane .crop-left .cro-stepper-row,
+.cro-board.is-plane .crop-left .cro-cluster__form,
+.cro-board.is-plane .crop-left .cro-advanced-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-2);
+  align-items: end;
+}
+
+.cro-board.is-plane .crop-left .cro-cluster__form > .cro-stepper-row { display: contents; }
+
+/* 「高级」折叠：按钮与展开的面板各独占一整行 —— 否则它会插进两列的缝里，
+   与旁边那枚 stepper 叠成一团（这正是要治的那个重叠）。 */
+.cro-board.is-plane .crop-left .cro-advanced-panel { grid-column: 1 / -1; }
+
+/* ⚠️ 收起态必须补一条：上面那条 display:grid 是三个类（0,3,0），压得过
+   config-relation-observer.css 里 .cro-advanced-panel[hidden]{display:none}
+   （0,2,0）—— 不补的话折叠根本收不起来，收起的那几格与下一区的标题直接叠在
+   一起。这正是左栏最显眼的那处重叠。 */
+.cro-board.is-plane .crop-left .cro-advanced-panel[hidden] { display: none; }
+
+/* 「高级选项」不做成按钮：它是一句可点的话，不是一个控件。
+   整格独占一行（不再挤在两列轨道的一格里），去掉 .btn 的底、边框与内衬，
+   于是没有那块比字大一圈的热区；上面那行占位 label 也一并撤掉。
+   气泡（data-hint）由 js/config-relation-plane.js 在 boot 之后摘掉。 */
+.cro-board.is-plane .crop-left .cro-stepper--advanced {
+  grid-column: 1 / -1;
+  gap: 0;
+}
+
+.cro-board.is-plane .crop-left .cro-stepper--advanced > .cro-stepper__label { display: none; }
+
+.cro-board.is-plane .crop-left .cro-advanced-toggle {
+  --button-height-sm: auto;
+  align-self: flex-start;
+  justify-self: start;
+  width: fit-content;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--ark-blue-500);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-medium);
+  gap: 2px;
+}
+
+.cro-board.is-plane .crop-left .cro-advanced-toggle:hover,
+.cro-board.is-plane .crop-left .cro-advanced-toggle:focus-visible {
+  background: none;
+  color: var(--ark-blue-500);
+  text-decoration: underline;
+}
+
+/* 每一格自己不再撑宽度，交给网格轨道；标签过长省略而不是把格子顶开 */
+.cro-board.is-plane .crop-left .cro-stepper {
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+
+.cro-board.is-plane .crop-left .cro-stepper__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* EP 口径这一格是三档按钮，比一枚 stepper 宽得多，独占整行 */
+.crop-field--wide { grid-column: 1 / -1; }
+.crop-field--wide .cro-ep-mode { width: 100%; }
+.crop-field--wide .cro-ep-mode .btn { flex: 1; min-width: 0; }
+
+/* 折叠态：整栏收成一条竖标签，画布吃掉这 344px */
+.cro-board.is-plane .crop-left.is-collapsed { flex-basis: 0; width: 0; border: 0; }
+.cro-board.is-plane .crop-left.is-collapsed > * { display: none; }
+
+/* ══ 中栏：无限画布 ════════════════════════════════════════════════════════ */
+.cro-board.is-plane .crop-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  /* 素底，不铺点阵：这幅图本身就是一张密网格（stage 块 × layer 列 × rank 行），
+     底下再垫一层点会和格子打架，读起来是两套网格互相干扰。「无限」由 pan/zoom
+     本身表达，不靠背景纹理去暗示。 */
+  background: var(--surface-1);
+  cursor: grab;
+  touch-action: none;
+}
+
+.cro-board.is-plane .crop-stage.is-panning { cursor: grabbing; }
+
+.crop-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* 点中顶部 Layer 刻度后，用一条与该列等宽的暗影把位置投到画布底部。它放在
+   crop-world 之前，格子、块底板和热力色仍画在它上面；这里只负责提供纵向参照。
+   宿主 .crop-layer-guides 从顶尺下缘铺到画布底，里面一层一条：点整网图 / 结构条
+   上的算子会一次选中一批层，每一列都要各自贯穿。 */
+.crop-layer-guides {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.crop-layer-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  /* 这里只标位置，不表达业务选择语义：使用随主题反转的中性前景灰阶，避免与真正
+     的蓝色选中态、通信流或热力颜色混为一谈。
+     浓度 6%（原先 10%）：这条影子是**纵向参照**而不是选中态——选中态由格子自己的
+     高亮去表达。10% 时它在格缝与行标道里比格子本身还抢眼，一整列从顶尺压到画布底，
+     读一行 rank 时眼睛总被它拽走；压到 6% 仍看得出「选的是这一列」，但退回了背景层。
+     ⚠️ 与 rank-intro 那页 canvas 里画这条影子的 alpha 保持同值（搜 layerGuide）。 */
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+  pointer-events: none;
+}
+
+/* 一个 EDP = 一条完整专家模型流水线。框贯穿全部 PP Stage，只承担副本边界；
+   Layer / 专家身份继续由格子内容与数据色表达，避免一色多义。 */
+.crop-edp-frame {
+  pointer-events: none;
+  border: var(--crop-edp-line, 1px) solid color-mix(in srgb, var(--foreground) 20%, transparent);
+  background: color-mix(in srgb, var(--foreground) 1.8%, transparent);
+  border-radius: var(--radius-md);
+}
+
+.crop-edp-frame.is-selected {
+  border-color: color-mix(in srgb, var(--primary) 72%, transparent);
+  background: color-mix(in srgb, var(--primary) 3.5%, transparent);
+}
+
+/* 画布上的每一类对象都是绝对定位的方块，坐标由 js 按世界坐标写 */
+.crop-node {
+  position: absolute;
+  box-sizing: border-box;
+  font-family: var(--font-sans);
+  user-select: none;
+}
+
+/* ══ 两条量尺（顶部 PP | Layer，左侧 EDP | DP）═══════════════════════════════
+   它们贴在画布边上、盖在世界之上，内容由 js 按**屏幕坐标**铺 —— 不进 transform，
+   所以字号始终一样大、刻度始终贴边，缩放时变的只有刻度的疏密（js 的 niceStep）。
+   这就是「动态量尺」与「把标签画进世界里」的区别：后者一缩小就跟着糊掉，
+   而量尺的职责恰恰是在看不清内容时也要答得出「这是哪一段、第几个副本」。 */
+.crop-ruler {
+  position: absolute;
+  box-sizing: border-box;
+  overflow: hidden;
+  z-index: var(--z-raised);
+  background: transparent;
+  /* 顶尺与左尺都作为完整的量尺框出现，不再只画朝向画布内容的内侧边。 */
+  border: 1px solid var(--border-default);
+  pointer-events: none;             /* 只有刻度本身可点，底板不挡画布 */
+}
+
+.crop-ruler--top {
+  top: 0;
+  right: 0;
+  /* ⚠️ 真值由 js 每帧写内联（renderRulers 里 rulerTop.style.height = RULER_TOP_H）。
+     这里只是脚本没跑起来时的兜底 —— 原先写死 46 且没人同步，RULER_TOP_H 加高到
+     60 之后盒子还是 46，刻度里第二行（MoE / Dense）就被这条 overflow:hidden 裁掉了。
+     两个数各写各的迟早会再错开一次，所以改由 js 单点驱动。 */
+  height: 60px;
+}
+
+/* 两级量尺不仅要有外框，两层之间也要有一条连续分界；不能只给每个 PP 格描底边，
+   否则 stage 间隙与平移后露出的空段会断线。 */
+.crop-ruler--top::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 21px;
+  height: 1px;
+  background: var(--border-default);
+  pointer-events: none;
+}
+
+.crop-ruler--left {
+  left: 0;
+  bottom: 0;
+}
+
+
+.crop-ruler--left.is-two-level::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--crop-edp-divider, 42px) - 1px);
+  width: 1px;
+  background: var(--border-default);
+  pointer-events: none;
+}
+
+/* 两条尺交汇的那个角：写纵轴的口径（EDP | DP 还是 DP） */
+.crop-ruler__corner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border-right: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
+  font-size: var(--font-size-label-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--foreground-secondary);
+  letter-spacing: var(--letter-spacing-label);
+  white-space: nowrap;
+}
+
+/* 极小缩放档在顶尺第二层增加一个公共 Layer 轴名。它与 Emb 使用同一个量尺坐标
+   系，右缘由 JS 固定在 Emb 左缘之前 24px；后面的层刻度因此只需写 0 / 1 / 2…。 */
+.crop-ruler__layer-axis {
+  position: absolute;
+  top: 22px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-label-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--foreground-secondary);
+  letter-spacing: var(--letter-spacing-label);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* 一枚刻度。四种（PP / 列 / EDP / DP）只差在字号、对齐与分隔线的方向。 */
+.crop-tick {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-label-xs);
+  line-height: 1;
+  color: var(--foreground-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: auto;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* 顶部第一层：PP stage。与左侧那条 EDP 带（.crop-tick--edp）同一副长相 ——
+   两者是同一件事的横竖两版（「这一段是谁」），不该一个圆角一个直角。
+   原先右端还切成箭头，想读出「流水线往下一段流」；块与块的先后由横轴本身就给得
+   出来，而那个角吃掉右端 12px、把靠边的 stage 名截掉。 */
+.crop-tick--pp {
+  justify-content: center;
+  padding: 0 var(--space-3);
+  background: transparent;
+  color: var(--foreground-secondary);
+  font-weight: var(--font-weight-medium);
+  letter-spacing: var(--letter-spacing-label);
+  border-radius: 0;
+  border-left: 1px solid var(--border-subtle);
+}
+
+.crop-tick--pp:hover { background: transparent; color: var(--foreground); }
+.crop-tick--pp.is-related { background: transparent; color: var(--foreground); }
+.crop-tick--pp.is-selected {
+  background: transparent;
+  color: var(--primary);
+  box-shadow: inset 0 -2px 0 var(--primary);
+}
+
+/* 顶部第二层：列名。左边一道竖线是刻度线本身 —— 它对齐的就是那一列的左缘。
+   ── 两行：层号一行、FFN 类型一行 ──────────────────────────────────────────
+   列宽只有几十像素，"Layer45 · Dense" 挤成一行时被截掉的恰好是后半截那个
+   Dense/MoE —— 而那正是这一列最该先读到的一件事。拆成两行之后，每一行都只要
+   较短的那点宽度，列宽也跟着按较长的那一行留（js 里的 nameW）。
+   两行**互相居中**而不是各自左对齐：左对齐时「Layer12」与「MoE」的右端参差不齐，
+   一排刻度扫过去像是没对准；居中之后每一列读起来是一枚完整的标牌。
+   （左缘那道竖线仍然是刻度线本身，标的还是这一列的左缘，与字怎么排无关。） */
+.crop-tick--col {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding-inline: 3px;
+  border-left: 1px solid var(--border-subtle);
+}
+
+.crop-tick__name,
+.crop-tick__ffn {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 缩小后的连续层号档：Dense / MoE 让位，只保留 L0、L1、L2……且不再隔层抽样。
+   JS 按当前列宽给层号做水平压缩；span 自身保持正常字号和完整文本，压缩后的视觉宽
+   才落进对应列里，避免浏览器先把它裁成 “L…” 再缩。 */
+.crop-tick--col.is-compact {
+  flex-direction: row;
+  gap: 0;
+  padding-inline: 0;
+}
+
+.crop-tick--col.is-compact .crop-tick__name {
+  flex: 0 0 auto;
+  width: var(--crop-layer-label-w);
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  text-align: center;
+  transform: scaleX(var(--crop-layer-label-scale));
+  transform-origin: center;
+}
+
+.crop-tick--col.is-compact .crop-tick__ffn { display: none; }
+
+/* 第二行比层号轻一档：它是这一列的属性，不是它的名字 */
+.crop-tick__ffn {
+  font-size: 9px;
+  color: var(--foreground-muted);
+  letter-spacing: var(--letter-spacing-label);
+}
+
+/* 高亮时两行一起走（否则蓝的层号配一行灰的 MoE，读成半个选中） */
+.crop-tick--col.is-related .crop-tick__ffn,
+.crop-tick--col.is-selected .crop-tick__ffn,
+.crop-tick--col:hover .crop-tick__ffn { color: inherit; }
+
+/* 高亮只动**字**与底色，那道竖线一律留在 --border-subtle：它是刻度线，标的是
+   「这一列的左缘在这儿」—— 一根跟着选择变蓝的刻度线会被读成「这条界线也被选中
+   了」，而界线本身没有被选中这回事。相邻两列同时命中时，两根蓝线还会把中间那
+   一列夹成一个假的选中块。 */
+.crop-tick--col:hover { color: var(--foreground); background: var(--state-hover); }
+.crop-tick--col.is-related { color: var(--ark-blue-500); }
+.crop-tick--col.is-selected {
+  color: var(--ark-blue-500);
+  font-weight: var(--font-weight-semibold);
+  background: color-mix(in srgb, var(--ark-blue-500) 14%, transparent);
+}
+
+/* 通信行程正扫到的那一列。比选中态更响一档（实底 + 主色字），因为它答的是
+   「现在演到模型的哪儿了」—— 一个每秒都在变的位置，读者的眼睛要能被它拉过去。
+   放在 is-related / is-selected 之后，覆盖它们。 */
+.crop-tick--col.is-flowing {
+  color: var(--primary);
+  font-weight: var(--font-weight-semibold);
+  background: color-mix(in srgb, var(--primary) 22%, transparent);
+  box-shadow: inset 0 -2px 0 var(--primary);
+}
+
+.crop-tick--col.is-flowing .crop-tick__ffn { color: inherit; }
+
+/* Emb / Norm / Head 不是层：斜体区分开，免得被读成「第 Emb 层」 */
+.crop-tick--col[data-kind="unit"] {
+  font-style: italic;
+  color: var(--foreground-secondary);
+}
+
+/* 左侧第一层：EDP 副本 */
+.crop-tick--edp {
+  flex-direction: column;
+  justify-content: center;
+  background: transparent;
+  color: var(--foreground-secondary);
+  font-weight: var(--font-weight-medium);
+  border-top: 1px solid var(--border-subtle);
+  cursor: default;
+}
+/* 原先这里有 .crop-tick--edp .crop-tick__sub —— 副本带下那行小字「≡ EDP 0」的样式。
+   那行小字已删（见 config-relation-plane.js 建 band 处的说明：同色与 DP_GAP 那道缝
+   已经在说这件事，量尺上只留副本号），故样式一并去掉，不留没人用的规则。
+   上面 .crop-tick--edp 的 flex-direction:column 保留：只剩一行时它与 center 配合
+   仍是居中，且量尺换成两层读法时还要靠它。 */
+
+/* 左侧第二层：这个副本里的 DP 号 */
+.crop-tick--dp {
+  justify-content: flex-end;
+  padding-right: 5px;
+  border-top: 1px solid var(--border-subtle);
+  cursor: default;
+}
+
+/* ── rank 行标（每个 stage 块各标一次：同一行在不同 stage 上是不同的 rank）── */
+/* 字号由 js 按缩放写成内联（世界单位 10/k，保证屏幕上恒 ≥10px），这里的值只是
+   没有内联时的兜底；line-height:1 是必须的 —— 字号会涨到接近行高，默认行距会把
+   基线顶出格子。 */
+/* 整机档下是**两行**：整机号一行、它含的那段 rank 一行，右端对齐叠在一起。
+   原先第二行是压在整机行顶上、横贯整个 stage 块的一条标签带（.crop-nodecap，
+   已删）—— 它与左边这个行标说的是同一件事，同屏出现两次纯属重复，而且每 8 行
+   来一条横贯的字，把「一整套专家」那层颜色压在下面。 */
+.crop-rowlabel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  /* 右内衬用 em 而不是 --space-2：字号由 js 按缩放写在这个元素上（世界字号
+     ∝ 1/k），固定像素的内衬会被 scale 一起缩掉 —— 缩小时字就贴死在块的左缘，
+     而 LANE_SLACK 那份余量因为右对齐全堆到了文字左边，一边贴死一边空一大片。
+     跟着 em 走，左右两侧在屏幕上都是恒定的一小条。 */
+  padding-right: 0.5em;
+  line-height: 1;
+  font-size: var(--font-size-label-xs);
+  color: var(--foreground-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* 第二行轻一档、小一点：它是整机号的补充说明，不是又一个名字。
+   0.82em 而不是写死像素 —— 字号由 js 按缩放写在父元素上，跟着它走才不会脱节。 */
+.crop-rowlabel__sub {
+  font-size: 0.82em;
+  opacity: 0.72;
+}
+
+.crop-rowlabel:hover { color: var(--foreground); }
+.crop-rowlabel.is-related { color: var(--ark-blue-500); }
+.crop-rowlabel.is-selected { color: var(--ark-blue-500); font-weight: var(--font-weight-semibold); }
+
+/* ── TP 分组槽 ────────────────────────────────────────────────────────────
+   连续 peers 用带端帽的括号，不连续 peers（MindFormers + CP）逐行标 Tn。
+   线宽与端帽由 JS 按缩放倒数写成世界单位；字号直接复用当帧 rank 行标的度量，
+   因而缩放、行高变化时两者始终同大。 */
+.crop-tp-bracket,
+.crop-tp-marker {
+  z-index: 3;
+  box-sizing: border-box;
+  color: var(--foreground-muted);
+  border-left: var(--crop-tp-line, 1px) solid currentColor;
+  pointer-events: auto;
+  cursor: help;
+}
+
+.crop-tp-bracket::before,
+.crop-tp-bracket::after,
+.crop-tp-marker::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: var(--crop-tp-cap, 6px);
+  border-top: var(--crop-tp-line, 1px) solid currentColor;
+}
+
+.crop-tp-bracket::before { top: 0; }
+.crop-tp-bracket::after { bottom: 0; }
+.crop-tp-marker::after { top: 50%; }
+
+.crop-tp-bracket__label,
+.crop-tp-marker {
+  font-family: var(--font-mono);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+}
+
+.crop-tp-bracket__label {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--crop-tp-cap, 6px) + 0.35em);
+  padding-block: 0.18em;
+  background: var(--surface-1);
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+
+.crop-tp-marker {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: calc(var(--crop-tp-cap, 6px) + 0.4em);
+  white-space: nowrap;
+}
+
+.crop-tp-bracket:hover,
+.crop-tp-marker:hover,
+.crop-tp-bracket.is-tp-peer,
+.crop-tp-marker.is-tp-peer,
+.crop-tp-bracket.is-selected,
+.crop-tp-marker.is-selected {
+  color: var(--primary);
+}
+
+.crop-tp-bracket.is-selected,
+.crop-tp-marker.is-selected { font-weight: var(--font-weight-semibold); }
+
+/* 悬浮分组时让真实 peers 横向浮出，但不覆盖热力色、专家着色或既有选择描边。 */
+.crop-rowlabel.is-tp-peer {
+  color: var(--primary);
+  font-weight: var(--font-weight-semibold);
+  opacity: 1 !important;
+}
+
+.crop-cell.is-tp-peer {
+  filter: brightness(1.28) saturate(1.08);
+  opacity: 1 !important;
+}
+
+/* ── stage 块底板：一段 PP 的 layer × rank 全在这一块里 ──
+   不垫底色：格子自己已经把这一块的范围铺满，再垫一层灰只是在每个格子后面多一道
+   整列的底纹，PP 分段的边界由顶尺的 stage 刻度与块间留白给出。元素仍保留 ——
+   它是 renderTpGroups / 高亮带的定位参照，只是不着色。 */
+.crop-block {
+  background: transparent;
+  border-radius: var(--radius-sm);
+}
+
+/* ── 「一套完整专家」的着色 ──────────────────────────────────────────────────
+   着色的单位是**一套完整专家** = 一个 MoE 层 × 一个 DP/EDP 副本：那一块矩形里的
+   卡各持一片，合起来正好是 routedExpert 个专家的一整套。整块一个颜色，读的人因此
+   一眼看得出「这一片就是一整套」。
+   js 那边取 **层号 % 4**：颜色说的是「哪一个逻辑层」，左右相邻换层就换色。
+   副本号**不参与** —— 上下两个 EDP 持有逻辑相同、物理独立的权重副本；副本边界
+   由贯穿全部 PP Stage 的外框、组间距、左量尺和斜纹共同表达。
+   ⚠️ 这**不是** EP 的颜色：EP 是同一套内部的分片，同一套里的每张卡同色、编号不同，
+   那才是「一整套被切开」该有的读法。EP 归属去看格子里的编号与悬浮提示。
+   色值取 training-run-twin.css 里 .ep-tint-N 那套的前四色，不另造一套色板。
+   ⚠️ 下面这五行是**留痕**：真值在 ../../shared/plane-rules.js 的 SET_COLORS /
+   SET_NEUTRAL（与 rank-intro 共用一份），由 config-relation-plane.js 在挂载时写成
+   board 的行内变量盖过这里。要改颜色请改那一处，两页同时生效；这里保持同值，
+   为的是脚本没跑起来时样式仍兜得住。 */
+.cro-board.is-plane {
+  --crop-set-0: #3B82F6;
+  --crop-set-1: #F59E0B;
+  --crop-set-2: #10B981;
+  --crop-set-3: #8B5CF6;
+  /* Match rank-intro step 10 exactly. Do not derive these from --foreground:
+     that token already carries alpha, so color-mix would make both values dimmer. */
+  --crop-cell-fill: rgb(255 255 255 / 0.07);
+  --crop-cell-stroke: rgb(255 255 255 / 0.34);
+  --crop-cell-micro: rgb(255 255 255 / 0.14);
+  /* 着色**关掉**时专家胶囊退到的那一色。必须是真中性的灰蓝 —— 原先退到
+     --pto-model-deck-moe（#EA580C，橙红）：那是「MoE」的语义色，关掉着色之后
+     满屏橙红读起来像一片告警，而这一档的本意恰恰是「不表达任何分组」。 */
+  --crop-set-neutral: #64748B;
+
+  /* 链路三档（机内 HCCS / 机内+机间 / 机间 RDMA）的颜色。
+     ⚠️ 必须**避开上面那四色**：连线与图例是画在专家色块上面的，用同一批色相就成了
+     「蓝线压在蓝格子上」—— 两套图例说的是完全不同的两件事（一套是"属于哪一套专
+     家"，一套是"这条通信出不出机器"），撞色等于把它们读成同一件事。
+     四色占了蓝 / 琥珀 / 绿 / 紫，这里取剩下的三段：青 → 品红 → 绯红，同时也是一
+     条「越往右越贵」的成本坡（机内几乎不要钱，机间要走 RDMA）。 */
+  --crop-link-local: #06B6D4;
+  --crop-link-mixed: #D946EF;
+  --crop-link-inter: #E11D48;
+}
+
+:root[data-theme="light"] .cro-board.is-plane {
+  --crop-cell-fill: rgb(255 255 255 / 0.62);
+  --crop-cell-stroke: rgb(19 26 42 / 0.34);
+  --crop-cell-micro: rgb(19 26 42 / 0.14);
+}
+
+/* ── 交叉格：一张卡（或一台整机）在某一层上的那一份 ── */
+.crop-cell {
+  display: flex;
+  align-items: center;
+  align-content: center;
+  justify-content: center;
+  flex-wrap: wrap;               /* 专家胶囊一行放不下就折行，行高由 js 一并算进 cellH */
+  gap: 3px;                      /* 与 js 的 EXPERT_GAP 同值，列宽/行高都按它算 */
+  padding: 0 2px;
+  /* 静息底色是中性的。「一整套专家」的颜色默认落在**标签**上（见 .crop-expert）——
+     编号与颜色本来就是同一件事的两半，分开摆等于让底色去和选中高亮抢面积。 */
+  /* 对齐 Rank 入门第 10 步 Canvas 的 --tile 与 .34 前景描边。 */
+  background: var(--crop-cell-fill);
+  border: var(--crop-cell-line, 1px) solid var(--crop-cell-stroke);
+  border-radius: 0;
+  font-size: 9px;
+  line-height: 1;
+  color: var(--foreground-muted);
+  cursor: pointer;
+  overflow: hidden;
+  /* 一屏能有几千个格子、每个还带几枚胶囊。containment 把每一格的排版与绘制
+     圈在自己盒子里：格子内部一动，引擎不必再去问外面要不要跟着重排。
+     三项都安全 —— 格子是绝对定位、尺寸由内联样式写死（layout），内容本来就
+     overflow:hidden（paint），里面没有计数器 / quotes（style）。 */
+  contain: layout style paint;
+}
+
+/* ── dense 层的格子 ────────────────────────────────────────────────────────
+   它与 MoE 格的区别是「里面什么都没有」：MoE 格要么摆着专家编号、要么整格上着
+   那一套的颜色，dense 格两样都没有。所以差别用**底色的浓淡**说 —— 比基色再淡
+   一档，读成一格空位。
+   原先这里画的是 45° 斜纹（repeating-linear-gradient）。一屏几千个格子、每个都
+   要合成一遍渐变，是这幅图上最贵的一笔纯装饰开销；换成一个纯色，绘制几乎不要钱，
+   而「这一格是空的」这件事一点没少说。
+   填充与普通格共用 rank-intro 第 10 步的 tile 色；区别由格内内容表达。 */
+.crop-cell[data-ffn="dense"] {
+  background: var(--crop-cell-fill);
+}
+
+/* Canvas 参考实现缩到格子任一边不足 4px 时不再画 1px 轮廓，改成 .14 的实体点。
+   DOM 版同样切档，避免极小缩放时边框吃掉整格。 */
+.crop-cell[data-micro="1"] {
+  border-width: 0;
+}
+
+.crop-cell[data-micro="1"]:not(.is-related):not(.is-cross):not(.is-selected):not([data-heat="1"]):not([data-paint="bg"]) {
+  background: var(--crop-cell-micro);
+}
+
+.crop-cell.is-memory[data-micro="1"] .crop-memory-stack { inset: 0; }
+
+/* （这里曾有两条规则把「铺满整格的那一行专家胶囊」限宽居中、并让每枚等宽。
+   胶囊现在缩进了详情面板的 Expert Compute 盒子里，按设计像素排 grid，两条规则
+   都没有对象了，与它们配套的 --crop-chip-w / --crop-chips-w 也一并撤掉。
+   列宽仍由那一行胶囊的实测宽度定 —— 格子的世界尺寸这一版没有动。） */
+
+/* 标签画不出来（缩得太小、或整机档一行代表 8 张卡）时，颜色退回到格子底上 ——
+   那时它是唯一还能表达「这一片属于哪一套专家」的东西。由 js 写 data-paint。 */
+.crop-cell[data-paint="bg"] {
+  background: color-mix(in srgb, var(--crop-set, var(--foreground)) 42%, transparent);
+}
+
+/* 专家着色只负责静息态。进入行 / 列 / 交叉高亮后，和第 10 步一样改由蓝色关系态接管。 */
+/* EDP 1 起的副本：同色 + 45° 斜纹（由 js 写 data-replica）。色相说「哪一份权重」，
+   斜纹说「这是它的一个副本」——块界留住，身份不改口。三档各接一条：整格底、
+   MoE 带、编号胶囊。只写 background-image 长手，颜色仍由上面各档的 background 给；
+   放在 :hover 那条之后，同特异度靠后者赢，悬浮时条纹不掉。 */
+/* 条纹用**前景色**而不是同一个专家色：同色只差一档透明度，叠在 42% 的底上几乎看
+   不出来。前景随主题反转（暗色下是浅纹、亮色下是深纹），在四种专家色上都有对比。
+   整格底那一档画在随画布缩放的 world 里，条纹宽度乘 --crop-stripe-unit（= 1/k，
+   applyTransform 每帧写）抵消缩放，屏幕上恒为 3px 纹 / 9px 周期；MoE 带与编号
+   胶囊住在按设计像素排的面板里，直接写屏幕像素。 */
+.crop-cell[data-replica="1"][data-paint="bg"] {
+  background-image: repeating-linear-gradient(45deg,
+    color-mix(in srgb, var(--foreground) 30%, transparent) 0 calc(3px * var(--crop-stripe-unit, 1)),
+    transparent calc(3px * var(--crop-stripe-unit, 1)) calc(9px * var(--crop-stripe-unit, 1)));
+}
+
+/* Step 10 paints relationship states instead of the normal tile, so neither the
+   expert replica stripe nor the normal stroke remains on a highlighted cell. */
+.crop-cell[data-replica="1"][data-paint="bg"]:is(.is-related, .is-cross, .is-selected) {
+  background-image: none;
+}
+
+.crop-cell[data-replica="1"] .crop-seg[data-seg="moe"],
+.crop-cell[data-replica="1"] .crop-expert {
+  background-image: repeating-linear-gradient(45deg,
+    color-mix(in srgb, var(--foreground) 30%, transparent) 0 2.5px,
+    transparent 2.5px 7px);
+}
+
+/* 关系集里的格子：行相关（这张卡） / 列相关（这一层） / 交叉（两者都在）。
+   三档不是同一个亮度 —— 「交叉」才是这一版视图想让人一眼看到的东西。 */
+.crop-cell.is-related {
+  background: color-mix(in srgb, var(--ark-blue-500) 22%, transparent);
+  border-color: transparent;
+  color: var(--foreground-secondary);
+}
+
+/* 第 10 步的行、列相关态不是同一档：Rank 行 16%，Layer 列 22%。 */
+.crop-cell.is-related.is-row-related {
+  background: color-mix(in srgb, var(--ark-blue-500) 16%, transparent);
+}
+
+.crop-cell.is-related.is-col-related {
+  background: color-mix(in srgb, var(--ark-blue-500) 22%, transparent);
+}
+
+.crop-cell.is-cross {
+  background: color-mix(in srgb, var(--ark-blue-500) 62%, transparent);
+  border-color: transparent;
+  color: var(--foreground);
+}
+
+.crop-cell.is-selected {
+  background: color-mix(in srgb, var(--ark-blue-500) 62%, transparent);
+  border-color: transparent;
+  color: var(--foreground);
+}
+
+/* 有选择时把关系之外的格子压暗，与原版 .cro-board.is-focused 的处理同源 */
+.cro-board.is-plane.is-focused .crop-cell:not(.is-related):not(.is-cross):not(.is-selected) { opacity: 0.32; }
+.cro-board.is-plane.is-focused .crop-tick--col:not(.is-related):not(.is-selected):not(.is-flowing),
+.cro-board.is-plane.is-focused .crop-rowlabel:not(.is-related):not(.is-selected) { opacity: 0.4; }
+
+/* TP 括号和 TP 名是 Rank 行标的组关系补充，不是独立的常亮图层。选中一张
+   Rank 后，非相关组与非相关 Rank 名同步降到 40%；选中组与正在悬浮的
+   peers 保持全亮。 */
+.cro-board.is-plane.is-focused .crop-tp-bracket:not(.is-selected):not(.is-tp-peer),
+.cro-board.is-plane.is-focused .crop-tp-marker:not(.is-selected):not(.is-tp-peer) {
+  opacity: 0.4;
+}
+
+/* ── 热力档的格子 ─────────────────────────────────────────────────────────
+   颜色由 js 逐格算好写进 --crop-heat（冷蓝 → 火红，见 HEAT_RAMP）。
+   ⚠️ 必须让开 is-selected / is-cross：那两档是「你正在看的东西」，任何时候都压过
+   底色，否则在一片火红里根本找不到自己刚点的那张卡。is-related 不让 —— 行/列相关
+   的格子太多，让了等于半幅图的热力被抹掉，那一档的相关性由行列高亮带去表达。
+   格子之间留一道极细的暗线（inset 描边）：满屏纯色块相邻时边界会互相溢出，
+   看着像一片渐变而不是一格一格的读数。 */
+.crop-cell[data-heat="1"]:not(.is-selected):not(.is-cross) {
+  background: var(--crop-heat, transparent);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.18);
+  color: var(--foreground);
+}
+
+.crop-cell[data-heat="1"]:not(.is-selected):not(.is-cross):hover {
+  background: var(--crop-heat, transparent);
+  box-shadow: inset 0 0 0 1px var(--foreground);
+}
+
+/* 热力档点中的单格保留热力底色，描边与运行观测里的主角格完全同规格：2px 白线
+   压在 5px 深色光晕上。两层都向内画，不改变格子尺寸。整行 / 整列选择仍由下面
+   通用的 crop-band--selected 覆盖层一次成框，不再逐格描边。 */
+.cro-board.is-plane[data-mode="heat"] .crop-cell.is-heat-selected {
+  box-shadow:
+    inset 0 0 0 var(--crop-cell-focus-line, 2px) #fff,
+    inset 0 0 0 var(--crop-cell-focus-halo, 5px) rgba(0, 0, 0, 0.38);
+}
+
+
+/* 降级档的色带：格子画不出来时代替它们铺出这片颜色（见 render 里那段 heatOn &&
+   !drawCells）。它不可点、也不带描边 —— 一带代表一撮卡，描边会把「这是一格」的
+   假象画出来。 */
+.crop-heattile {
+  background: var(--crop-heat, transparent);
+  pointer-events: none;
+}
+
+/* 有选择时压暗无关格子那条（.is-focused）对热力同样成立：它压的是 opacity，
+   与底色无关，不必另写。 */
+
+/* 行/列的整条高亮：画在格子底下的一条带，让「这一行是选中的 rank」在
+   缩得很小、格子只有几像素时也读得出来。 */
+.crop-band {
+  background: color-mix(in srgb, var(--ark-blue-500) 12%, transparent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* 三个页签共用的整行 / 整列选中框。覆盖层压在格子上方，一条 band 只画一次边，
+   因而内部格线不会变白；量尺仍沿用各自的蓝色 is-selected 样式。 */
+.crop-band--selected {
+  z-index: 2;
+  background: color-mix(in srgb, var(--ark-blue-500) 12%, transparent);
+  box-shadow: inset 0 0 0 var(--crop-selected-line, 1.5px) var(--primary);
+}
+
+/* 内存观测：一格就是一张 Rank 卡，段高相对物理 HBM 容量自底向上堆叠。
+   色值直接复用右栏单卡容量的语义变量，主题与口径保持一致。 */
+.crop-cell.is-memory {
+  position: absolute;
+  padding: 0;
+}
+
+.crop-memory-stack {
+  position: absolute;
+  inset: var(--crop-cell-line, 1px);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.crop-memory-segment {
+  position: absolute;
+  inset-inline: 0;
+  min-height: 0;
+}
+
+.crop-memory-segment[data-seg="base"] { background: var(--cro-cap-base, #55606A); opacity: .72; }
+.crop-memory-segment[data-seg="weight"] { background: var(--cro-cap-weight, var(--pto-model-deck-parameter)); }
+.crop-memory-segment[data-seg="grad"] { background: var(--cro-cap-grad, var(--pto-model-deck-comm)); }
+.crop-memory-segment[data-seg="optim"] { background: var(--cro-cap-optim, var(--pto-model-deck-head)); }
+.crop-memory-segment[data-seg="act"] { background: var(--cro-cap-act, var(--pto-model-deck-embedding)); }
+.crop-memory-segment[data-seg="reserve"] { background: var(--cro-cap-reserve, #8A98A2); opacity: .62; }
+
+/* 100% 以下只看 HBM 总占用：不再生成分段 DOM，整格直接用“负载热力”
+   的 --crop-heat 填充。这条刻意包含 selected / cross，使热力底色不被蓝色选中态
+   整片擦掉；关系语义由下面现有的 ::after 蓝色蒙层表达。 */
+.crop-cell.is-memory[data-memory-heat="1"] {
+  background: var(--crop-heat, transparent);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.18);
+  color: var(--foreground);
+}
+
+.crop-cell.is-memory[data-memory-heat="1"]:hover {
+  background: var(--crop-heat, transparent);
+  box-shadow: inset 0 0 0 1px var(--foreground);
+}
+
+.crop-cell.is-memory::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.crop-cell.is-memory.is-related.is-row-related::after {
+  background: color-mix(in srgb, var(--ark-blue-500) 10%, transparent);
+}
+
+.crop-cell.is-memory.is-related.is-col-related::after {
+  background: color-mix(in srgb, var(--ark-blue-500) 16%, transparent);
+}
+
+.crop-cell.is-memory:is(.is-cross, .is-selected)::after {
+  background: color-mix(in srgb, var(--ark-blue-500) 36%, transparent);
+}
+
+/* ── 格内专家胶囊 ──────────────────────────────────────────────────────────
+   尺寸不再是「能塞下就行」：列宽反过来由这枚胶囊的实测宽度决定（见 js 的
+   buildLayout / labelWidth），所以这里的 font / padding 一改，列宽会自动跟上。
+   探针 .crop-probe 与它共用这套样式，量出来的才是真值。 */
+.crop-expert {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 14px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--crop-set, var(--crop-set-neutral)) 55%, transparent);
+  color: var(--foreground);
+  font-size: 9px;
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.crop-expert.is-related {
+  background: color-mix(in srgb, var(--crop-set, var(--crop-set-neutral)) 85%, transparent);
+}
+
+/* 选中的那一枚不换色系，只加实底 + 一圈描边 —— EP 的颜色身份得留住 */
+.crop-expert.is-selected {
+  background: var(--crop-set, var(--crop-set-neutral));
+  color: #fff;
+  font-weight: var(--font-weight-semibold);
+  outline: 1px solid var(--foreground);
+  outline-offset: 1px;
+}
+
+/* （曾有一枚 .crop-expert--range 的区间胶囊「E12–E27」，用在每卡专家太多、或
+   整机行跨了几个 EP 的那一档。已删：区间不是一个可点的对象，也答不出「这一片
+   属于哪一套」，读的人还得把两个编号在脑子里减一遍。那一档现在整格交给颜色，
+   见 js 里 chipsOK 那一段。） */
+
+/* ══ 格内的中档：两段块 ══════════════════════════════════════════════════
+   Attention / MoE（dense 层写 Dense）两条横带，把一格从「一块颜色」变成「一层里的
+   两块活」。带子只有两条不是省事：这一档答的是「这一层的活分成哪几块」，答案就是
+   两块 —— 原先第一条写的 Hidden 是这一层的**入口张量**、不是一段活，与两个计算块
+   并排列在同一张清单上是把两类东西摆在一起（详见 js 的 buildBands）。
+   ⚠️ 它**只在卡粒度出现**：两段说的是「一张卡在这一层里的活」，而整机行一格是
+   span 张卡，那里没有单一答案（见 js 的 showSegs 那一闸与 currentUnit）。
+   它是整格上色与逐个算子之间的过渡档，判据见 js 的 BLOCK_MIN_H。
+   字号由 js 写在**格子**上（世界单位、随缩放反向变，屏幕上恒 9px），这里一律
+   继承，不再自设 —— 自设就等于在世界坐标里写死了一个屏幕尺寸。
+   整条不吃指针事件：一格问的仍是「这张卡 × 这一层」，带子不是独立的对象。 */
+.crop-segs {
+  position: absolute;
+  inset: 1px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  pointer-events: none;
+}
+
+.crop-seg {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  border-radius: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--foreground) 10%, transparent);
+  color: var(--foreground-secondary);
+}
+
+/* ⚠️ 两条带子里**只有 MoE 那条带颜色**，另一条一律是中性灰的深浅。
+   这幅图上颜色只说一件事：「这一片属于哪一套专家」。给 Attention 涂上蓝、给
+   Dense 涂上靛，就是在同一个画面上并排放两套互不相干的色码 —— 满屏五颜六色之后
+   「同色一块 = 一整套」这条读法先没的就是它自己。两条带子谁是谁，靠文案与位置
+   （从上到下就是数据流的次序）说，那本来就够了。
+   （原先还有一条 [data-seg="hidden"]，给最淡的一档。带子撤了，规则一并删。） */
+.crop-seg[data-seg="attn"] { background: color-mix(in srgb, var(--foreground) 15%, transparent); }
+.crop-seg[data-seg="dense"] { background: color-mix(in srgb, var(--foreground) 15%, transparent); }
+.crop-seg[data-seg="unit"] { background: color-mix(in srgb, var(--foreground) 15%, transparent); }
+
+/* MoE 这一条接 --crop-set：整格上色那一档说的「同色一块 = 一整套专家」，在这里
+   由半格的面积继续说，穿过档口时图案不断。dense 层没有专家，所以上面那条
+   走中性 —— 涂成一套专家的颜色是在说谎。 */
+.crop-seg[data-seg="moe"] {
+  background: color-mix(in srgb, var(--crop-set, var(--crop-set-neutral)) 55%, transparent);
+  color: var(--foreground);
+}
+
+/* ══ 格内的最细档：详情面板 ══════════════════════════════════════════════
+   把这张卡在这一层里真正要跑的那些算子铺出来。面板按一套**设计像素**排版
+   （--crop-d-*，由 js 写在 .crop-world 上），再由 js 算一个 scale 整体缩进格子
+   —— 格子的世界尺寸随配置差着一个数量级，让面板跟着变形不如让它整体缩放。
+   ⚠️ 面板高度是 js 的 panelH() 按同一套数算出来的，写成 inline height。这里的
+   盒模型（边框 1px + 内衬 --crop-d-pad + gap --crop-d-gap）必须与那个算式一致，
+   改一边就要改另一边。overflow:hidden 只是兜底，不是许可证。 */
+/* 最细档的格子让出自己那 2px 左右内衬：缩放比是 js 按格子的**外**宽算的
+   （detailScale 用 cellW - 2），留着内衬会让面板比内容盒宽出这一截，被
+   overflow:hidden 从两侧各削掉一点 —— 在这一档上那就是削掉半个字。 */
+.crop-cell--detail { padding: 0; }
+
+.crop-detail {
+  flex: none;
+  width: var(--crop-d-w, 132px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* 面板整体不吃指针事件：pick() 顺着 closest("[data-kind]") 往上找，点在算子上
+     就等于点在这一格上。唯一例外是专家胶囊，它本来就是可点的对象。 */
+  pointer-events: none;
+}
+
+/* 端点列（Emb / Norm / Head）没有 Attention / FFN 两段，面板就是那一两枚算子，
+   彼此之间要有缝 —— 层列那边的缝由残差条自己的外边距给。 */
+.crop-detail--unit { gap: var(--crop-d-gap, 2px); }
+
+.crop-detail__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--crop-d-gap, 2px);
+  padding: var(--crop-d-pad, 3px);
+  border: 1px solid color-mix(in srgb, var(--foreground) 26%, transparent);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+}
+
+.crop-detail__title {
+  height: var(--crop-d-title, 9px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 5.5px;
+  letter-spacing: 0.2px;
+  color: var(--foreground-secondary);
+}
+
+.crop-detail__row {
+  display: flex;
+  gap: var(--crop-d-gap, 2px);
+  height: var(--crop-d-pill, 11px);
+}
+
+/* 一枚算子。一律中性灰 —— 这幅图上颜色是专家的（见文件末尾那段说明）。算子之间
+   的区别由文案与位置说，那本来就够了：Attention 那一组里 Q / KV 两支并排、注意力
+   核独占一行，MoE 那一组从上到下就是路由的次序。 */
+.crop-op {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1px;
+  border-radius: 1.5px;
+  background: color-mix(in srgb, var(--foreground) 20%, transparent);
+  color: var(--foreground);
+  font-size: 6px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 残差那条：它不是一枚算子，是把两段接起来的一根线，所以画成一条淡描边的横条，
+   不进任何组、也不吃 op 的颜色。上下外边距就是层内两段之间的缝。 */
+.crop-detail__res {
+  height: var(--crop-d-res, 10px);
+  margin: var(--crop-d-gap, 2px) 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed color-mix(in srgb, var(--foreground) 26%, transparent);
+  border-radius: var(--radius-pill);
+  color: var(--foreground-muted);
+  font-size: 5.5px;
+  white-space: nowrap;
+}
+
+/* ── 格内的计算流动：逐枚点白边 ────────────────────────────────────────────
+   通信播放时，主角那一格内部的块按数据流次序点一遍（js 的 flowSweepAt）。三态：
+     is-flowdone  已经算过的 —— 一道淡白边，连起来读成「流到这儿了」
+     is-flow      正在算的那一枚 —— 实白 + 一点内发光
+     is-flowsrc   这一拍的通信落在哪一枚 —— 常亮的白边，连线的起点就钉在它中心
+                  （js 的 flowAnchorOf / flowInnerWorld）
+   缩到只剩一块颜色的那一档格内没有块，这三个类名一个都挂不上 —— 那一档本来就只有
+   格子中心一个落点，白框自己说完了。
+
+   ⚠️ 用 inset box-shadow，不用 border / outline：
+     · border 会改盒子尺寸，而算子面板的高度是 js 的 panelH() 按同一套设计像素算好
+       写成 inline height 的，每枚块多出 2px 就会把面板底下那条 Residual Add 截掉；
+     · outline 画在盒子外面，会被格子的 overflow 切掉，贴着格子边的那几枚只剩半圈。
+   ⚠️ 三态一律不动**背景色**：背景在这幅图上已经归专家配色与热力用了，再借去表示
+   「算到哪一步」，就是让两套编码抢同一片面积。白描边是这幅图上没被占用的那一档。 */
+.crop-op.is-flowdone,
+.crop-seg.is-flowdone,
+.crop-detail__res.is-flowdone,
+.crop-detail__experts.is-flowdone {
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.3);
+}
+
+.crop-op.is-flowsrc,
+.crop-seg.is-flowsrc,
+.crop-detail__res.is-flowsrc,
+.crop-detail__experts.is-flowsrc {
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.72);
+}
+
+/* 正在算的那一枚排在最后：它与 is-flowsrc 会同时挂在同一枚上（流动正好走到通信
+   落点的那一刻），同权重下后写的赢 —— 那一刻该读成「正在算」。 */
+.crop-op.is-flow,
+.crop-seg.is-flow,
+.crop-detail__res.is-flow,
+.crop-detail__experts.is-flow {
+  box-shadow:
+    inset 0 0 0 2px rgb(255 255 255 / 0.95),
+    inset 0 0 6px rgb(255 255 255 / 0.32);
+}
+
+/* Expert Compute：MoE 组里唯一一个「盒子」而不是「一枚算子」的环节 —— 这张卡
+   持有的那几个专家就铺在里面。列数由 js 写（与 EXPERT_COLS_MAX 同源）。 */
+.crop-detail__grid {
+  display: grid;
+  grid-template-columns: repeat(var(--crop-chip-cols, 4), 1fr);
+  gap: var(--crop-d-gap, 2px);
+}
+
+.crop-expert--mini {
+  height: var(--crop-d-chip, 8px);
+  min-width: 0;
+  padding: 0 1px;
+  border-radius: 1.5px;
+  font-size: 5.5px;
+  overflow: hidden;
+  pointer-events: auto;   /* 面板整体让开指针，唯独它是可点的对象 */
+}
+
+/* 铺不出编号那一档（每卡专家多过 EXPERT_CHIP_MAX、或整机行跨了几个 EP）：
+   盒子里给一行区间与个数。它不可点 —— 区间不是一个对象，这一条没变。 */
+.crop-detail__count {
+  grid-column: 1 / -1;
+  height: var(--crop-d-chip, 8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1.5px;
+  background: color-mix(in srgb, var(--crop-set, var(--crop-set-neutral)) 40%, transparent);
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-size: 5.5px;
+  white-space: nowrap;
+}
+
+/* （这里曾有一张 data-op → deck 语义色的对照表，给每一枚算子按类型上色。已删：
+   这幅图上颜色只说一件事 ——「这一片属于哪一套专家」。算子那一套色码（norm 蓝、
+   linear 靛、comm 青、moe 橙红…）与它毫不相干，叠在同一个画面上，读的人分不清
+   哪一片绿说的是哪件事，而先被冲掉的正是专家那一套。整张面板里唯一带颜色的东西
+   因此是 Expert Compute 盒子里那几枚编号；算子之间靠文案与位置区分。
+   deck 那边照旧按 op 上色 —— 那张图上没有专家着色，两套色码不打架。） */
+
+/* 量列宽用的隐形探针：必须挂在**未缩放**的 stage 下，量到的才是 scale=1 的像素。
+   两枚各量一样东西 —— 专家胶囊（.crop-expert 那套样式）与顶部量尺的列名。
+   列名这一枚必须与 .crop-tick--col 同字体同内衬，否则量出来的宽度对不上，
+   量尺里的「Layer45 · Dense」照样会被截掉。 */
+.crop-probe {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.crop-probe--label {
+  display: inline-flex;
+  align-items: center;
+  padding-left: 4px;
+  border-left: 1px solid transparent;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-label-xs);
+  line-height: 1;
+}
+
+/* ── 画布上的浮动控件 ── */
+.crop-tools {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-md);
+  /* 第 10 步的 pzoom 使用页面基底色；这里保持同一层级，不再抬成浮层卡片色。 */
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  backdrop-filter: var(--surface-backdrop-filter, none);
+  z-index: var(--z-raised);
+}
+
+.crop-tools__readout {
+  min-width: 44px;
+  text-align: center;
+  font-size: var(--font-size-label-xs);
+  font-family: var(--font-mono);
+  color: var(--foreground-secondary);
+}
+
+/* 粒度开关：自动 / 卡 / 整机。与缩放同处一条工具带 —— LOD 本就是缩放的一部分。
+   中间竖线把它与缩放那三枚分开：两组回答的是不同的问题（看多大 / 看多细）。 */
+/* 三档要一眼读成**一组**。原先靠一条右分隔线把它与缩放那几枚隔开 —— 分隔线只
+   说得出「这边和那边不是一回事」，说不出「这三枚是一起的」，而且它压在
+   .segmented-control 自带的那圈描边上，反而把右边那条框线换成了另一种颜色。
+   现在把那圈框线**加重**（--border-default 而不是 --border-subtle），底也压深一档：
+   工具条本身是半透明玻璃底，muted 那档几乎与它同色，框自然就看不出来了。 */
+.crop-units {
+  margin-right: var(--space-2);
+  border-color: var(--border-default);
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+}
+
+.crop-units .btn { min-width: 0; padding-inline: var(--space-2); }
+.crop-units .btn:disabled { opacity: 0.42; cursor: not-allowed; }
+
+/* TP 标注开关与专家着色同属画布叠加层开关，继续使用通用 btn.is-selected 状态。
+   前置的小括号直接对应画布中的标记，比再造一枚业务图标更容易辨认。 */
+.crop-tp-toggle::before {
+  content: "[";
+  margin-right: 4px;
+  font-family: var(--font-mono);
+  color: var(--foreground-muted);
+}
+
+.crop-tp-toggle.is-selected::before { color: var(--primary); }
+.crop-tp-toggle:disabled { opacity: 0.42; cursor: not-allowed; }
+
+/* 「专家着色」开关。开着时按钮上带一颗四色点，直接说明它管的是哪一层颜色。 */
+.crop-paint {
+  margin-right: var(--space-1);
+  padding-right: var(--space-1);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.crop-paint::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+  border-radius: 2px;
+  background: linear-gradient(135deg,
+    var(--crop-set-0) 0 25%, var(--crop-set-1) 25% 50%,
+    var(--crop-set-2) 50% 75%, var(--crop-set-3) 75% 100%);
+  opacity: 0.35;
+  transition: opacity var(--duration-fast, 120ms) var(--easing-default, ease);
+}
+
+.crop-paint.is-selected::before { opacity: 1; }
+
+/* Layer 明细 / PP Stage 聚合：与 Rank 入门第 10 步同一个开关语义。开关只属于
+   配置寻优；通信与热力必须保留逐 Layer 坐标，因此另外两档不显示。 */
+.crop-layer-toggle {
+  margin-right: var(--space-1);
+  padding-right: var(--space-2);
+  border-right: 1px solid var(--border-subtle);
+}
+
+/* 内存热力图例是 crop-tools 的独立兄弟，JS 依工具条实际几何把它放在正上方并
+   右对齐。宽度从旧版 84px 色条扩到 240px 左右，才能把 85% / 91% 这类很近的
+   读数分开标注。组合选择器的特异度高于后文通用 .crop-heat__legend，不会被它拉回 flex。 */
+.crop-heat__legend.crop-memory-legend {
+  position: absolute;
+  right: var(--space-3);
+  bottom: 52px;
+  display: block;
+  box-sizing: border-box;
+  width: min(340px, calc(100% - 2 * var(--space-3)));
+  padding: 8px 10px 7px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-sm, 0 2px 8px rgb(0 0 0 / 0.16));
+  z-index: var(--z-raised);
+  pointer-events: none;
+}
+
+.crop-heat__legend.crop-memory-legend[hidden],
+.crop-memory-legend [hidden] { display: none; }
+
+.crop-memory-legend__caption {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-label-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--foreground-secondary);
+}
+
+.crop-memory-legend__scale {
+  display: grid;
+  grid-template-columns: 30px minmax(180px, 1fr) 36px;
+  align-items: center;
+  gap: 6px;
+  padding-block: 18px 16px;
+}
+
+.crop-memory-legend__scale > .crop-heat__legend-end:first-child { text-align: right; }
+.crop-memory-legend__scale > .crop-heat__legend-end:last-child { text-align: left; }
+
+.crop-memory-legend__track {
+  --memory-min: 0%;
+  --memory-max: 100%;
+  position: relative;
+  display: block;
+  min-width: 0;
+  height: 10px;
+}
+
+/* 渐变只由这一层绘制并强制裁剪，外面的区间与标记不参与圆角采样。
+   background-color 是 0% 的深蓝兜底，即使边缘抗锯齿也不可能露出右端红色。 */
+.crop-memory-legend .crop-memory-legend__ramp {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-clip: padding-box;
+  clip-path: inset(0 round var(--radius-pill));
+}
+
+.crop-memory-legend__shade {
+  position: absolute;
+  pointer-events: none;
+}
+
+.crop-memory-legend__shade {
+  top: 1px;
+  bottom: 1px;
+  z-index: 1;
+  background: color-mix(in srgb, var(--background) 68%, transparent);
+}
+
+.crop-memory-legend__shade--lo { left: 1px; width: var(--memory-min); }
+.crop-memory-legend__shade--hi { left: var(--memory-max); right: 1px; }
+
+.crop-memory-legend__marker {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  width: 0;
+  height: 0;
+}
+
+.crop-memory-legend__marker::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: -8px;
+  width: 2px;
+  height: 16px;
+  border-radius: 1px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.42), 0 0 5px rgb(255 255 255 / 0.5);
+}
+
+.crop-memory-legend__marker-label {
+  position: absolute;
+  left: 0;
+  transform: translateX(-50%);
+  color: var(--foreground);
+  font: var(--font-weight-medium) var(--font-size-label-xs) / 1 var(--font-mono);
+  white-space: nowrap;
+}
+
+.crop-memory-legend__marker[data-edge="start"] .crop-memory-legend__marker-label {
+  transform: translateX(0);
+}
+
+.crop-memory-legend__marker[data-edge="end"] .crop-memory-legend__marker-label {
+  transform: translateX(-100%);
+}
+
+/* 范围两端共用色条上方这一行，并从各自刻线向外展开：
+   最小值的右边缘贴最小线，最大值的左边缘贴最大线。 */
+.crop-memory-legend__marker--min[data-edge] .crop-memory-legend__marker-label {
+  bottom: 11px;
+  transform: translateX(-100%);
+  text-align: right;
+}
+
+.crop-memory-legend__marker--max[data-edge] .crop-memory-legend__marker-label {
+  bottom: 11px;
+  transform: translateX(0);
+  text-align: left;
+}
+
+.crop-memory-legend__marker--rank .crop-memory-legend__marker-label { bottom: 11px; }
+
+.crop-memory-legend.is-single .crop-memory-legend__ramp { filter: saturate(0.82) brightness(0.82); }
+
+.crop-center:not([data-mode="config"]) .crop-layer-toggle { display: none; }
+
+
+/* ══ 右栏：选中对象详情 ════════════════════════════════════════════════════ */
+.cro-board.is-plane .crop-right {
+  grid-column: 3;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 var(--crop-right-w, 336px);
+  width: var(--crop-right-w, 336px);
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-1);
+  overflow: hidden;
+}
+
+.cro-board.is-plane .crop-right.is-collapsed { flex-basis: 0; width: 0; border: 0; }
+.cro-board.is-plane .crop-right.is-collapsed > * { display: none; }
+
+.crop-right__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) var(--space-2);
+}
+
+.crop-right__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--font-size-title-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.crop-right__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* 详情里由本文件自己写的那几节（整机 / 基础信息 / 规格…）。它与下面搬来的
+   单卡容量、计算节点是并列的三块，所以自己也要成一列，不能靠父级的 gap。 */
+.crop-facts { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.crop-sec { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.crop-sec__title {
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--foreground);
+}
+
+/* 一行「名 → 值」。值可以是一串胶囊（并行结构位置 / 所在层 / 持有专家），
+   也可以是一个右对齐的读数（规格那一节）。 */
+.crop-kv {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+}
+
+.crop-kv__k { flex: 0 0 auto; color: var(--foreground-muted); }
+.crop-kv__v {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  justify-content: flex-end;
+  color: var(--foreground);
+}
+
+.crop-kv__v--plain { display: block; text-align: right; font-family: var(--font-mono); }
+
+.crop-chip {
+  display: inline-flex;
+  align-items: center;
+  appearance: none;
+  font-family: inherit;
+  line-height: 1.6;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-3);
+  color: var(--foreground-secondary);
+  font-size: var(--font-size-label-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.crop-chip:hover { border-color: var(--border-strong); color: var(--foreground); }
+.crop-chip--static { cursor: default; }
+.crop-chip--more { cursor: default; color: var(--foreground-muted); background: transparent; border-style: dashed; }
+
+.crop-empty {
+  padding: var(--space-5) var(--space-2);
+  text-align: center;
+  color: var(--foreground-muted);
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+}
+
+/* ══ 静息态右栏：当前配置评估 ══════════════════════════════════════════════
+   没选东西时右栏摆的那一叠（见 config-relation-plane.js 的 renderAssessment）。
+   与选中态的 .crop-sec / .crop-kv 是并列的一套，不复用 .crop-kv：那一行的值可以
+   是一串会换行的胶囊，而这里每一行都是「名 · 一个读数 · 一枚证据标」三段定宽，
+   混用会让证据标被挤到下一行去。 ═══════════════════════════════════════════ */
+
+/* 总判定条。等级在这里**铺底**（整栏只此一处），因为它是唯一一句要在一米开外
+   也能看出颜色的话；下面各行只染读数，不铺底 —— 十几行一起铺，「偏满」会看着
+   比「越界」还吵。 */
+.crop-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--foreground) 4%, var(--surface-1)),
+    var(--surface-1)
+  );
+}
+
+.crop-verdict__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.crop-verdict__badge {
+  flex: 0 0 auto;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--foreground);
+}
+
+/* 「最紧 Stage0 · 78%」——判定的作用域，与判定同一行但明显轻一档：
+   它是那句话的凭据，不是那句话本身。 */
+.crop-verdict__scope {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label-xs);
+  color: var(--foreground-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.crop-verdict__text {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+  color: var(--foreground-secondary);
+}
+
+.crop-verdict[data-level="tight"] {
+  border-color: color-mix(in srgb, var(--warning) 28%, transparent);
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--warning) 16%, var(--surface-1)),
+    color-mix(in srgb, var(--warning) 5%, var(--surface-1))
+  );
+}
+.crop-verdict[data-level="tight"] .crop-verdict__badge { color: var(--warning); }
+.crop-verdict[data-level="alert"],
+.crop-verdict[data-level="over"] {
+  border-color: color-mix(in srgb, var(--danger) 28%, transparent);
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--danger) 16%, var(--surface-1)),
+    color-mix(in srgb, var(--danger) 5%, var(--surface-1))
+  );
+}
+.crop-verdict[data-level="over"] {
+  border-color: color-mix(in srgb, var(--danger) 38%, transparent);
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--danger) 22%, var(--surface-1)),
+    color-mix(in srgb, var(--danger) 7%, var(--surface-1))
+  );
+}
+.crop-verdict[data-level="alert"] .crop-verdict__badge,
+.crop-verdict[data-level="over"] .crop-verdict__badge { color: var(--danger); }
+
+/* ── 一层评估（L-A ~ L-D）───────────────────────────────────────────────── */
+.crop-grade__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+/* 层号做成定宽的小标签而不是正文的一部分：四个标签在一栏里纵向对齐，
+   扫下来就能看出「这是四层判据」，而不是四个碰巧同名的小节。 */
+.crop-grade__tag {
+  flex: 0 0 auto;
+  min-width: 30px;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  color: var(--foreground-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  text-align: center;
+}
+
+.crop-grade__name { flex: 1; min-width: 0; }
+
+.crop-grade__note {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-label-xs);
+  line-height: var(--line-height-body);
+  color: var(--foreground-muted);
+}
+
+/* ── 一行指标 ──────────────────────────────────────────────────────────── */
+.crop-metric {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: 3px 0;
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+}
+
+/* 分隔线走相邻兄弟而不是 :first-of-type —— 小节的第一个子元素是标题 div，
+   :first-of-type 会落在它身上，第一行指标反而留着一条多余的顶线。
+   相邻式还顺带处理了软告警：告警之后的那一行不再重复描线。 */
+.crop-metric + .crop-metric { border-top: 1px solid var(--border-subtle); }
+
+.crop-metric__k {
+  flex: 0 1 auto;
+  min-width: 0;
+  color: var(--foreground-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.crop-metric__v {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: right;
+  font-family: var(--font-mono);
+  color: var(--foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 证据标（公式 / 估算 / 未建模）。刻意做得比读数还小、还灰 —— 它不是要被读的，
+   是要在有人问「这个数哪来的」时**已经在那儿**。悬浮才给全文。 */
+.crop-metric__ev {
+  flex: 0 0 auto;
+  padding: 0 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--foreground-muted);
+  font-size: 9px;
+  line-height: 1.6;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.crop-metric[data-level="tight"] .crop-metric__v { color: var(--warning); }
+.crop-metric[data-level="alert"] .crop-metric__v,
+.crop-metric[data-level="over"]  .crop-metric__v { color: var(--danger); }
+.crop-metric[data-level="none"]  .crop-metric__v { color: var(--foreground-muted); }
+
+/* 软告警逐条。用左侧竖线而不是整块铺底：它们是「不拦截」的那一类，
+   铺底会让它们看着和 OOM 一样重。 */
+.crop-warn {
+  margin: 0;
+  padding: var(--space-1) 0 var(--space-1) var(--space-2);
+  border-left: 2px solid var(--warning);
+  font-size: var(--font-size-label-xs);
+  line-height: var(--line-height-body);
+  color: var(--foreground-secondary);
+}
+
+/* 单卡容量与典型 Layer 是原版就有的两块，整块搬进右栏 —— 节点没换、id 没换，
+   config-relation-capacity.js 与 renderStructure 都还是照原样往里写。 */
+.cro-board.is-plane .crop-right .cro-capacity {
+  height: auto;
+  min-height: 0;
+  width: auto;
+}
+
+/* 「典型 Layer」= 右栏的「计算节点」。display 要显式写回来：整网列那三档里的
+   .cro-board.is-view-net .cro-section--structure { display:none } 是两个类，
+   本文件这条是三个类，压得过它 —— js 里那次「拨到两者并看」是第一道保险，
+   这条是第二道（万一档位被别处改回去）。 */
+.cro-board.is-plane .crop-right .cro-section--structure {
+  display: flex;
+  min-height: 0;
+}
+
+/* 典型 Layer 在 336px 里放不下五列，让它自己横向滚，不压缩每一列的可读性 */
+.cro-board.is-plane .crop-right .cro-structure {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* 有选择时只留相关的那几列：一次选择通常只压住一两列，无关的三四列留在 336px
+   里只会把每一列都挤到读不出算子名 —— 那正是「只留相关的」要治的。
+   is-related / is-selected 是主脚本 applyRelation 铺的，这里只管显隐。
+   列宽是 renderStructure 写在容器 grid-template-columns 上的固定轨道，
+   隐掉几列会留下空轨道，所以容器一并改成按内容排的 flex。 */
+.cro-board.is-plane.is-focused .crop-right .cro-structure {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.cro-board.is-plane.is-focused .crop-right .cro-structure__col:not(.is-related):not(.is-selected) {
+  display: none;
+}
+
+.cro-board.is-plane.is-focused .crop-right .cro-structure__col {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* ══ 顶栏：本页多一枚「平面视图」标记，好在两页之间认得出自己在哪 ══════════ */
+.crop-page-tag {
+  margin-left: var(--space-2);
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  font-size: var(--font-size-label-xs);
+  color: var(--foreground-muted);
+}
+
+/* ══ 窄屏兜底：右栏先让位，再让左栏 ═══════════════════════════════════════ */
+@media (max-width: 1280px) {
+  .cro-board.is-plane { --crop-right-w: 300px; --crop-left-w: 310px; }
+}
+
+/* ══ 中栏三档：配置寻优 / 通信观测 / 负载热力 ═══════════════════════════════
+   中栏从「一张画布」变成「一个壳 + 三档内容」。壳（.crop-center）是纵向 flex：
+   页签一条固定高度的带，下面那块给当前这一档铺满。
+
+   为什么这三档是**中栏自己的**页签，而不是顶栏的第四、第五档：顶栏那三枚
+   （关系视图 / YAML / 文档）换的是整块板面 —— 左栏内容跟着换、右栏直接消失；
+   而这三档换的只有中栏，左边那份配置表单、右边那份选中详情，三档读的都是同一
+   个东西。页签的层级要对得上它换掉的范围，否则用户点之前无法预判会变什么。 */
+.cro-board.is-plane .crop-center {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* yaml / 文档两档整块顶掉中栏。原先那两条写的是 .crop-stage，画布搬进壳里之后
+   要连壳一起收 —— 否则板面让给了 yaml，中栏顶上还浮着一条页签。 */
+.cro-board.is-plane.is-yaml .crop-center,
+.cro-board.is-plane.is-doc .crop-center { display: none; }
+
+.cro-board.is-plane.is-doc .crop-toolbar { display: none; }
+
+/* 页签与热力工具合成一行：.crop-toolbar 是 board 第一行，跨过下方全部栏位；
+   modeTabs（配置寻优 / 运行观测 / 负载热力）与 heatExtra（度量胶囊 + 图例 +
+   问号）都是它的直接子级 —— heatExtra 只在「负载热力」这一档亮起。 */
+.crop-toolbar {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 0 0 auto;
+  /* 整行铺满（而不是只包住内容）：右端要挂通信档的链路图例，靠 margin-left:auto
+     顶到最右侧 —— 内容宽的盒子里 auto 顶不出去。 */
+  align-self: stretch;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-1);
+}
+
+.crop-modes { flex: 0 0 auto; }
+
+/* 页签右边那句口径说明：只在「通信观测」这一档露出来 —— 它说的是那一档整趟行程
+   只跟一张卡走（默认第一行那张），别的两档没有这个口径。一句静态的说明文字，
+   不是控件，所以不加边框、不占独立一行，跟在页签后面同一条基线上。 */
+.crop-comm-note {
+  display: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: var(--font-size-label-xs);
+  line-height: 1.4;
+  color: var(--foreground-muted);
+}
+
+.cro-board[data-mode="comm"] .crop-comm-note { display: block; }
+
+/* 热力那半：度量胶囊、图例、问号一组，只在「负载热力」这一档露出来 —— 平时
+   （配置寻优 / 通信观测）它跟画布一样不该占位，不然页签右边总跟着一截空的
+   分隔线。 */
+.crop-heat-extra {
+  display: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.cro-board[data-mode="heat"] .crop-heat-extra { display: flex; }
+
+/* 通信档那半：只有链路图例一件，顶到这一行的最右端 */
+.crop-comm-extra {
+  display: none;
+  align-items: center;
+  margin-left: auto;
+}
+
+.cro-board[data-mode="comm"] .crop-comm-extra { display: flex; }
+
+/* 分隔线：页签｜胶囊｜图例三段各自成组的视觉提示，纯装饰，键盘与朗读设备
+   都该跳过它。高度对齐 .tab-control-item 的内容高度，不必现量，给个够用的定值。 */
+.crop-toolbar__divider {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 20px;
+  background: var(--border-subtle);
+}
+
+/* 通信观测档的显隐。画布不跟着收 —— 它挂着一个 ResizeObserver，留在布局里会
+   在另一档里被反复量、反复重铺几千个节点；代价是切回来时视口尺寸要等一帧才
+   算得准，setMode 里那次 rAF 补的就是这个。 */
+.crop-center > .crop-comm { display: none; }
+/* ⚠️ 两档**都不收画布**。热力档换的是格子的颜色，通信档要的是「这条通信落在
+   平面的哪一片」—— 两者要的都正是配置寻优那套坐标（stage 分块、EDP 分组、整机
+   成行）。收了画布，热就没有「热在哪」、通信就没有「谁和谁」可指。通信档因此
+   只是压在画布上方的一条带子，画布照留、量尺照留；热力档连带子都不必单独收，
+   它已经并进页签那一行（.crop-heat-extra），不再占中栏第二块空间。
+   （通信档的播放要用线在集群矩阵上画方向与范围，画布必须一直在。） */
+.crop-center[data-mode="comm"] > .crop-comm { display: flex; }
+
+/* 「按完整一套专家区分着色」在热力档里没有可开关的东西（那一档的颜色说的是
+   「多重」，不是「哪一套」）—— 一枚点了没反应的开关比没有更糟，整枚收起。 */
+.crop-center[data-mode="heat"] .crop-paint { display: none; }
+
+/* 运行观测与负载热力都不再保留左侧配置栏：页签行下面只呈现画布与右侧详解。
+   配置栏的 is-collapsed 状态不改，切回配置寻优时仍恢复用户原来的收放选择。 */
+.cro-board.is-plane[data-mode="comm"] .crop-left,
+.cro-board.is-plane[data-mode="heat"] .crop-left { display: none; }
+
+/* 右栏在配置档承载评估/对象详情，在运行档承载通信详解。后者之外的原右栏内容
+   只做显隐，不搬节点、不重建已有监听器。 */
+.cro-board.is-plane[data-mode="comm"] .crop-right__body > :not(.crop-comm__detail) {
+  display: none;
+}
+
+.cro-board.is-plane:not([data-mode="comm"]) .crop-comm__detail { display: none; }
+
+.cro-board.is-plane[data-mode="heat"] .crop-right__body > :not(.crop-heat-detail) {
+  display: none;
+}
+
+.cro-board.is-plane:not([data-mode="heat"]) .crop-heat-detail { display: none; }
+
+.crop-heat-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* 负载详情里的 Expert Compute：复用配置寻优放大格子的 .crop-detail__grid 与
+   .crop-expert；集合仍是选中格所在 EP rank 的本地专家，只在右栏把列数放宽到 8。 */
+.crop-route-experts__meta,
+.crop-route-experts__legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--foreground-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label-xs);
+}
+
+.crop-route-experts__read { color: var(--foreground-secondary); }
+
+.crop-route-experts__grid {
+  gap: 2px;
+}
+
+.crop-route-expert.crop-expert--mini {
+  width: 100%;
+  height: 22px;
+  padding: 0;
+  border-radius: 2px;
+  background: var(--crop-heat);
+  color: #fff;
+  font-size: 9px;
+  cursor: default;
+  pointer-events: auto;
+  transition: background-color 120ms linear, outline-color 120ms linear;
+}
+
+.crop-route-expert.is-hot {
+  z-index: 1;
+  font-weight: var(--font-weight-semibold);
+  outline: 2px solid var(--foreground);
+  outline-offset: 1px;
+}
+
+.crop-route-expert.is-unknown {
+  background: var(--surface-3);
+  color: var(--foreground-muted);
+}
+
+.crop-route-experts__legend {
+  justify-content: flex-start;
+}
+
+.crop-route-experts__legend .crop-heat__legend-ramp {
+  flex: 1 1 auto;
+  width: auto;
+}
+
+/* ══ 通信观测档 ═══════════════════════════════════════════════════════════
+   版式是三段，从上往下回答三个递进的问题：
+     bar     这一屏在数什么（前向几步、反向几步、以哪张卡为例）
+     rows    按时间序有哪些通信 —— 一行一个阶段，一枚箭头一条事件
+     detail  点开的那一条到底是谁和谁、多大范围、走哪条链路
+   前两段是**列举**，第三段才是答案；不点也能读完前两段，那是这一档的骨架。
+
+   与热力档同构：它不是「另一幅图」，而是压在画布上方的一条带子 —— 画布与两条
+   量尺在这一档里照常显示。播放要用线在集群矩阵上画通信的方向与范围，那张矩阵
+   必须一直在；带子只负责列举与选中，指到平面上的活由画布干。
+   带子因此不许长高抢画布：flex 固定、自己封顶滚动。 */
+.crop-comm {
+  flex: 0 0 auto;
+  max-height: 46%;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-2);
+  overflow-y: auto;
+}
+
+.crop-comm__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* 播放键：正圆、实心，与右下角那排工具键区分开 —— 它不是一个视图开关，
+   而是这一屏唯一的**时间**控件。右边整条都留给阶段进度带。 */
+.crop-comm__play {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  border: 1px solid var(--border-default);
+  color: var(--foreground-secondary);
+}
+
+.crop-comm__play:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* 播放中：实心主色，与静息的浅底一眼分得开 —— 这枚键是这一屏唯一有「正在进行」
+   这个状态的控件，状态必须写在键本身上，而不是只靠画布上有没有线在动。 */
+.crop-comm__play.is-playing {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground, #fff);
+}
+
+/* ── 阶段带：一个 step 的前向 / 反向 / 更新 ────────────────────────────────
+   与 training-monitoring-v2 的 L2 阶段带（.tw-pano__phases）同一副语言，只把蓝
+   换成本页主色：
+     宽度   这一段占整趟行程多少拍（一拍一个时间单位，所以宽度就是它占多久）
+     实色   已经走过的部分，从左往右涨
+     斜线   还没走到的部分
+     竖线   进行中那一段的当前位置（蓝涨上去时把它往右推）
+   它同时是选择器：点哪一段就从那一段的第一拍开演，不必把前面几十拍等完。 */
+.crop-comm__phases {
+  --crop-ph-done: color-mix(in srgb, var(--primary) 62%, var(--surface-1));
+  --crop-ph-todo: color-mix(in srgb, var(--foreground) 22%, transparent);
+  --crop-ph-rest: color-mix(in srgb, var(--foreground) 5%, transparent);
+  flex: 1 1 auto;
+  min-width: 160px;
+  display: flex;
+  align-items: stretch;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--crop-ph-rest);
+}
+
+.crop-comm__ph {
+  --prog: 0;
+  /* 三段等宽：更新只有几拍，按拍数分宽会被压成一条点不中的缝（见 js 的
+     renderPhases）。段内进度仍然是真的，由 --prog 表达。 */
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  color: var(--foreground-secondary);
+  background-color: var(--crop-ph-rest);
+  background-image:
+    linear-gradient(to right,
+      var(--crop-ph-done) 0 calc(var(--prog) * 100%),
+      transparent calc(var(--prog) * 100%) 100%),
+    repeating-linear-gradient(45deg,
+      var(--crop-ph-todo) 0 3px, transparent 3px 6px);
+  box-shadow: inset -1px 0 0 0 var(--surface-1);
+  cursor: pointer;
+}
+
+.crop-comm__ph:hover {
+  --crop-ph-done: color-mix(in srgb, var(--primary) 82%, var(--surface-1));
+  color: var(--foreground);
+}
+
+/* 进行中的那一段：在实色与斜线的交界处补一道竖线 */
+.crop-comm__ph.is-running {
+  color: var(--foreground);
+  background-image:
+    linear-gradient(to right,
+      transparent 0 calc(var(--prog) * 100% - 1px),
+      var(--foreground) calc(var(--prog) * 100% - 1px) calc(var(--prog) * 100% + 1px),
+      transparent calc(var(--prog) * 100% + 1px) 100%),
+    linear-gradient(to right,
+      var(--crop-ph-done) 0 calc(var(--prog) * 100%),
+      transparent calc(var(--prog) * 100%) 100%),
+    repeating-linear-gradient(45deg,
+      var(--crop-ph-todo) 0 3px, transparent 3px 6px);
+}
+
+.crop-comm__ph-n {
+  padding: 0 var(--space-2);
+  font-size: var(--font-size-label-xs);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── 链路图例 ─────────────────────────────────────────────────────────────
+   三档链路（机内 HCCS / 机内+机间混合 / 机间 RDMA）在事件条上是**整条底色**，
+   所以图例只需要三块同色的小方 + 名字。摆在 bar 的右端而不是脚注里：颜色的
+   意思必须和被上色的东西同屏，翻到底下再回头对色等于没写。 */
+.crop-comm__legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+  font-size: var(--font-size-label-xs);
+  color: var(--foreground-muted);
+}
+
+.crop-comm__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.crop-comm__legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid var(--border-subtle);
+}
+
+.crop-comm__legend-item[data-link="local"] .crop-comm__legend-swatch {
+  background: color-mix(in srgb, var(--crop-link-local) 34%, var(--surface-2));
+}
+
+.crop-comm__legend-item[data-link="mixed"] .crop-comm__legend-swatch {
+  background: color-mix(in srgb, var(--crop-link-mixed) 34%, var(--surface-2));
+}
+
+.crop-comm__legend-item[data-link="inter"] .crop-comm__legend-swatch {
+  background: color-mix(in srgb, var(--crop-link-inter) 34%, var(--surface-2));
+}
+
+/* 与上面那条阶段带左对齐：带子让开了播放键那一格（36px + 一个 space-3 的缝），
+   事件条这一行必须跟着让开同样多，两行的左缘才在同一条竖线上 —— 否则"这一阶段
+   的进度"与"这一阶段正在发生什么"看起来像两块没关系的东西。 */
+.crop-comm__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-left: calc(36px + var(--space-3));
+}
+
+/* 任一时刻只列**当前阶段**那一行：三行常驻要吃掉画布近三分之一的高度，而三个
+   阶段本来就是先后发生的，同屏摆三行还容易被读成"同时在跑"。阶段名不写在行首
+   （上面那条阶段带已经标了），行首留给**这一拍落在哪一列**。 */
+.crop-comm__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* 行首的列名（"Layer 13" / "Emb" / "Stage 1 全部参数"）。它与阶段带上那半句是
+   同一个读数的两处落点 —— 带子上那句在跑动的进度里，这里定在行首，扫这一行时
+   不必回头去带子上找"这是哪一层的事"。 */
+.crop-comm__row-label {
+  flex: 0 0 auto;
+  max-width: 12em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-label-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--foreground-secondary);
+}
+
+/* 这一列一条通信也不发生时的占位（Emb / Head、并行度为 1 的 Dense 层） */
+.crop-comm__row-empty {
+  font-size: var(--font-size-label-xs);
+  color: var(--foreground-muted);
+}
+
+/* 事件条横着排、超出自己滚：一个阶段的条数由配置定（TP=1 就少两条），
+   行宽不该反过来压缩每一条的可读性。 */
+.crop-comm__track {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+/* 反向那一行**从右往左**排：反向是从最后一层往回走的，它的第一条紧接着前向的最
+   后一条 —— 顺序摆成从左到右就和箭头方向打架，读起来像是"反向也从头开始"。
+   row-reverse 把数组里的第一条摆到最右端，往左依次排；justify-content:flex-end
+   让整组仍然贴着行首（左）对齐，两行的左缘因此还是齐的。 */
+.crop-comm__row[data-phase="bwd"] .crop-comm__track {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+}
+
+/* ── 事件条 ──────────────────────────────────────────────────────────────
+   做成箭头而不是矩形卡片，是因为这一行读的是**顺序**：前向从左往右、反向掉头
+   往回，形状本身就说清了「先谁后谁、这是回程」。梯度同步那一行没有方向
+   （它是 step 末尾的一次，不在层内的时间轴上），所以不给箭头、只给圆角。
+
+   ── 一行式，整条 24px ────────────────────────────────────────────────────
+   只写事件名。原先第二行的「模块 · 范围」撤掉了：那两项浮卡里写得更全（还带
+   传输内容与频次），而这一行现在每换一拍就重排一次，两行会让它在画布上方晃得
+   很厉害；同名事件（一层里 Attention 与 MLP 各有一次 TP All-Reduce）由 js 现补
+   模块名，不必为那种少数情况常驻一整行。 */
+.crop-comm__step {
+  --crop-chev: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: 24px;
+  padding: 0 calc(var(--crop-chev) + var(--space-2));
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--foreground-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-label-xs);
+  line-height: 1.32;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--easing-default),
+              color var(--duration-fast) var(--easing-default);
+}
+
+.crop-comm__row[data-phase="fwd"] .crop-comm__step {
+  border-radius: 0;
+  clip-path: polygon(0 0, calc(100% - var(--crop-chev)) 0, 100% 50%,
+                     calc(100% - var(--crop-chev)) 100%, 0 100%, var(--crop-chev) 50%);
+}
+
+.crop-comm__row[data-phase="bwd"] .crop-comm__step {
+  border-radius: 0;
+  clip-path: polygon(var(--crop-chev) 0, 100% 0, calc(100% - var(--crop-chev)) 50%,
+                     100% 100%, var(--crop-chev) 100%, 0 50%);
+}
+
+/* ── 三档链路：整条底色 ──────────────────────────────────────────────────
+   原先链路只染范围读数左边那条 2px 竖线，扫一行根本看不出来。改成染**整条**：
+   一个阶段里哪几条要出机器，眼睛一扫就分得出块，这才是这三档存在的意义。
+   clip-path 吃掉了边框，颜色是这里唯一能用的通道，所以别再往上叠边框。
+   混色留在 surface-2 上而不是纯色：这一行同时还要靠明度区分 hover 与选中，
+   底色吃满饱和度之后那两个状态就没有余量了。 */
+.crop-comm__step[data-link="local"] { background: color-mix(in srgb, var(--crop-link-local) 15%, var(--surface-2)); }
+.crop-comm__step[data-link="mixed"] { background: color-mix(in srgb, var(--crop-link-mixed) 15%, var(--surface-2)); }
+.crop-comm__step[data-link="inter"] { background: color-mix(in srgb, var(--crop-link-inter) 15%, var(--surface-2)); }
+
+.crop-comm__step:hover { color: var(--foreground); }
+.crop-comm__step[data-link="local"]:hover { background: color-mix(in srgb, var(--crop-link-local) 26%, var(--surface-2)); }
+.crop-comm__step[data-link="mixed"]:hover { background: color-mix(in srgb, var(--crop-link-mixed) 26%, var(--surface-2)); }
+.crop-comm__step[data-link="inter"]:hover { background: color-mix(in srgb, var(--crop-link-inter) 26%, var(--surface-2)); }
+
+/* 选中态再往上提一档饱和度，并把文字压到全黑/全白 —— 三档颜色各不相同，
+   单靠「比周围亮一点」在橙底上认不出来，得靠**文字对比度**兜住。 */
+.crop-comm__step.is-selected { color: var(--foreground); font-weight: var(--font-weight-medium); }
+.crop-comm__step[data-link="local"].is-selected { background: color-mix(in srgb, var(--crop-link-local) 42%, var(--surface-2)); }
+.crop-comm__step[data-link="mixed"].is-selected { background: color-mix(in srgb, var(--crop-link-mixed) 42%, var(--surface-2)); }
+.crop-comm__step[data-link="inter"].is-selected { background: color-mix(in srgb, var(--crop-link-inter) 42%, var(--surface-2)); }
+.crop-comm__step.is-selected:not([data-link]) { background: var(--surface-4); }
+
+/* 播放中正在演的那一条：再往上提一档 —— 播放期间选中态每秒都在换位置，只比周围
+   亮一点会跟丢。
+   ⚠️ 不能用描边或投影：这一条被 clip-path 切成了箭头，边框与 inset 投影会被那两
+   条斜边裁成断口。所以只动**底色的饱和度**（色相仍是链路那三档，绿/橙/蓝的读数
+   不丢）再加一层极轻的明暗呼吸，靠"它在动"把眼睛拉过去。 */
+.crop-comm__step.is-playing {
+  color: var(--foreground);
+  font-weight: var(--font-weight-semibold);
+  animation: crop-comm-pulse 1s ease-in-out infinite;
+}
+
+.crop-comm__step[data-link="local"].is-playing { background: color-mix(in srgb, var(--crop-link-local) 62%, var(--surface-2)); }
+.crop-comm__step[data-link="mixed"].is-playing { background: color-mix(in srgb, var(--crop-link-mixed) 62%, var(--surface-2)); }
+.crop-comm__step[data-link="inter"].is-playing { background: color-mix(in srgb, var(--crop-link-inter) 62%, var(--surface-2)); }
+
+@keyframes crop-comm-pulse {
+  0%, 100% { filter: none; }
+  50% { filter: brightness(1.14); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crop-comm__step.is-playing { animation: none; }
+}
+
+/* 第一行：事件名。这是扫读时唯一要看的东西，所以给它全对比度。 */
+.crop-comm__step-event {
+  font-weight: var(--font-weight-medium);
+  color: var(--foreground);
+}
+
+/* ── 运行详解：占用配置档右栏的同一位置 ─────────────────────────────────── */
+.crop-comm__detail {
+  position: static;
+  width: 100%;
+  max-width: none;
+  pointer-events: auto;
+}
+
+.cro-board.is-plane[data-mode="comm"] .crop-comm__card {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+/* ── 通信连线层 ───────────────────────────────────────────────────────────
+   盖在世界之上、压在两条量尺之下的一张 svg。里面的坐标由 js 每帧按屏幕坐标现写
+   （world→screen 自己换算），所以缩放时线宽、动点大小恒定，只有位置跟着格子走。
+   全层 pointer-events:none —— 它是一层解释，不是一层可点的东西，底下的格子照常
+   悬浮出气泡、照常点得中。
+
+   颜色只有两档：青 = 这条线两端在同一台机器里（HCCS），绯 = 跨了机器（RDMA）。
+   两色取自 --crop-link-*，与专家那四色（蓝/琥珀/绿/紫）刻意错开 —— 线是画在专家
+   色块**上面**的，撞色会把两套完全不同的图例读成同一件事。
+   带子上那三档（含 mixed）说的是**整组**，这里逐条说，mixed 在这层自然表现为
+   一束里绿蓝混着 —— 那正是它的字面意思。 */
+.crop-commflow {
+  position: absolute;
+  inset: 0;
+  /* ⚠️ 宽高必须显式写 100%：svg 是**替换元素**，绝对定位下 width:auto 取的是
+     它的固有尺寸（300×150），inset:0 拉不开它 —— 于是线只有落在左上角那一小块
+     里的才画得出来，其余全被 svg 自己的视口裁掉，看起来就是"连线不显示"。 */
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--duration-fast, 140ms) var(--ease-out, ease-out);
+}
+
+.crop-commflow.is-on { opacity: 1; }
+
+/* 主角那一格：行程当前落在哪张卡的哪一列。两条同心矩形 —— 底下那条半透明深色的
+   粗框是光晕（白线单独放在浅底或专家浅色块上会糊掉），上面那条才是白描边。
+   两条都不填充：格子里的专家编号、热力色是要读的，框只圈不盖。 */
+.crop-commflow__cell-halo {
+  fill: none;
+  stroke: rgba(0, 0, 0, 0.38);
+  stroke-width: 5;
+}
+
+.crop-commflow__cell {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+/* 对端那几格：同一种白框，但更细、更透 —— 主次要一眼分得出来（谁在问、谁被问）。
+   它不配光晕矩形（十条线就是十个额外节点），改用一层极轻的投影兜住浅底。 */
+.crop-commflow__cell--peer {
+  stroke: rgba(255, 255, 255, 0.78);
+  stroke-width: 1.25;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.55));
+}
+
+.crop-commflow__line {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  opacity: 0.55;
+  stroke-dasharray: 5 4;
+}
+
+.crop-commflow__line[data-link="local"] { stroke: var(--crop-link-local); }
+.crop-commflow__line[data-link="inter"] { stroke: var(--crop-link-inter); }
+
+/* 两端的锚点：本卡实心大一点（"谁在问"），对端空心（"和谁"）。 */
+.crop-commflow__end {
+  fill: var(--surface-1);
+  stroke-width: 2;
+}
+
+.crop-commflow__end[data-link="local"] { stroke: var(--crop-link-local); }
+.crop-commflow__end[data-link="inter"] { stroke: var(--crop-link-inter); }
+
+.crop-commflow__anchor {
+  fill: var(--foreground);
+  stroke: var(--surface-1);
+  stroke-width: 2;
+}
+
+/* 动点：线上跑的那一颗，方向就是数据的方向。给一圈同色描边当光晕，压在密网格
+   上才看得见。 */
+.crop-commflow__dot[data-link="local"] {
+  fill: var(--crop-link-local);
+  stroke: color-mix(in srgb, var(--crop-link-local) 30%, transparent);
+  stroke-width: 5;
+}
+
+.crop-commflow__dot[data-link="inter"] {
+  fill: var(--crop-link-inter);
+  stroke: color-mix(in srgb, var(--crop-link-inter) 30%, transparent);
+  stroke-width: 5;
+}
+
+.crop-comm__empty {
+  margin: 0;
+  padding: var(--space-1) 0;
+  font-size: var(--font-size-label-xs);
+  color: var(--foreground-muted);
+}
+
+/* 浮卡本体。比带子里的常驻块多一层毛玻璃与投影：它盖在格子上面，没有这两层就
+   分不出「浮在图上的窗口」和「图里的一块」。
+   kv 横着摊而不是竖着堆五行 —— 竖排要 120px，浮卡会盖掉小半张图。 */
+.crop-comm__card {
+  /* 整张卡一副**两列**骨架：左列是「阶段」这一档标签，右列是读数。头一行（阶段
+     胶囊 + 标题）与下面五条 kv 都挂在这同一副列上 —— 各排一个自己的网格时两块的
+     列宽由各自内容决定，标题的左缘与 value 的左缘永远差一截，卡上于是有两条彼此
+     错开的左缘。共用之后只剩一条：胶囊与 key 同宽同左缘，标题与 value 同左缘。 */
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: var(--space-3);
+  /* 行距在这里给：头一行成了 display:contents（见下），它自己没有盒子、挂不住
+     margin —— 标签行、标题、读数区之间的那 4px 由卡统一发。 */
+  row-gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--glass-surface-bg, var(--surface-1));
+  backdrop-filter: var(--surface-backdrop-filter, none);
+  box-shadow: var(--shadow-lg);
+}
+
+/* 标签行与 MoE 舞台不参与那两列，各自铺满整卡 */
+.crop-comm__card-tags,
+.crop-comm__card > .crop-moe { grid-column: 1 / -1; }
+
+/* 头一行里只剩标题（阶段胶囊已撤：阶段在页签下那条阶段带上一直写着，浮卡里再挂
+   一枚是同一件事说第二遍）。所以它不自己排一个网格，而是 display:contents 把标题
+   直接交给**卡**的那两列 —— 少一层盒子，标题与下面 value 的左缘由同一副列保证。 */
+.crop-comm__card-head { display: contents; }
+
+/* 读数区把卡的两列**借**过来用（subgrid）：列宽由卡上所有内容一起定，标题与
+   value 因此落在同一条左缘上，不必在这里写死任何一个宽度。 */
+@supports (grid-template-columns: subgrid) {
+  .crop-comm__card-body { grid-template-columns: subgrid; }
+}
+
+/* 标题落在右列 = 与五条读数的 value 同一条左缘。
+   字号：原先那条 var(--font-size-label-sm) 是个全仓没定义的 token，声明失效、实际
+   吃的是 h3 的 UA 字号（body 12px × 1.17 ≈ 14px，正好是 body-md 那一档）。这里在
+   那一档上明确加 4px —— 浮卡的第一行要能在一屏读数里先被看见。 */
+.crop-comm__card-title {
+  grid-column: 2;
+  margin: 0;
+  font-size: calc(var(--font-size-body-md) + 4px);
+  font-weight: var(--font-weight-medium);
+  color: var(--foreground);
+}
+
+/* 卡顶那一行标签：链路徽标 + 数据类别。两枚都是**分类**读数，和标题混在一行会
+   被读成标题的一部分，所以单独占一行。 */
+.crop-comm__card-tags {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 链路徽标是这张卡上唯一带颜色的东西：一次通信贵不贵，先看它出不出机器。 */
+.crop-comm__card-link {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-label-xs);
+  color: var(--foreground-secondary);
+  background: var(--surface-3);
+}
+
+.crop-comm__card-link[data-link="local"] {
+  background: color-mix(in srgb, var(--crop-link-local) 22%, transparent);
+}
+
+.crop-comm__card-link[data-link="mixed"] {
+  background: color-mix(in srgb, var(--crop-link-mixed) 22%, transparent);
+}
+
+.crop-comm__card-link[data-link="inter"] {
+  background: color-mix(in srgb, var(--crop-link-inter) 22%, transparent);
+}
+
+/* 数据类别（activation / gradient / optimizer）：等宽小字、**不带颜色** —— 它是一个
+   分类名而不是一个状态，不该和链路徽标抢颜色。传的是哪一类，决定了这条通信的量
+   随什么变（激活跟 batch×seq 走、梯度跟参数量走、优化器状态跟切分档走）。
+   原先底色 surface-2、字 secondary，在毛玻璃卡面上几乎和卡底一个色，读成了一段
+   灰字而不是一枚标签。加的是**对比度**而不是色相：底深一档、边框实一档、字给足，
+   再把字母抬成大写 —— 于是它一眼是一枚标签，颜色仍旧只有链路那枚有。 */
+.crop-comm__card-kind {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-default);
+  background: var(--surface-4);
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+/* 五条读数摆成**两列网格**：key 一列、value 一列，两列各自左对齐。原先是长的独
+   占一行、短的两两并排，每一行的 key 都落在不同的位置上，扫下来要重新找一次左缘。
+   .crop-comm__kv 用 display:contents 把这一对直接交给网格，行的语义仍在。
+   这两列与头一行是**同一副**（见 .crop-comm__card 的 subgrid）：标题对着 value、
+   阶段胶囊对着 key。 */
+.crop-comm__card-body {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: var(--space-3);
+  row-gap: 2px;
+  font-size: var(--font-size-label-xs);
+  line-height: 1.5;
+}
+
+.crop-comm__kv { display: contents; }
+
+.crop-comm__kv-k { color: var(--foreground-muted); }
+.crop-comm__kv-v { color: var(--foreground); word-break: break-word; }
+
+/* ── MoE 微观舞台：router → dispatch → combine ─────────────────────────────
+   浮卡在 MoE 那三条通信上多出一台小舞台：上排是抽样 token，下排是这一拍要发往的
+   那几张卡，中间是**当前那个 token**的 top-k 连线（一拍之内 16 个轮一遍）。
+   几何全部写死在 svg 的 viewBox 里（480×92），所以浮卡在这一档按舞台定宽 ——
+   舞台里是 9px 的编号，跟着卡宽伸缩会糊。 */
+.crop-moe {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+  width: 480px;
+  max-width: 100%;
+}
+
+.crop-moe__head,
+.crop-moe__foot {
+  font-size: var(--font-size-label-xs);
+  color: var(--foreground-muted);
+  line-height: 1.4;
+}
+
+.crop-moe__foot { margin-top: 2px; }
+
+.crop-moe__stage {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: var(--space-1) 0;
+  overflow: visible;
+}
+
+/* 抽样 token：素方块，正在被 router 打分的那一个亮起来 */
+.crop-moe__tok {
+  fill: var(--surface-3);
+  stroke: var(--border-subtle);
+  stroke-width: 0.6;
+}
+
+.crop-moe__tok.is-focus {
+  fill: var(--foreground-secondary);
+  stroke: var(--foreground);
+  stroke-width: 1;
+}
+
+/* 目的卡：底色按机内 / 机间染，与画布上那几条线、与链路图例同一套色
+   （--crop-link-*，刻意避开专家那四色）。 */
+/* 目的卡：**底色跟着负载走**（由 js 写 style.fill，与卡底那条同一个热力色阶、
+   同一个值，只是淡一档）—— 整张卡和它底下那条说的必须是同一件事，一个按热力涨、
+   另一个按链路染，扫过去会读成两套无关的编码。
+   描边也跟着热力走（同样由 js 写 style.stroke，同一个值、实一档）：一张卡的框与
+   它的底必须是同一件事的两种强度，一个按负载涨、另一个停在别的色系上，扫过去会
+   读成两套无关的编码。
+   链路（机内 HCCS / 机间 RDMA）那一档因此从描边的**颜色**挪到它的**虚实**上：
+   它是这张卡的固有属性、不随打分变，放在不变的那一层仍然成立，只是不再占颜色。 */
+.crop-moe__dest {
+  fill: var(--surface-2);
+  stroke: var(--border-subtle);
+  stroke-width: 0.8;
+  transition: fill 160ms linear, stroke 160ms linear;
+}
+
+/* 机外那几张：同色系的描边改成虚线 —— 颜色让给了热力，机内 / 机间这一档只剩虚实 */
+.crop-moe__dest[data-link="inter"] { stroke-dasharray: 2.5 1.5; }
+
+/* 卡底那条实心：宽度 = 这张卡收到的抽样 token 数，颜色 = 它的相对负载（由 js 写
+   style.fill，复用「负载热力」那条色阶 heatColor —— 冷蓝最轻、火红最重）。
+   router 那一拍它是**长出来**的：16 个 token 一个一个打分，一开始各卡同为最冷色，
+   谁被选得多谁先走向暖色。负载不均是路由的结果，不是一上来就摆好的设定。
+   机内 / 机间那一档由外面那个框（.crop-moe__dest）表达，两件事各占一处、不打架。 */
+.crop-moe__bar {
+  fill: var(--surface-4);
+  transition: width 160ms linear, fill 160ms linear;
+}
+
+.crop-moe__dest-t {
+  fill: var(--foreground-secondary);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-anchor: middle;
+}
+
+.crop-moe__line {
+  fill: none;
+  stroke: var(--foreground-muted);
+  stroke-width: 1;
+  opacity: 0.75;
+}
+
+.crop-moe__dot {
+  fill: var(--foreground);
+  stroke: var(--surface-1);
+  stroke-width: 0.8;
+}
+
+/* ══ 负载热力档 ═══════════════════════════════════════════════════════════
+   这一档不换图，只换格子的颜色，所以它在版式上不是「一整块内容」，而是并进了
+   页签那一行的一小截（见上面 .crop-toolbar / .crop-heat-extra）：选哪个度量
+   （胶囊）、颜色对应多少（图例）、这些数怎么来的（挂在最右侧那枚「?」的悬浮
+   气泡里，文案见 js 的 HEAT_HINT_TEXT）。 */
+.crop-heat__pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.crop-heat__pill { border-radius: var(--radius-pill); }
+
+/* ── 色阶图例 ─────────────────────────────────────────────────────────────
+   两端写的是**这幅平面自己的**最轻与最重，不是某个固定量程：换度量、换配置都要
+   重写（见 js 的 syncHeat）。没有它，颜色只说得出「谁比谁热」，说不出热多少。 */
+.crop-heat__legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-label-xs);
+  font-family: var(--font-mono);
+  color: var(--foreground-secondary);
+}
+
+.crop-heat__legend-ramp {
+  width: 168px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+}
+
+.crop-heat__legend-end { white-space: nowrap; }
+
+/* 最右侧那枚「?」：复用 .cro-hint 的圆点样式（config-relation-observer.css），
+   这里只补一点行内间距，不必再起一层容器。 */
+.crop-heat__help { margin-left: 2px; }
+
+/* ── 「专家负载」的时间轴 ─────────────────────────────────────────────────
+   另外五个度量是一份配置的静态侧面；这一档多一根轴（见 js 的 ROUTE_PHASES），
+   所以工具带上多出播放键 + 滑杆 + 相位读数一组。
+   只在这一档露面：另五个度量下摆着一根拖了没反应的滑杆，比没有更糟。 */
+.crop-heat-extra:not([data-metric="route"]) .crop-heat__route { display: none; }
+
+.crop-heat__route {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* 滑杆：不重画一套，只把原生 range 收到与胶囊同一个尺度上（高度对齐 btn-sm 的
+   视觉重心，轨道用 --border-subtle，滑块用蓝）。宽度给定值 —— 它要与右边那行
+   两段读数并排，靠 flex 自适应会在窄屏上被压成一根拖不动的短棍。 */
+.crop-heat__routeslider {
+  width: 132px;
+  height: 4px;
+  flex: 0 0 auto;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--border-subtle);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+
+.crop-heat__routeslider:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* 滑杆两端的 step 号：这根轴的刻度是 step（见 js 的 ROUTE_STEP_FROM / _TO），
+   不写的话它旁边最近的数字是色阶图例的热端（那个「7.87×」说的是颜色对应多少倍
+   均分），紧挨着摆在一起就会被读成轴的刻度。等宽字体 —— 它是一个读数，不是标签。 */
+.crop-heat__routeend {
+  flex: 0 0 auto;
+  font-size: var(--font-size-label-xs);
+  font-family: var(--font-mono);
+  color: var(--foreground-secondary);
+  white-space: nowrap;
+}
+
+.crop-heat__routeslider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ark-blue-500);
+  border: 2px solid var(--surface-1);
+  cursor: pointer;
+}
+
+.crop-heat__routeslider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ark-blue-500);
+  border: 2px solid var(--surface-1);
+  cursor: pointer;
+}
+
+/* ⚠️ 滑杆右侧原先那块相位读数（.crop-heat__routeread / __routehead / __routetag /
+   __routestep / __routeclock）已经删掉：画布顶上那条红横幅现在把四相一口气铺开、
+   按进度高亮（见下面 .crop-heatbanner__phases），两处说的是同一件事。同一个读数
+   摆两遍，读的人第一个反应是「这两块有什么不一样」—— 那是白付的注意力。 */
+
+/* ── 画布顶上的红横幅：这张热力图现在说的是什么问题 ───────────────────────
+   热力图有个通病：颜色铺得再准，第一眼只读得出「这里比较烫」，读不出「烫的是
+   什么毛病」。横幅把结论直接摆在画布顶上 —— 先给答案，再让人回图上去找那条带子。
+
+   三条约束：
+     · 悬浮、不占布局高度 —— 占了就等于每进一次热力档画布矮一截；
+     · 让开顶上那条量尺（top 对齐 RULER_TOP_H = 60px），不挡刻度；
+     · pointer-events:none —— 它是一层注解，不是可点的东西，底下的格子照常悬浮出
+       气泡、照常点得中。所以也不给关闭键：没有可点的东西要关。
+   用 --danger 那一族而不是自己配红：这条横幅与右栏「超容」读数说的是同一类事
+   （这份配置有毛病），两处红不该是两个红。 */
+.crop-heatbanner {
+  position: absolute;
+  top: calc(60px + var(--space-3));
+  left: calc(var(--crop-ruler-left, 0px) + var(--space-3));
+  right: var(--space-3);
+  z-index: var(--z-overlay);
+  /* 纵向：第一行是「本图的问题 + 一句结论」（lead），「专家负载」那一档下面再多
+     一条四段相位条。别的度量只有 lead 那一行，高度与原先一致。 */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--radius-sm);
+  /* 底色压在 surface 上而不是纯半透明：底下就是满屏色块，纯半透明会把格子的
+     红蓝透上来，那时横幅自己的红说不清是横幅的还是图的。 */
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface-1));
+  box-shadow: var(--shadow-2, 0 2px 8px rgb(0 0 0 / 0.28));
+  pointer-events: none;
+}
+
+/* 第一行：标签与那句结论同一条基线上并排（横幅自己已经改成竖排容器） */
+.crop-heatbanner__lead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.crop-heatbanner__tag {
+  flex: 0 0 auto;
+  font-size: var(--font-size-label-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  color: var(--danger);
+  white-space: nowrap;
+}
+
+/* 一句话说完，说不完就截断 —— 这条带子长高一行就开始挡格子，而它只是注解。
+   全文在右上角那枚「?」的气泡里（HEAT_HINT_TEXT 逐条列了五处故障）。 */
+.crop-heatbanner__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--font-size-label-sm);
+  line-height: 1.35;
+  color: var(--foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 横幅第二行：路由塌缩的四段相位条 ─────────────────────────────────────
+   只在「专家负载」那一档露面（js 的 syncHeatBanner 挂 .is-route）。
+
+   为什么四相要**一口气铺开**而不是一次只写当前那一相：这一档讲的是一条有先后的
+   因果链（正常 → 走偏 → 越界 → 塌缩），而链条里最该被看见的是「② 与 ③ 在图上长得
+   一模一样，④ 才突然变形」—— 一次只显示一相的话，这个对照要靠读的人自己记住前一
+   相长什么样，也就基本读不出来了。四段同框 + 按时间轴分步高亮，进度与因果同框，
+   横幅本身就成了这根轴的图例。
+
+   三态：走过（is-past，压暗但仍可读，它已经发生过）· 当前（is-active，亮起）·
+   未到（默认，最暗 —— 它还没发生，不该与已发生的抢注意力）。 */
+.crop-heatbanner__phases { display: none; }
+
+.crop-heatbanner.is-route .crop-heatbanner__phases {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+/* 两列网格而不是竖排 flex：左列是序号（①②③④），右列是相位名与下面那行正文 ——
+   正文因此与「正常路由」这几个字对齐，而不是与「①」对齐（缩进一个序号的宽度）。
+   序号自己成一条竖直对齐线，四段扫下来一眼看得出这是有先后的四步。 */
+.crop-heatbanner__phase {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: start;
+  column-gap: 0.35em;
+  row-gap: 2px;
+  padding: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-1) 55%, transparent);
+  /* 未到的那几相：压到刚好还认得出字，别与已经发生的抢注意力 */
+  opacity: 0.42;
+  transition: opacity var(--duration-fast, 120ms) ease,
+    background-color var(--duration-fast, 120ms) ease;
+}
+
+/* 段与段之间那枚箭头：这四格是一条**时间**上的因果链，不是四个并列选项 ——
+   不画箭头就会被读成一排页签。摆在 gap 里（绝对定位到左外侧），不占段宽。 */
+.crop-heatbanner__phase + .crop-heatbanner__phase::before {
+  content: "›";
+  position: absolute;
+  left: calc(var(--space-2) * -1);
+  top: 50%;
+  transform: translate(-10%, -50%);
+  font-size: var(--font-size-label-sm);
+  line-height: 1;
+  color: var(--foreground-secondary);
+  opacity: 0.7;
+}
+
+/* 走过的：留在明面上但不亮 —— 读的人要能回头看「刚才那两相长什么样」 */
+.crop-heatbanner__phase.is-past { opacity: 0.72; }
+
+.crop-heatbanner__phase.is-active {
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+  background: color-mix(in srgb, var(--danger) 18%, var(--surface-1));
+}
+
+/* 序号独占左列：与相位名同一条基线、同一个字号，只在颜色上退半档 —— 它是编号，
+   不是内容。宽度由内容撑（grid 的 auto 列），四段的 ①②③④ 等宽，天然对齐。 */
+.crop-heatbanner__phase-num {
+  grid-column: 1;
+  font-size: var(--font-size-label-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--foreground-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.crop-heatbanner__phase-tag {
+  grid-column: 2;
+  font-size: var(--font-size-label-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 正文整块落在右列 —— 与相位名左对齐，序号那一列在它左边留白。 */
+.crop-heatbanner__phase-body {
+  grid-column: 2;
+  min-width: 0;
+}
+
+/* 当前那一相的名字用 --danger：与横幅左边那道竖条、右栏「超容」读数同一族红，
+   两处红不该是两个红。 */
+.crop-heatbanner__phase.is-active .crop-heatbanner__phase-tag,
+.crop-heatbanner__phase.is-active .crop-heatbanner__phase-num {
+  font-weight: var(--font-weight-semibold);
+  color: var(--danger);
+}
+
+/* 这一相跨了哪几个 step：正文行的头一截，比数值口径重一档（颜色回到 --foreground）
+   —— 四段并排时最先要读出来的是「这四步各占多长时间」，前三相跨了四千多步、后两相
+   全挤在 step 15203 那一步之内，那个不等宽正是这次事故最难查的地方。 */
+.crop-heatbanner__phase-steps {
+  font-size: var(--font-size-label-xs);
+  font-family: var(--font-mono);
+  color: var(--foreground);
+  white-space: nowrap;
+}
+
+/* 两截之间的分隔点：写在样式里而不是拼进文本，省得改文案时忘了它 */
+.crop-heatbanner__phase-steps::after {
+  content: " · ";
+  color: var(--foreground-secondary);
+  font-weight: var(--font-weight-regular, 400);
+}
+
+/* 数值口径：等宽，允许折成两行 —— 截断的话 ③ 那句「max(logits) 1846 › FP8 448」
+   正好会被切在最要紧的地方（越界多少），而那正是 ② 与 ③ 唯一的差别。 */
+.crop-heatbanner__phase-clock {
+  font-size: var(--font-size-label-xs);
+  font-family: var(--font-mono);
+  line-height: 1.3;
+  color: var(--foreground-secondary);
+}
+
+/* ══ 巡检色点：每行指标行首那一枚 ═══════════════════════════════════════════
+   绿通过 / 黄偏紧 / 红越界 / 灰未知。整栏纵向扫一遍就是一份 checklist，
+   不必逐行读数字才看得出这一层有没有事。等级由 js 写在 data-level 上。 */
+.crop-metric__dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-pill);
+  background: var(--foreground-muted);
+  /* baseline 对齐的 flex 行里，无文字的空盒没有基线可对 —— 手动压到文字腰线上 */
+  align-self: center;
+}
+
+.crop-metric[data-level="safe"]  .crop-metric__dot { background: var(--success); }
+.crop-metric[data-level="tight"] .crop-metric__dot { background: var(--warning); }
+.crop-metric[data-level="alert"] .crop-metric__dot,
+.crop-metric[data-level="over"]  .crop-metric__dot { background: var(--danger); }
+/* 灰点做成空心：既不是通过也不是不通过，实心会读成「有个结论」 */
+.crop-metric[data-level="none"]  .crop-metric__dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--border-strong);
+}
+
+/* 待实跑的那几行：读数压成和证据标同一档灰，「待实跑」因此读成一个状态、
+   不读成一个结果。 */
+.crop-metric[data-pending] .crop-metric__v {
+  color: var(--foreground-muted);
+  font-family: inherit;
+  font-size: var(--font-size-label-xs);
+}
+
+/* 整层待实跑（L-C）：压暗一档。不用 opacity 压整块 —— 那会连带把色点和
+   证据标一起洗淡，而它们正是「这一层现在什么状态」的答案。 */
+.crop-grade[data-pending] .crop-grade__name,
+.crop-grade[data-pending] .crop-metric__k { color: var(--foreground-muted); }
+.crop-grade[data-pending] .crop-metric { opacity: 0.82; }
+.crop-grade[data-pending] .crop-metric:hover { opacity: 1; }
+
+/* ══ 总判定：语义卡 ═════════════════════════════════════════════════════════
+   「预计可跑」抬到 title-sm，是整栏唯一一句要在一米开外读得到的话；状态由整卡
+   渐变与占用尺表达，标题前不再重复放圆点。 */
+.crop-verdict__badge {
+  display: flex;
+  align-items: center;
+  font-size: var(--font-size-title-sm);
+  line-height: 1.3;
+}
+
+.crop-verdict__badge-text { font-weight: var(--font-weight-semibold); }
+
+/* 安全态直接复用配置引导横幅的蓝 → 蓝绿配方：蓝色表示系统判断，绿色表示通过。 */
+.crop-verdict[data-level="safe"] {
+  border-color: color-mix(in srgb, var(--primary) 34%, transparent);
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--primary) 17%, var(--surface-1)) 0%,
+    color-mix(in srgb, var(--primary) 7%, var(--surface-1)) 52%,
+    color-mix(in srgb, var(--success) 14%, var(--surface-1)) 100%
+  );
+}
+
+.crop-verdict[data-level="safe"] .crop-verdict__badge-text {
+  width: max-content;
+  color: transparent;
+  background: linear-gradient(90deg, var(--primary), var(--success));
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+/* 未估算时不装样子：保持中性灰字与低对比渐变。 */
+.crop-verdict[data-level="none"] .crop-verdict__badge { color: var(--foreground-muted); }
+
+/* ── 占用尺：最紧那张卡装了几成 ─────────────────────────────────────────── */
+.crop-verdict__gauge {
+  position: relative;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--foreground) 10%, transparent);
+  overflow: hidden;
+}
+
+.crop-verdict__gauge-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--success);
+}
+
+.crop-verdict[data-level="tight"] .crop-verdict__gauge-fill { background: var(--warning); }
+.crop-verdict[data-level="alert"] .crop-verdict__gauge-fill,
+.crop-verdict[data-level="over"]  .crop-verdict__gauge-fill { background: var(--danger); }
+.crop-verdict[data-level="none"]  .crop-verdict__gauge-fill { background: var(--border-strong); }
+
+/* 70% 波动线的刻度。画成一条压在填充之上的竖线：它是约束不是目标，
+   看的是「填到它没有」，所以必须与填充同一坐标系、不能另起一行标注。 */
+.crop-verdict__gauge-mark {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 2px;
+  transform: translateX(-1px);
+  background: var(--surface-1);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--foreground) 28%, transparent);
+}
+
+.crop-verdict__gauge-scale {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-label-xs);
+  color: var(--foreground-muted);
+}
+
+/* ══ 静息态（当前配置评估）不摆「典型 Layer」═══════════════════════════════
+   那一条是**选中态**的东西：它答的是「你选中的这张卡上，一层长什么样、哪几段
+   被你压住了」—— 没有选择时那几列既没有 is-related 也没有 is-selected，摆在那儿
+   只是一张与全局判定无关的静态结构图，还占着评估栏底下小半屏。
+   `.is-focused` 由主脚本按「有没有选中对象」toggle（见 observer.js 与本页 js）。 */
+.cro-board.is-plane:not(.is-focused) .crop-right .cro-section--structure { display: none; }
+
+/* ══ 单卡容量卡片：挂在 L-B「最紧的卡」之下 ════════════════════════════════
+   「最紧的卡 78%」给的是结论，这张卡片给的是那 78% 的构成（六段柱子）。两者
+   前后相邻，一句「为什么是 78%」当场答完 —— 原先它与评估栏并列摆在右栏底部，
+   读的人得先记住那个数再滚下去找柱子。
+   节点仍是原版那一个 #croCapacity（见 js 的 capCard），只是外面套了这张卡。 */
+.crop-capcard {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.crop-capcard__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--font-size-label-xs);
+  color: var(--foreground-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.crop-capcard__toggle:hover { color: var(--foreground); background: var(--surface-3); }
+
+.crop-capcard__chevron {
+  flex: 0 0 auto;
+  transform: rotate(90deg);
+  transition: transform 140ms ease;
+}
+
+.crop-capcard.is-collapsed .crop-capcard__chevron { transform: rotate(0deg); }
+.crop-capcard.is-collapsed > .cro-capacity { display: none; }
+
+.crop-capcard__label { flex: 1 1 auto; min-width: 0; }
+
+/* 卡片内的容量栏去掉自己那圈边和外边距：外面这张卡已经是它的容器了，
+   两层描边套在一起会读成两块内容。 */
+.cro-board.is-plane .crop-capcard .cro-capacity {
+  /* 原版那条 border-left + padding-left 是「Cluster 区里靠右一栏」的分隔语言，
+     进了卡片就不成立了 —— 卡片自己的边框已经把它围住。 */
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: transparent;
+  margin: 0;
+  padding: var(--space-3);
+}
+
+/* 卡片里那个 h2「单卡容量」与外面的折叠标题是同一句话，留一句就够 ——
+   但 `?` 口径键与作用域读数要留着（它们只挂在这一行上）。 */
+.crop-capcard .cro-capacity__title { display: none; }
+
+/* ══ 典型 Layer：五列段名统一分两行 ════════════════════════════════════════
+   第一行只保留段名 / 类型与数量，第二行用小字写 PP stage 和 Layer 范围，避免 Dense、
+   MoE 把层号挤在第一行括号里，而 Emb / Norm / Head 又是另一种信息层级。名字由
+   js 的 annotateStructure 写成两个 span。 */
+.cro-board.is-plane .crop-right .cro-structure__name {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  white-space: normal;
+  overflow: visible;
+  line-height: 1.25;
+}
+
+.cro-board.is-plane .crop-right .cro-structure__name-main {
+  font-weight: var(--font-weight-medium);
+}
+
+.cro-board.is-plane .crop-right .cro-structure__name-at {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--foreground-muted);
+}
+
+/* ══ 2026-09-16 · 五处版式修订 ═══════════════════════════════════════════════
+   ① 模型下拉升为页面标题（工具栏最左端）；② 代码档配置 / 启动命令左右 6:4；
+   ③ 顶栏正中视图页签藏起，文档入口挪到右上角；④ 左栏表单每格铺满两列网格；
+   ⑤ 底部 AI 输入框照 insight2.0 助手输入栏的版式。 */
+
+/* ── ① 模型标题：不套底框，只留 18px 粗体的模型名 + 一枚下拉箭头 ─────────────
+   搬进来的仍是那枚 .cro-stepper（label + select），label 藏起，select 抹掉 pill 外观。
+   箭头是兄弟节点而不是 select 的 background-image：那样字号一改箭头就得重画。 */
+.crop-model {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-right: var(--space-2);
+}
+
+.crop-model .cro-stepper { gap: 0; width: auto; }
+.crop-model .cro-stepper__label { display: none; }
+
+.crop-model .cro-select {
+  width: auto;
+  height: auto;
+  padding: 2px 26px 2px 2px;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--foreground);
+  font-size: 18px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.crop-model .cro-select:hover { background: var(--state-hover); }
+.crop-model .cro-select:focus-visible { box-shadow: var(--focus-ring); }
+
+.crop-model__caret {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  display: inline-flex;
+  color: var(--foreground-secondary);
+}
+
+/* ── ② 代码档：配置文件（左 6）与启动命令（右 4）并排 ─────────────────────────
+   代码档整板让位之后宽度够两块并排：yaml 说怎么切、命令说切给多少张卡，并排读
+   不必上下滚着对数。yaml 区改成两列网格，头行与代码框走左列，启动命令整块占右列。 */
+.cro-board.is-plane .crop-pane--code .cro-region--yaml {
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 4fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  column-gap: var(--space-4);
+  row-gap: var(--space-3);
+}
+
+.cro-board.is-plane .crop-pane--code .cro-yaml__head { grid-column: 1; grid-row: 1; }
+.cro-board.is-plane .crop-pane--code #croYamlCode { grid-column: 1; grid-row: 2; }
+.cro-board.is-plane .crop-pane--code .cro-yaml__launch {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  max-height: none;
+  min-height: 0;
+}
+
+/* 右列的启动命令头行与左列的「配置文件」头行取齐高度（左边那行有 28px 的按钮） */
+.cro-board.is-plane .crop-pane--code .cro-yaml__launch-head { min-height: 28px; }
+
+/* ── ③ 顶栏正中的视图页签藏起（DOM 留着：它仍是 config-relation-yaml.js 的开关） ── */
+/* 本文件只有 plane 页加载，不必再按 .is-plane 限定（那个类是 js 跑完才挂的，限定了反而首帧闪一下） */
+.pto-ide-frame__topbar-center { display: none; }
+
+/* 右上角文档入口的按下态：进了文档档就亮着，再点一次退出 */
+#croDocEntry.is-selected {
+  background: var(--state-selected, var(--state-hover));
+  color: var(--foreground);
+}
+
+/* ── ④ 表单每格铺满：加减键贴两端、读数吃掉中间 ─────────────────────────────
+   两列网格把每一格拉到了半栏宽，而 .cro-stepper__control 是 inline-flex 按内容收
+   （style.css 的 .zoom-control-group），于是 pill 底被拉满、里面的「− 数 +」还缩在
+   左端，右边空着一截 —— 读起来就是「输入框拉宽了、加减号没跟上」。
+   这里让控件整格铺满、读数 flex:1 撑开、两枚圆键各贴一端。 */
+.cro-board.is-plane .crop-left .cro-stepper__control {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.cro-board.is-plane .crop-left .cro-stepper__control .cro-stepper__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+}
+
+.cro-board.is-plane .crop-left .cro-stepper__control .btn { flex: 0 0 auto; }
+
+/* 开关 / 多档按钮 / 下拉这几类控件也照同一条规矩铺满格宽 */
+.cro-board.is-plane .crop-left .cro-stepper .cro-select,
+.cro-board.is-plane .crop-left .cro-stepper .cro-flag-choice,
+.cro-board.is-plane .crop-left .cro-stepper .cro-switch { width: 100%; }
+.cro-board.is-plane .crop-left .cro-stepper .cro-flag-choice > .btn { flex: 1; min-width: 0; }
+
+/* 左栏收起时，模型标题左侧露出一枚「三横」菜单键（点它开回配置栏）；
+   左栏在的时候它没有意义，整个不占位。 */
+.crop-model__menu { display: none; flex: 0 0 auto; margin-right: var(--space-1); }
+.cro-board.is-plane.is-left-collapsed .crop-model__menu { display: inline-flex; }

@@ -26,6 +26,7 @@ export function createTrainingConfig(overrides = {}) {
       cp: 1,
       ep: 2,
       vpp: 1,
+      pipeline_layer_mode: "uniform",
       ep_mode: "split",
       cp_mode: "ulysses",
       sequence_parallel: true,

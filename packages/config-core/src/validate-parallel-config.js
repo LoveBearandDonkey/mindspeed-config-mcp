@@ -11,11 +11,17 @@ import { diagnostic, toolResult } from "./result.js";
 
 const PAGE_RULES = "compute-graph-viewer-wzh:shared/plane-rules.js@1e6bb6e";
 const PAGE_VALIDATOR = "compute-graph-viewer-wzh:config-relation-observer.js:1519@1e6bb6e";
-const MINDSPEED_PP = "MindSpeed:mindspeed/arguments.py:719-734@6563468";
+const MEGATRON_PP = "Megatron-LM:megatron/training/arguments.py@core_v0.12.1";
+const MINDSPEED_DYNAMIC_PP = "MindSpeed-LLM:mindspeed_llm/training/arguments.py@7826e88";
 const MINDSPEED_CP = "MindSpeed:mindspeed/arguments.py:868-882@6563468";
 
 function usesMindSpeedSemantics(input) {
   return input.rule_profile?.framework !== "generic";
+}
+
+function pipelineLayerMode(input) {
+  if (input.parallel?.pipeline_layer_mode) return input.parallel.pipeline_layer_mode;
+  return Array.isArray(input.parallel?.num_layer_list) ? "dynamic" : "uniform";
 }
 
 function push(errors, condition, value) {
@@ -30,6 +36,8 @@ export function validateParallelConfig(input) {
   const batch = input.batch;
   const errors = [];
   const warnings = [];
+  const ppLayerMode = pipelineLayerMode(input);
+  const numLayerList = parallel.num_layer_list;
 
   push(errors, config.layers < config.pp, diagnostic(
     "PAGE_LAYERS_AT_LEAST_PP",
@@ -40,13 +48,60 @@ export function validateParallelConfig(input) {
     "total_layers >= pp",
   ));
 
-  if (config.layers >= config.pp && config.layers % config.pp !== 0) {
+  if (ppLayerMode === "dynamic") {
+    push(errors, input.rule_profile?.framework !== "mindspeed-llm-mcore", diagnostic(
+      "MINDSPEED_DYNAMIC_PP_REQUIRES_MCORE_PROFILE",
+      "动态 PP 的 num_layer_list 当前只按 MindSpeed-LLM MCore 口径校验。",
+      ["rule_profile.framework", "parallel.pipeline_layer_mode", "parallel.num_layer_list"],
+      "mindspeed-rule",
+      MINDSPEED_DYNAMIC_PP,
+      "framework === 'mindspeed-llm-mcore'",
+    ));
+    push(errors, !Array.isArray(numLayerList) || numLayerList.length === 0, diagnostic(
+      "MINDSPEED_DYNAMIC_PP_REQUIRES_NUM_LAYER_LIST",
+      "选择动态 PP 后，必须明确提供每个 Stage 的层数 num_layer_list。",
+      ["parallel.pipeline_layer_mode", "parallel.num_layer_list"],
+      "mindspeed-rule",
+      MINDSPEED_DYNAMIC_PP,
+      "num_layer_list.length === pp",
+    ));
+    if (Array.isArray(numLayerList) && numLayerList.length > 0) {
+      push(errors, numLayerList.length !== config.pp, diagnostic(
+        "MINDSPEED_DYNAMIC_PP_LIST_LENGTH_MATCHES_PP",
+        `动态 PP 给了 ${numLayerList.length} 个 Stage 层数，但 PP 是 ${config.pp}。`,
+        ["parallel.pp", "parallel.num_layer_list"],
+        "mindspeed-rule",
+        MINDSPEED_DYNAMIC_PP,
+        "num_layer_list.length === pp",
+      ));
+      const listedLayers = numLayerList.reduce((sum, layers) => sum + layers, 0);
+      push(errors, listedLayers !== config.layers, diagnostic(
+        "MINDSPEED_DYNAMIC_PP_LIST_SUM_MATCHES_LAYERS",
+        `动态 PP 的 Stage 层数之和是 ${listedLayers}，与总层数 ${config.layers} 不一致。`,
+        ["model.total_layers", "parallel.num_layer_list"],
+        "mindspeed-rule",
+        MINDSPEED_DYNAMIC_PP,
+        "sum(num_layer_list) === total_layers",
+      ));
+    }
+  } else if (Array.isArray(numLayerList)) {
+    errors.push(diagnostic(
+      "CONFIG_NUM_LAYER_LIST_REQUIRES_DYNAMIC_PP",
+      "已经提供 num_layer_list，但 PP 分层模式仍是均匀；请明确选择动态 PP，或移除该列表。",
+      ["parallel.pipeline_layer_mode", "parallel.num_layer_list"],
+      "compatibility-gap",
+      MINDSPEED_DYNAMIC_PP,
+      "num_layer_list === undefined || pipeline_layer_mode === 'dynamic'",
+    ));
+  }
+
+  if (ppLayerMode === "uniform" && config.layers >= config.pp && config.layers % config.pp !== 0) {
     const issue = diagnostic(
       "MINDSPEED_LAYERS_DIVISIBLE_BY_PP",
-      `总层数 ${config.layers} 不能被 PP ${config.pp} 整除。页面可以画出不均匀 Stage，但当前 MindSpeed 规则口径要求整除。`,
-      ["model.total_layers", "parallel.pp"],
+      `均匀 PP 要求每个 Stage 层数相同，但总层数 ${config.layers} 不能被 PP ${config.pp} 整除。MindSpeed-LLM MCore 可改用动态 PP 并明确 num_layer_list。`,
+      ["model.total_layers", "parallel.pp", "parallel.pipeline_layer_mode"],
       usesMindSpeedSemantics(input) ? "mindspeed-rule" : "compatibility-gap",
-      MINDSPEED_PP,
+      MEGATRON_PP,
       "total_layers % pp === 0",
     );
     (usesMindSpeedSemantics(input) ? errors : warnings).push(issue);
@@ -122,7 +177,16 @@ export function validateParallelConfig(input) {
       PAGE_VALIDATOR,
       "vpp === 1 || pp > 1",
     ));
-    push(errors, config.pp > 1 && config.layers % (config.pp * config.vpp) !== 0, diagnostic(
+    push(errors, ppLayerMode === "dynamic", diagnostic(
+      "MINDSPEED_DYNAMIC_PP_INCOMPATIBLE_WITH_VPP",
+      `动态 PP 与 VPP ${config.vpp} 不能同时启用；请将 VPP 调回 1，或改回均匀 PP。`,
+      ["parallel.pipeline_layer_mode", "parallel.num_layer_list", "parallel.vpp"],
+      "mindspeed-rule",
+      MINDSPEED_DYNAMIC_PP,
+      "pipeline_layer_mode !== 'dynamic' || vpp === 1",
+    ));
+    push(errors, ppLayerMode === "uniform" && config.pp > 1
+      && config.layers % (config.pp * config.vpp) !== 0, diagnostic(
       "PAGE_LAYERS_DIVISIBLE_BY_PP_VPP",
       `总层数 ${config.layers} 不能被 PP×VPP=${config.pp * config.vpp} 整除。`,
       ["model.total_layers", "parallel.pp", "parallel.vpp"],
@@ -211,12 +275,16 @@ export function validateParallelConfig(input) {
     errors,
     warnings,
     assumptions: [
-      "只校验表单和 MindSpeed 0.12.1 中已建模的静态约束，不代表目标环境已经实机运行通过。",
+      "只校验表单和 rule_profile 对应上游中已建模的静态约束，不代表目标环境已经实机运行通过。",
     ],
     data: {
       valid: errors.length === 0,
       world_size: world,
       ep_mode: config.mode,
+      pipeline_layer_mode: ppLayerMode,
+      pipeline_stage_layers: ppLayerMode === "dynamic" && Array.isArray(numLayerList)
+        ? [...numLayerList]
+        : null,
       ep_domain: epDomain(input),
       expert_data_parallel: Number.isInteger(expertDataParallel(input))
         ? expertDataParallel(input)

@@ -29,11 +29,15 @@ function denseConfig(overrides = {}) {
 }
 
 test("容量估算返回逐 Stage 六段理论值", () => {
-  const result = estimateTrainingCapacity(denseConfig());
+  const input = denseConfig();
+  const result = estimateTrainingCapacity(input);
 
   assert.equal(result.status, "estimated");
   assert.equal(result.confidence, "theoretical");
   assert.equal(result.data.stages.length, 2);
+  assert.equal(result.data.stages[0].micro_batch_count, input.batch.micro_batch_count);
+  assert.equal(result.data.stages[0].vpp_chunks, input.parallel.vpp);
+  assert.equal(result.data.stages[0].recomputed_layers, 0);
   for (const stage of result.data.stages) {
     assert.deepEqual(Object.keys(stage.values_gib), [
       "base", "weight", "gradient", "optimizer", "activation", "reserve",

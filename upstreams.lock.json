@@ -1,16 +1,22 @@
 {
   "schema_version": "1.0",
-  "recorded_at": "2026-09-22",
+  "recorded_at": "2026-09-30",
   "repositories": {
     "tool_matrix_ui": {
       "path": "D:\\Projects\\compute-graph-viewer-wzh",
-      "commit": "ef39d306e70ad48954b3acd3a826b2c3be3c350d",
+      "commit": "485d5206ce4c0cd4719f5d28dd5cbbeb04680be1",
       "dirty": true,
-      "dirty_note": "检测到 router-logits-viz.html 修改和一张未跟踪截图；本次读取的 config-relation 与 MindSpeed 页面文件未显示为已修改。",
+      "dirty_note": "2026-09-30 按用户确认的上游完成态抓取；config-relation-plane.html 及其依赖包含未提交修改，因此 commit 只标识仓库位置，逐文件 SHA-256 以 apps/mcp-server/ui/plane-app/BASELINE.json 为准。页面与样例已复制入本仓库；浏览器业务规则由 MCP structuredContent 替代。",
+      "vendored_baseline_manifest": "apps/mcp-server/ui/plane-app/BASELINE.json",
       "relevant_paths": [
         "Profiling_Insight_and_Tool/shared/plane-rules.js",
         "Profiling_Insight_and_Tool/training-run-twin-standalone/js/config-relation-observer.js",
         "Profiling_Insight_and_Tool/training-run-twin-standalone/js/config-relation-capacity.js",
+        "Profiling_Insight_and_Tool/training-run-twin-standalone/js/config-relation-import.js",
+        "Profiling_Insight_and_Tool/training-run-twin-standalone/config-relation-plane.html",
+        "Profiling_Insight_and_Tool/training-run-twin-standalone/css/config-relation-plane.css",
+        "Profiling_Insight_and_Tool/training-run-twin-standalone/js/config-relation-plane.js",
+        "Profiling_Insight_and_Tool/training-run-twin-standalone/config-test/README.md",
         "Profiling_Insight_and_Tool/training-run-twin-standalone/mindspeed-tool-matrix-analysis.html",
         "Profiling_Insight_and_Tool/training-run-twin-standalone/mindspeed-agent-overview.html",
         "Profiling_Insight_and_Tool/training-run-twin-standalone/tools/plane-rules-selfcheck.js",
@@ -41,6 +47,16 @@
         "docs/zh/release_notes_core.md",
         "README.md"
       ]
+    },
+    "mindspeed_llm": {
+      "url": "https://gitee.com/ascend/MindSpeed-LLM.git",
+      "commit": "7826e883ab40f06dd54f0fa2ce6508d18036843c",
+      "recorded_at": "2026-10-09",
+      "relevant_paths": [
+        "mindspeed_llm/training/arguments.py",
+        "docs/en/pytorch/tools/checkpoint_convert_hf_mcore_large_params.md"
+      ],
+      "reason": "动态 PP 的 num_layer_list 输入、总层数校验以及与 VPP 的互斥关系。"
     },
     "megatron_core": {
       "path": "D:\\Projects\\Megatron-LM",
