@@ -109,6 +109,169 @@
   scrollbar-color: var(--border-strong) transparent;
 }
 
+.mcp-completion-plans {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.mcp-completion-plan {
+  display: grid;
+  gap: 6px;
+  padding: var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border-subtle));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.mcp-completion-plan > b {
+  color: var(--foreground-secondary);
+  font-size: var(--font-size-body-sm);
+}
+
+.mcp-completion-plan__name {
+  color: var(--foreground);
+  font-size: var(--font-size-body-sm);
+  line-height: 1.4;
+}
+
+.mcp-completion-plan__description {
+  color: var(--foreground-muted, var(--foreground-secondary));
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.mcp-completion-plan__cards {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.mcp-completion-plan__card {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  color: var(--foreground-secondary);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--duration-fast), background var(--duration-fast);
+}
+
+.mcp-completion-plan__card:hover {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border-default));
+  background: color-mix(in srgb, var(--primary) 7%, var(--surface-1));
+}
+
+.mcp-completion-plan__card.is-selected {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 13%, var(--surface-1));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+.mcp-completion-plan__card strong {
+  color: var(--foreground);
+  font-size: var(--font-size-body-sm);
+}
+
+.mcp-completion-plan__card > span {
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.mcp-completion-plan__card-heading {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.mcp-completion-plan__recommended {
+  padding: 1px 5px;
+  border: 1px solid color-mix(in srgb, var(--success) 38%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.4;
+}
+
+.mcp-completion-plan__confirmation {
+  display: flex;
+  gap: 7px;
+  align-items: flex-start;
+  padding: var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--warning) 32%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--warning) 9%, transparent);
+  color: var(--warning);
+  font-size: 11px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.mcp-completion-plan__confirmation input {
+  margin-top: 2px;
+}
+
+.mcp-completion-status {
+  margin: 0;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  color: var(--foreground-secondary);
+  background: var(--background-subtle, rgba(255, 255, 255, 0.04));
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.mcp-completion-status.is-valid {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 9%, transparent);
+}
+
+.mcp-completion-status.is-valid::before {
+  width: 11px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-bottom: 2px solid currentColor;
+  border-left: 2px solid currentColor;
+  content: "";
+  transform: translateY(-1px) rotate(-45deg);
+}
+
+.mcp-completion-status.is-review {
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+}
+
+.mcp-completion-status.is-pending {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--primary-hover, var(--primary));
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+
+.mcp-completion-status.is-pending::before {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border: 2px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  content: "";
+  animation: mcp-completion-spin 0.8s linear infinite;
+}
+
+@keyframes mcp-completion-spin {
+  to { transform: rotate(360deg); }
+}
+
 .mcp-missing-field {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(112px, 0.85fr);
@@ -140,6 +303,17 @@
   font: 400 10px / 1.35 var(--font-mono);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.mcp-missing-field__reason {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--foreground-muted, var(--foreground-secondary));
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 .mcp-missing-field__control {
@@ -301,6 +475,8 @@
 
 .mcp-import__footer {
   display: flex;
+  gap: var(--space-2);
+  align-items: center;
   justify-content: flex-start;
   flex: 0 0 auto;
   padding: var(--space-3) var(--space-4);
@@ -312,12 +488,86 @@
   min-width: 112px;
 }
 
+.mcp-confirm-apply {
+  min-width: 112px;
+}
+
+.mcp-confirm-apply[hidden] {
+  display: none;
+}
+
+/* 应用结果使用页面级 Toast：绿色表示原值落地，黄色表示已落地但被页面配平。 */
+.mcp-import-applied {
+  position: fixed;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: 10000;
+  width: min(420px, calc(100vw - var(--space-4) * 2));
+  max-height: calc(100vh - var(--space-4) * 2);
+  margin: 0;
+  padding: var(--space-3) calc(var(--space-5) + var(--space-2)) var(--space-3) var(--space-3);
+  overflow: auto;
+  border: 1px solid color-mix(in srgb, var(--success) 34%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--success) 10%, var(--surface-1));
+  box-shadow: 0 12px 36px color-mix(in srgb, #000 22%, transparent);
+  color: var(--foreground);
+  animation: mcp-import-toast-in 180ms ease-out;
+}
+
+@keyframes mcp-import-toast-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.mcp-import-applied.is-adjusted {
+  border-color: color-mix(in srgb, var(--warning) 38%, transparent);
+  background: color-mix(in srgb, var(--warning) 11%, var(--surface-1));
+}
+
+.mcp-import-applied__copy strong {
+  display: block;
+  font-size: var(--font-size-body-sm);
+  line-height: 1.4;
+}
+
+.mcp-import-applied__copy p {
+  margin: var(--space-1) 0 0;
+  color: var(--foreground-secondary);
+  font-size: var(--font-size-label-xs);
+  line-height: 1.45;
+}
+
+.mcp-import-applied__dismiss {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  color: var(--foreground-secondary);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.mcp-import-applied__details {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-label-xs);
+}
+
+.mcp-import-applied__details ul {
+  margin: 0;
+  padding-left: var(--space-4);
+  line-height: 1.5;
+}
+
 /* 样例配置弹窗：终点动作从左开始读，主按钮排在取消之前。 */
 .cro-yaml__menu .cro-preview__foot {
   justify-content: flex-start;
 }
 
 .cro-yaml__menu #croPreviewApply {
+  order: -2;
+}
+
+.cro-yaml__menu .mcp-confirm-apply {
   order: -1;
 }
 
@@ -738,7 +988,7 @@
 }
 
 /* 阻断态外壳保持红色，内部可执行的修复方案沿用配置解析 guidance 横幅的蓝绿语义。 */
-.cro-config-error.is-blocking.is-mcp-invalid .mcp-fixes__candidate {
+.cro-config-error.is-mcp-invalid .mcp-fixes__candidate {
   display: grid;
   padding: var(--space-2) var(--space-3);
   border-color: color-mix(in srgb, var(--primary) 34%, transparent);
@@ -753,7 +1003,7 @@
   line-height: 1.45;
 }
 
-.cro-config-error.is-blocking.is-mcp-invalid .mcp-fixes__candidate-name strong {
+.cro-config-error.is-mcp-invalid .mcp-fixes__candidate-name strong {
   color: transparent;
   background: linear-gradient(90deg, var(--primary), var(--success));
   background-clip: text;

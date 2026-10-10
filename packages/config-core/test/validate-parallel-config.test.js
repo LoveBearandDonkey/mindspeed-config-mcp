@@ -78,6 +78,36 @@ test("动态 PP 校验 Stage 数量、层数总和以及与 VPP 的互斥关系"
   assert.ok(codes.has("MINDSPEED_DYNAMIC_PP_INCOMPATIBLE_WITH_VPP"));
 });
 
+test("MindFormers offset 矩阵支持 61 层、PP8、VPP2 的非均匀流水线", () => {
+  const result = validateParallelConfig(createTrainingConfig({
+    rule_profile: { framework: "mindformers", version: "page-baseline" },
+    model: {
+      total_layers: 61,
+      num_attention_heads: 128,
+      routed_experts: 256,
+      top_k: 8,
+      shared_experts: 1,
+    },
+    parallel: {
+      dp: 4,
+      pp: 8,
+      tp: 8,
+      ep: 32,
+      vpp: 2,
+      ep_mode: "mf",
+      pipeline_layer_mode: "mindformers-offset",
+      pipeline_layer_offsets: [
+        [1, 1, 1, 1, 1, 1, 1, 1],
+        [1, 1, 1, 1, 1, 1, 1, -2],
+      ],
+    },
+    cluster: { total_ranks: 256 },
+  }));
+
+  assert.equal(result.status, "valid");
+  assert.deepEqual(result.data.pipeline_stage_layers, [8, 8, 8, 8, 8, 8, 8, 5]);
+});
+
 test("generic 页面口径保留不均匀 Stage，但显式报告兼容差异", () => {
   const result = validateParallelConfig(createTrainingConfig({
     rule_profile: { framework: "generic", version: "page-baseline" },

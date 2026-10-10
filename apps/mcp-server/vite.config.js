@@ -576,11 +576,53 @@ function subtractCapabilityClosureScript(source, assetFile) {
     /\s*const commNote = el\("span", "crop-comm-note",[\s\S]*?\);\r?\n/,
     "\n",
   );
+  transformed = replaceRangeRequired(
+    transformed,
+    "  /* ══ 六之二、静息态右栏：当前配置评估",
+    "  function renderDetail() {",
+    "  /* MCP App 的右栏只展示选中对象详情，不在浏览器计算配置评估结论。 */\n",
+    "the browser-local idle configuration assessment",
+  );
+  transformed = replaceRequired(
+    transformed,
+    "默认把静息态的「当前配置评估」收起",
+    "MCP App 的详情栏默认收起",
+    "the obsolete idle-assessment layout comment",
+  );
+  transformed = replaceRequired(
+    transformed,
+    "    rightFacts.replaceChildren();",
+    `    rightFacts.replaceChildren();
+    rightBody.querySelector(":scope > .crop-rank-groups")?.remove();`,
+    "the stale MCP communication group section",
+  );
+  transformed = replaceRangeRequired(
+    transformed,
+    "    /* 容量栏在两种状态下住在不同的地方：",
+    "    if (!topology) return;",
+    `    /* 单卡容量只随有效的对象详情显示；空闲态不展示配置摘要或上一份成功结果。 */
+    if (capacity) capacity.hidden = !p;
+    if (p && capacity && capacity.parentNode !== rightBody) {
+      rightBody.appendChild(capacity);
+    }
+
+    if (!p) {
+      rightTitle.textContent = "未选中";
+      rightFacts.appendChild(el("p", "crop-empty",
+        "点画布上的 rank 行、layer 列、PP Stage 条或格子里的专家，这里显示它的详情；"
+        + "与它交叉的行、列、格会在画布上同时亮起来。"));
+      return;
+    }
+
+`,
+    "the idle right-panel assessment branch",
+  );
   transformed = replaceRequired(
     transformed,
     /      rightFacts\.appendChild\(base\);\r?\n      rightFacts\.appendChild\(cardSection\(\)\);\r?\n      return;\r?\n    }\r?\n\r?\n    if \(p\.kind === "layer"\)/,
     `      rightFacts.appendChild(base);
       const groupSection = section("并行通信组");
+      groupSection.classList.add("crop-rank-groups");
       let groupCount = 0;
       [["tp", "TP"], ["pp", "PP"], ["dp", "DP"], ["cp", "CP"], ["ep", "EP"], ["edp", "EDP"]]
         .forEach(([type, label]) => {
@@ -590,8 +632,8 @@ function subtractCapabilityClosureScript(source, assetFile) {
           groupCount += 1;
           groupSection.appendChild(kvRow(label, \`\${group.id} · rank \${group.ranks.join(", ")}\`, true));
         });
-      if (groupCount) rightFacts.appendChild(groupSection);
       rightFacts.appendChild(cardSection());
+      if (groupCount) rightBody.appendChild(groupSection);
       return;
     }
 

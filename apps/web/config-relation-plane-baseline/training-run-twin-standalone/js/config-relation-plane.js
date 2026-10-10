@@ -1180,7 +1180,7 @@
   const clusterRegion = doc.querySelector(".cro-region--cluster");
   const clusterGrid = doc.querySelector(".cro-cluster__grid");
   const capacity = doc.getElementById("croCapacity");
-  const structureSec = doc.querySelector(".cro-section--structure");
+  let structureSec = doc.querySelector(".cro-section--structure");
   const layerNavSec = doc.getElementById("croLayerNav")?.closest(".cro-section");
   const sharedSec = doc.getElementById("croSharedExperts")?.closest(".cro-section");
   const routedSec = doc.getElementById("croRoutedExperts")?.closest(".cro-section");
@@ -1479,9 +1479,12 @@
   rightBody.appendChild(rightFacts);
   right.append(rightHead, rightBody);
 
-  // 单卡容量与典型 Layer 是原版就有的两块，整块搬来（id / 监听器不变）
+  // 单卡容量整块搬来（id / 监听器不变）；平面页不再展示原版的典型 Layer 结构条。
   if (capacity) rightBody.appendChild(capacity);
-  if (structureSec) rightBody.appendChild(structureSec);
+  if (structureSec) {
+    structureSec.remove();
+    structureSec = null;
+  }
 
   /* ── 离屏引擎区 ── */
   const engine = el("div", "crop-engine");

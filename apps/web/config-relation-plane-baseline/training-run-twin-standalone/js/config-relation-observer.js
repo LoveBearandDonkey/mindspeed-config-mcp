@@ -1569,7 +1569,8 @@
        ⚠️ 文案里出现 "VPP" 就一定会同时标红 PP（emit() 按 label 子串匹配，而 "PP"
        是 "VPP" 的子串）。这里**不做消歧**：这两条错本来就是 PP 与 VPP 共同造成的
        （层数要被两者的乘积整除），两枚一起红正是想要的结果。 */
-    if (vpp > 1) {
+    const mcpOwnsPipelineValidation = global.__mcpPipelinePolicy?.ownsValidation?.(config) === true;
+    if (vpp > 1 && !mcpOwnsPipelineValidation) {
       if (pp <= 1) {
         errors.push(`PP ${pp} 时没有流水线可交错，VPP ${vpp} 无处落地`
           + ` —— 虚拟流水是把每个 stage 的层再拆成 VPP 段轮流跑`);
@@ -1926,7 +1927,10 @@
     /* 虚拟流水（升级计划行 17）。放在配平**之后**：PP 可能刚被 fitParallelWorld 改过，
        而 VPP 的合法性完全依赖 PP 与层数。它不进 world 的乘积（VPP 一张卡都不多占），
        所以这里只是把它收到合法档位上，不会反过来牵动 Total Rank。 */
-    if (config.pp <= 1) {
+    const mcpOwnsPipelineValidation = global.__mcpPipelinePolicy?.ownsValidation?.(config) === true;
+    if (mcpOwnsPipelineValidation) {
+      // MCP 已用显式 offset/num_layer_list 复验分层；页面不再用等长 VPP 规则改写候选。
+    } else if (config.pp <= 1) {
       config.vpp = 1;
     } else if (config.vpp > 1 && config.totalLayer % (config.pp * config.vpp) !== 0) {
       /* 锚在 VPP 上：抬层数。Total Layer 是这条约束里唯一一个改了**不连累卡数**的
@@ -3284,6 +3288,11 @@
         if (holder && holder.panel.hidden) setAdvancedOpen(holder, true, false);
       });
       renderConfigError(topology);
+
+      /* 配置尝试本身也必须广播。cro:change 只代表“新的自洽拓扑可供下游消费”，
+         因而会在无效配置处停住；MCP 校验与修复建议还需要知道“输入已经换了”，
+         才能立刻废弃上一份结论并校验当前错误态。两种事件语义不能混用。 */
+      document.dispatchEvent(new CustomEvent("cro:config-change", { detail: topology }));
 
       /* 参数不兼容时**不往下游发**：集群矩阵、整网 deck、单卡容量、YAML 一律停在
          上一组自洽参数上。这页最会骗人的错误就是「数字和图形各说各话」——

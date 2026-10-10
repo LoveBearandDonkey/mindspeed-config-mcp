@@ -1,6 +1,7 @@
 export { computeRankTopology } from "./compute-rank-topology.js";
 export { estimateTrainingCapacity } from "./estimate-training-capacity.js";
 export { parseTrainingConfig } from "./parse-training-config.js";
+export { planTrainingConfigCompletion } from "./plan-training-config-completion.js";
 export {
   EP_MF,
   EP_ORTHOGONAL,

@@ -92,12 +92,21 @@
         "ep": { "type": "integer", "minimum": 1 },
         "vpp": { "type": "integer", "minimum": 1 },
         "pipeline_layer_mode": {
-          "enum": ["uniform", "dynamic"]
+          "enum": ["uniform", "dynamic", "mindformers-offset"]
         },
         "num_layer_list": {
           "type": "array",
           "minItems": 1,
           "items": { "type": "integer", "minimum": 1 }
+        },
+        "pipeline_layer_offsets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "integer" }
+          }
         },
         "ep_mode": { "enum": ["split", "orthogonal", "mf"] },
         "cp_mode": { "enum": ["ulysses", "ring"] },

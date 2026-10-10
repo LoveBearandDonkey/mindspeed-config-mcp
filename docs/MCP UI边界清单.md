@@ -162,7 +162,7 @@
 | `#croModelSelect` / `model` | `model.id`、`model.hidden_size`、`model.num_attention_heads`、`model.num_key_value_heads`、`model.ffn_hidden_size`、`model.expert_ffn_hidden_size`、`model.vocab_size`、`model.first_k_dense_layers` | 保留；模型预设是这些结构常量的当前输入来源 |
 | `#croConfigPresetSelect` | 一次设置多项训练配置字段 | 保留；不是独立契约字段 |
 | `#croEpMode` / `epMode` | `parallel.ep_mode` | 保留 |
-| `#mcpPipelineLayerMode` | `parallel.pipeline_layer_mode`、`parallel.num_layer_list` | 保留 |
+| `#mcpPipelineLayerMode` | `parallel.pipeline_layer_mode`、`parallel.num_layer_list`、`parallel.pipeline_layer_offsets` | 保留；支持均分、MCore 动态 PP 与 MindFormers offset 三种显式口径 |
 | `#croCardSelect` / `card` | `cluster.ranks_per_node`、`cluster.card_model`、`cluster.card_memory_gib` | 保留 |
 | `globalBatch` | `batch.global_batch_size` | 保留只读结果；由 MBS × DP × micro-batch count 生成请求 |
 | `hiddenDim` | `model.hidden_size` | 保留只读结果；来自模型预设 |

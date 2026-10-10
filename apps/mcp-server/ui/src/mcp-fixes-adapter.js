@@ -234,9 +234,6 @@ export function installFixesAdapter(callFixesTool, trainingConfigFor) {
     }
 
     const suggestions = result.data?.suggestions ?? [];
-    const container = document.getElementById("croConfigError");
-    container?.classList.add("is-blocking", "is-mcp-invalid");
-    container?.classList.toggle("is-guidance", suggestions.length > 0);
     const host = renderFrame(
       suggestions.length ? "" : "当前锁定条件下没有可行候选",
       suggestions.length ? "ready" : "empty",
@@ -325,6 +322,7 @@ export function installFixesAdapter(callFixesTool, trainingConfigFor) {
     token += 1;
     clearTimeout(debounceTimer);
     clearTimeout(pendingTimer);
+    document.getElementById("mcpFixesConclusion")?.remove();
     debounceTimer = window.setTimeout(requestCurrent, delay);
   }
 
@@ -336,7 +334,7 @@ export function installFixesAdapter(callFixesTool, trainingConfigFor) {
     ));
   }
 
-  document.addEventListener("cro:change", () => schedule(40));
+  document.addEventListener("cro:config-change", () => schedule(40));
   document.addEventListener("mcp:pipeline-settings-change", () => schedule(0));
   document.addEventListener("mcp:parsed-config-applied", () => schedule(0));
   document.addEventListener("mcp:retry-requested", (event) => {

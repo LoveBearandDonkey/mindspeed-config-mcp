@@ -66,7 +66,7 @@ const TOOL_DEFINITIONS = Object.freeze([
   {
     name: "parse_training_config",
     title: "解析训练配置",
-    description: "解析 YAML、JSON 或 Shell 启动参数，映射为统一配置，并显式返回未识别、已忽略和仍缺少的字段。不启动训练。",
+    description: "解析 YAML、JSON 或 Shell 启动参数，显式返回未识别和缺失字段，并为缺口生成经过完整静态复验的候选方案。不启动训练。",
     inputSchema: parseInputSchema,
     assertInput: assertParseTrainingConfig,
     run: parseTrainingConfig,
@@ -120,7 +120,8 @@ function summaryOf(result) {
   }
   if (result.tool === "parse_training_config") {
     if (result.status === "error") return result.errors[0]?.message ?? "配置内容解析失败。";
-    return `原文映射 ${result.data.explicit_mapped_count} 个字段，同文件推导 ${result.data.derived_count} 个，省略态默认 ${result.data.defaulted_count} 个；未识别 ${result.data.unmapped_count} 个，未被静默丢弃。`;
+    const planCount = result.data.completion?.plans?.length ?? 0;
+    return `原文映射 ${result.data.explicit_mapped_count} 个字段，同文件推导 ${result.data.derived_count} 个，省略态默认 ${result.data.defaulted_count} 个；未识别 ${result.data.unmapped_count} 个，未被静默丢弃；生成 ${planCount} 个经过完整静态复验的补齐方案。`;
   }
   return JSON.stringify(result);
 }

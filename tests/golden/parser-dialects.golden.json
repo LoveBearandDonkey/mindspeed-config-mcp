@@ -137,5 +137,53 @@
       "memory.lora_enabled"
     ],
     "warnings": ["PARSE_ZERO3_APPROXIMATED_AS_FSDP2", "PARSE_INCOMPLETE"]
+  },
+  "deepseek_completion": {
+    "computation": "runtime-per-parse",
+    "strategy": "evidence-plus-constraint-solver",
+    "mode": "mindformers-offset",
+    "profile": "mindformers",
+    "plan_ids": ["source-faithful", "mindformers-uniform-fallback"],
+    "plan_statuses": ["valid", "valid"],
+    "recommended_stage_layers": [8, 8, 8, 8, 8, 8, 8, 5],
+    "completed_heads": 128,
+    "completed_experts": 256
+  },
+  "fallback_completion": {
+    "plan_id": "static-safe-fallback",
+    "status": "valid",
+    "review_paths": [
+      "cluster.ranks_per_node",
+      "cluster.card_model",
+      "cluster.card_memory_gib",
+      "batch.micro_batch_size",
+      "batch.micro_batch_count",
+      "memory.compute_dtype",
+      "memory.parameter_dtype",
+      "model.top_k",
+      "parallel.pp",
+      "parallel.tp",
+      "parallel.ep",
+      "parallel.vpp",
+      "parallel.pipeline_layer_mode",
+      "cluster.total_ranks"
+    ],
+    "proposed_parallel": {
+      "dp": 1,
+      "pp": 3,
+      "tp": 1,
+      "cp": 1,
+      "ep": 1,
+      "vpp": 1,
+      "pipeline_layer_mode": "uniform"
+    },
+    "proposed_top_k": 5,
+    "proposed_total_ranks": 3
+  },
+  "invalid_yaml": {
+    "status": "error",
+    "code": "PARSE_SYNTAX_ERROR",
+    "message_prefix": "输入格式不合法，无法按 YAML 解析",
+    "source_ref": "mindspeed-config-mcp:parse-training-config@0.2.1"
   }
 }

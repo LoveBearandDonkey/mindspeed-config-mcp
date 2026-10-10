@@ -1,8 +1,14 @@
 import { parseDocument } from "yaml";
 
 import { diagnostic, toolResult } from "./result.js";
+import { planTrainingConfigCompletion } from "./plan-training-config-completion.js";
 
-const PARSER_SOURCE = "mindspeed-config-mcp:parse-training-config@0.2.0";
+const PARSER_SOURCE = "mindspeed-config-mcp:parse-training-config@0.2.1";
+const FORMAT_LABELS = Object.freeze({
+  yaml: "YAML",
+  json: "JSON",
+  shell: "Shell 命令行",
+});
 const PAGE_IMPORT_SOURCE = "compute-graph-viewer-wzh:config-relation-import.js:162-503@ef39d30";
 
 const REQUIRED_PATHS = Object.freeze([
@@ -86,6 +92,13 @@ const integerList = (value) => {
   return parsed;
 };
 
+const integerMatrix = (value) => {
+  if (!Array.isArray(value) || !value.length || value.some((row) => !Array.isArray(row))) {
+    throw new TypeError(`期望整数矩阵，实际为 ${JSON.stringify(value)}`);
+  }
+  return value.map((row) => row.map((item) => integer(item)));
+};
+
 const FIELD_MAPPINGS = new Map();
 const PATH_MAPPINGS = new Map();
 
@@ -118,6 +131,7 @@ define(["expert-model-parallel-size", "expert-parallel-size", "expert-parallel",
 define(["virtual-pipeline-model-parallel-size", "virtual-pipeline-parallel-size", "pp-interleave-num", "vpp"], "parallel.vpp", integer);
 define(["pipeline-layer-mode", "pp-layer-mode"], "parallel.pipeline_layer_mode", lower);
 define(["num-layer-list", "pipeline-stage-layers"], "parallel.num_layer_list", integerList);
+definePath(["model.model-config.offset"], "parallel.pipeline_layer_offsets", integerMatrix);
 define(["ep-mode", "expert-parallel-mode"], "parallel.ep_mode", lower);
 define(["cp-mode", "context-parallel-mode"], "parallel.cp_mode", lower);
 define(["context-parallel-algo"], "parallel.cp_mode", (value) => lower(value).includes("ulysses") ? "ulysses" : "ring");
@@ -137,6 +151,7 @@ define(["micro-batch-size", "micro-batch", "per-device-train-batch-size", "train
 define(["seq-length", "sequence-length", "cutoff-len"], "batch.sequence_length", integer);
 define(["num-microbatches", "micro-batch-count", "micro-batch-num", "gradient-accumulation-steps"], "batch.micro_batch_count", integer);
 define(["global-batch-size", "train-batch-size"], "batch.global_batch_size", integer);
+definePath(["runner-config.batch-size"], "batch.micro_batch_size", integer);
 
 define(["compute-dtype", "torch-dtype"], "memory.compute_dtype", computeDtype);
 define(["params-dtype", "parameter-dtype"], "memory.parameter_dtype", parameterDtype);
@@ -185,7 +200,7 @@ export function parseTrainingConfig(input) {
       status: "error",
       errors: [diagnostic(
         "PARSE_SYNTAX_ERROR",
-        `无法按 ${detectedFormat} 解析输入：${error.message}`,
+        `输入格式不合法，无法按 ${FORMAT_LABELS[detectedFormat] ?? detectedFormat} 解析：${error.message}`,
         ["source.content"],
         "parser-rule",
         PARSER_SOURCE
@@ -279,6 +294,17 @@ export function parseTrainingConfig(input) {
     );
   }
 
+  if (getPath(normalized, "parallel.pipeline_layer_offsets") !== undefined) {
+    assignGenerated(
+      normalized,
+      mappedFields,
+      "parallel.pipeline_layer_mode",
+      "mindformers-offset",
+      "检测到 MindFormers model.model_config.offset",
+      "derived",
+    );
+  }
+
   const missingRequiredFields = REQUIRED_PATHS.filter((path) => getPath(normalized, path) === undefined);
   if (missingRequiredFields.length) {
     warnings.push(diagnostic(
@@ -316,7 +342,11 @@ export function parseTrainingConfig(input) {
       mapped_fields: mappedFields,
       unmapped_fields: unmappedFields,
       ignored_fields: ignoredFields,
-      missing_required_fields: missingRequiredFields
+      missing_required_fields: missingRequiredFields,
+      completion: planTrainingConfigCompletion(normalized, missingRequiredFields, {
+        sourceName: input.source.name,
+        detectedFormat,
+      }),
     }
   });
 }
@@ -379,6 +409,14 @@ function applySourceDerivations({ detectedFormat, entries, sourceName, normalize
     || hasPath("parallel_config.expert_parallel");
   const isHuggingFaceModel = hasPath("model_type") || hasPath("architectures");
   const supportsOmittedDefaults = isShell || isMindFormers;
+
+  if (isMindFormers) {
+    normalized.rule_profile = {
+      framework: "mindformers",
+      version: "page-baseline",
+      source_commit: "compute-graph-viewer-wzh/config-test",
+    };
+  }
 
   const add = (path, value, sourceKey, kind = "derived") => (
     assignGenerated(normalized, mappedFields, path, value, sourceKey, kind)

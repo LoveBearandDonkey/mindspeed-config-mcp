@@ -19,6 +19,7 @@ const NON_STEPPER_FIELDS = Object.freeze({
   "cluster.card_memory_gib": "card",
   "parallel.pipeline_layer_mode": "mcpPipelineLayerMode",
   "parallel.num_layer_list": "mcpPipelineLayerMode",
+  "parallel.pipeline_layer_offsets": "mcpPipelineLayerMode",
 });
 
 export function balancedPipelineLayers(totalLayers, pipelineParallel) {
@@ -96,7 +97,7 @@ export function pageConfigToTrainingConfig(config, topologyApi, pipelineSettings
   const microBatchCount = positiveInteger(config.microBatchNum);
   const pp = positiveInteger(config.pp);
   const requestedMode = pipelineSettings.mode;
-  const pipelineLayerMode = requestedMode === "uniform" || requestedMode === "dynamic"
+  const pipelineLayerMode = ["uniform", "dynamic", "mindformers-offset"].includes(requestedMode)
     ? requestedMode
     : (model.total_layers % pp === 0 ? "uniform" : "dynamic");
   const importedLayers = pipelineSettings.numLayerList;
@@ -105,9 +106,14 @@ export function pageConfigToTrainingConfig(config, topologyApi, pipelineSettings
       ? importedLayers.map(Number)
       : balancedPipelineLayers(model.total_layers, pp))
     : undefined;
-  const framework = epMode === "mf"
+  const pipelineLayerOffsets = pipelineLayerMode === "mindformers-offset"
+    && Array.isArray(pipelineSettings.layerOffsets)
+    ? pipelineSettings.layerOffsets.map((row) => [...row])
+    : undefined;
+  const framework = pipelineSettings.framework
+    ?? (pipelineLayerMode === "mindformers-offset" ? "mindformers" : (epMode === "mf"
     ? "mindformers"
-    : (pipelineLayerMode === "dynamic" ? "mindspeed-llm-mcore" : "mindspeed-core");
+    : (pipelineLayerMode === "dynamic" ? "mindspeed-llm-mcore" : "mindspeed-core")));
   const ruleVersion = framework === "mindspeed-llm-mcore"
     ? "master@7826e88"
     : (framework === "mindspeed-core" ? "0.12.1" : "page-baseline");
@@ -132,6 +138,7 @@ export function pageConfigToTrainingConfig(config, topologyApi, pipelineSettings
       vpp: positiveInteger(config.vpp),
       pipeline_layer_mode: pipelineLayerMode,
       ...(numLayerList ? { num_layer_list: numLayerList } : {}),
+      ...(pipelineLayerOffsets ? { pipeline_layer_offsets: pipelineLayerOffsets } : {}),
       ep_mode: epMode,
       cp_mode: config.cpMode === "ring" ? "ring" : "ulysses",
       sequence_parallel: Boolean(config.seqParallel),
@@ -224,8 +231,8 @@ function fieldElement(field) {
   return document.querySelector(`.cro-stepper[data-field="${CSS.escape(field)}"]`);
 }
 
-function clearMarks() {
-  document.querySelectorAll(".cro-stepper.is-mcp-invalid, .cro-stepper.is-mcp-warning").forEach((element) => {
+export function clearValidationMarks(root = document) {
+  root.querySelectorAll(".cro-stepper.is-mcp-invalid, .cro-stepper.is-mcp-warning").forEach((element) => {
     element.classList.remove("is-mcp-invalid", "is-mcp-warning");
     delete element.dataset.mcpValidation;
   });
@@ -244,7 +251,7 @@ function exposeMarkedField(element) {
 }
 
 function applyMarks(result) {
-  clearMarks();
+  clearValidationMarks();
   for (const [field, state] of validationMarks(result)) {
     const element = fieldElement(field);
     if (!element) continue;
@@ -254,7 +261,11 @@ function applyMarks(result) {
   }
 }
 
-function clearMcpResult(container) {
+export function isDismissibleValidationState(state) {
+  return state === "valid" || state === "warning";
+}
+
+export function clearValidationPresentation(container) {
   container?.querySelector("#mcpValidationConclusion")?.remove();
   container?.classList.remove(
     "is-mcp-valid",
@@ -268,36 +279,54 @@ function clearMcpResult(container) {
 function appendResult(container, html, state) {
   const hadPageResult = Array.from(container.children)
     .some((child) => !["mcpValidationConclusion", "mcpFixesConclusion"].includes(child.id));
-  clearMcpResult(container);
+  clearValidationPresentation(container);
   const holder = document.createElement("div");
   holder.id = "mcpValidationConclusion";
   holder.className = hadPageResult ? "mcp-validation-host is-with-page-result" : "mcp-validation-host";
   holder.innerHTML = html;
-  if (state === "valid") {
+  if (isDismissibleValidationState(state)) {
     const close = document.createElement("button");
     close.type = "button";
     close.className = "mcp-validation__close";
-    close.setAttribute("aria-label", "关闭静态校验结果");
+    close.setAttribute("aria-label", state === "warning" ? "关闭静态校验提醒" : "关闭静态校验结果");
     close.title = "关闭";
     close.textContent = "×";
     close.addEventListener("click", () => {
       document.getElementById("mcpFixesConclusion")?.remove();
-      clearMcpResult(container);
+      clearValidationPresentation(container);
+      clearValidationMarks();
     });
     holder.append(close);
   }
   container.insertBefore(holder, container.querySelector("#mcpFixesConclusion"));
   container.classList.add(`is-mcp-${state}`);
-  container.classList.toggle("is-blocking", state === "invalid");
-  if (state !== "invalid") container.classList.remove("is-guidance");
 }
 
 export function installValidationAdapter(callValidateTool) {
   let token = 0;
   let debounceTimer = 0;
   let pendingTimer = 0;
-  const pipelineSettings = { mode: null, numLayerList: null };
+  const pipelineSettings = { mode: null, numLayerList: null, layerOffsets: null, framework: null };
   let supplementOverrides = {};
+  const pipelinePolicy = {
+    mode: null,
+    prepare(normalizedConfig) {
+      this.mode = normalizedConfig?.parallel?.pipeline_layer_mode ?? null;
+    },
+    ownsValidation() {
+      return this.mode === "mindformers-offset";
+    },
+  };
+  window.__mcpPipelinePolicy = pipelinePolicy;
+
+  function resetImportedContext() {
+    supplementOverrides = {};
+    pipelineSettings.mode = null;
+    pipelineSettings.numLayerList = null;
+    pipelineSettings.layerOffsets = null;
+    pipelineSettings.framework = null;
+    pipelinePolicy.mode = null;
+  }
 
   function setPath(target, path, value) {
     const keys = String(path).split(".");
@@ -314,12 +343,33 @@ export function installValidationAdapter(callValidateTool) {
     return input;
   }
 
+  function collectImportedOverrides(value, prefix = "", output = {}) {
+    if (Array.isArray(value) || value === null || typeof value !== "object") {
+      if (prefix && !pageFieldForPath(prefix)) output[prefix] = structuredClone(value);
+      return output;
+    }
+    for (const [key, child] of Object.entries(value)) {
+      const path = prefix ? `${prefix}.${key}` : key;
+      collectImportedOverrides(child, path, output);
+    }
+    return output;
+  }
+
   function resolvedPipelineSettings(config) {
     if (!pipelineSettings.mode) {
       pipelineSettings.mode = Number(config.totalLayer) % positiveInteger(config.pp) === 0
         ? "uniform" : "dynamic";
     }
-    if (pipelineSettings.mode !== "dynamic") return { mode: "uniform" };
+    if (pipelineSettings.mode === "mindformers-offset") {
+      return {
+        mode: "mindformers-offset",
+        layerOffsets: pipelineSettings.layerOffsets,
+        framework: pipelineSettings.framework ?? "mindformers",
+      };
+    }
+    if (pipelineSettings.mode !== "dynamic") {
+      return { mode: "uniform", framework: pipelineSettings.framework };
+    }
     const imported = pipelineSettings.numLayerList;
     const matchesCurrent = Array.isArray(imported)
       && imported.length === positiveInteger(config.pp)
@@ -329,6 +379,7 @@ export function installValidationAdapter(callValidateTool) {
       numLayerList: matchesCurrent
         ? imported
         : balancedPipelineLayers(config.totalLayer, config.pp),
+      framework: pipelineSettings.framework,
     };
   }
 
@@ -358,7 +409,7 @@ export function installValidationAdapter(callValidateTool) {
     group.className = "segmented-control segmented-control-muted cro-flag-choice";
     group.setAttribute("role", "group");
     group.setAttribute("aria-label", "PP 分层模式");
-    for (const [value, text] of [["uniform", "均分"], ["dynamic", "动态"]]) {
+    for (const [value, text] of [["uniform", "均分"], ["dynamic", "动态"], ["mindformers-offset", "MF offset"]]) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "btn btn-sm";
@@ -366,10 +417,14 @@ export function installValidationAdapter(callValidateTool) {
       button.textContent = text;
       button.title = value === "dynamic"
         ? "MindSpeed-LLM MCore 动态 PP：使用 num_layer_list 明确每个 Stage 的层数；不能与 VPP 同时启用。"
-        : "标准均匀 PP：总层数必须能被 PP 整除。";
+        : (value === "mindformers-offset"
+          ? "MindFormers 非均匀流水线：使用源配置 offset 矩阵分配各虚拟 Stage 层数。"
+          : "标准均匀 PP：总层数必须能被 PP 整除。");
       button.addEventListener("click", () => {
         pipelineSettings.mode = value;
+        pipelinePolicy.mode = value;
         pipelineSettings.numLayerList = null;
+        if (value !== "mindformers-offset") pipelineSettings.layerOffsets = null;
         syncPipelineControl(window.croObserver?.config);
         document.dispatchEvent(new CustomEvent("mcp:pipeline-settings-change"));
       });
@@ -418,7 +473,7 @@ export function installValidationAdapter(callValidateTool) {
     } catch (error) {
       if (currentToken !== token) return;
       clearTimeout(pendingTimer);
-      clearMarks();
+      clearValidationMarks();
       const message = error instanceof Error ? error.message : String(error);
       appendResult(container,
         `<section class="mcp-validation is-unavailable" data-mcp-validation-result="unavailable">`
@@ -432,6 +487,9 @@ export function installValidationAdapter(callValidateTool) {
     token += 1;
     clearTimeout(debounceTimer);
     clearTimeout(pendingTimer);
+    const container = document.getElementById("croConfigError");
+    clearValidationPresentation(container);
+    clearValidationMarks();
     debounceTimer = window.setTimeout(validateCurrent, delay);
   }
 
@@ -444,19 +502,30 @@ export function installValidationAdapter(callValidateTool) {
     ));
   }
 
-  document.addEventListener("cro:change", () => schedule(40));
+  document.addEventListener("cro:config-change", () => schedule(40));
+  document.addEventListener("cro:source", () => {
+    resetImportedContext();
+    schedule(0);
+  });
   document.addEventListener("mcp:pipeline-settings-change", () => schedule(0));
   document.addEventListener("mcp:parsed-config-applied", (event) => {
-    supplementOverrides = Object.fromEntries(Object.entries(event.detail?.supplements ?? {})
-      .filter(([path]) => !pageFieldForPath(path)));
-    const parallel = event.detail?.normalizedConfig?.parallel;
+    const normalized = event.detail?.normalizedConfig ?? {};
+    pipelinePolicy.prepare(normalized);
+    supplementOverrides = collectImportedOverrides(normalized);
+    for (const [path, value] of Object.entries(event.detail?.supplements ?? {})) {
+      if (!pageFieldForPath(path)) supplementOverrides[path] = value;
+    }
+    const parallel = normalized.parallel;
     if (!parallel) return;
     const importedMode = parallel.pipeline_layer_mode
       ?? (Array.isArray(parallel.num_layer_list) ? "dynamic" : null);
-    if (importedMode === "uniform" || importedMode === "dynamic") {
+    if (["uniform", "dynamic", "mindformers-offset"].includes(importedMode)) {
       pipelineSettings.mode = importedMode;
       pipelineSettings.numLayerList = Array.isArray(parallel.num_layer_list)
         ? [...parallel.num_layer_list] : null;
+      pipelineSettings.layerOffsets = Array.isArray(parallel.pipeline_layer_offsets)
+        ? parallel.pipeline_layer_offsets.map((row) => [...row]) : null;
+      pipelineSettings.framework = normalized.rule_profile?.framework ?? null;
       syncPipelineControl(window.croObserver?.config);
       schedule(0);
     }
@@ -468,7 +537,11 @@ export function installValidationAdapter(callValidateTool) {
     if (relevantControl(event)) schedule();
   });
   document.addEventListener("change", (event) => {
-    if (relevantControl(event)) schedule();
+    if (!relevantControl(event)) return;
+    if (event.target.closest("#croConfigPresetSelect, #croConfigPresetMenu")) {
+      resetImportedContext();
+    }
+    schedule();
   });
   const start = () => {
     waitForPipelineControl();

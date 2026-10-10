@@ -1137,6 +1137,7 @@
     let pending = null;   // 当前预览的那一份：{ meta, partial, adjustedNote }
     let previewToken = 0; // 连续点不同卡片时，较早返回的 fetch 不得覆盖当前报告
     let activeSampleFile = null;
+    let activeSampleSignature = null;
     let applyingSample = false;
 
     const sampleValue = (file) => SAMPLE_PREFIX + file;
@@ -1190,6 +1191,27 @@
       }
       syncMergedTrigger();
     }
+
+    function currentConfigSignature() {
+      const config = global.croObserver?.config ?? {};
+      return JSON.stringify(Object.keys(config).sort().map((key) => [key, config[key]]));
+    }
+
+    function clearActiveSample() {
+      activeSampleFile = null;
+      activeSampleSignature = null;
+    }
+
+    /* MCP 补齐方案仍然属于用户选中的这份样例，而不是一份来历不明的“自定义”。
+       适配层应用完成后通过这个入口写回样例身份；后续用户真正拨动表单时，下面的
+       cro:change 监听仍会清空 activeSampleFile，让下拉如实回到自定义状态。 */
+    global.croImport.selectAppliedSample = (file) => {
+      if (!mergedSelect || !sampleOf(file)) return false;
+      activeSampleFile = file;
+      activeSampleSignature = currentConfigSignature();
+      restoreMergedSelection();
+      return true;
+    };
 
     /* 预览右栏按字段中文名 + 取值列出；旋钮字段名取自 FIELD_SPECS / FLAG_SPECS，
        开关类取值用 flagText 转成「开 / 关」或选项名，epMode 不在两张表里单独兜底。 */
@@ -1359,6 +1381,7 @@
       setScore(score || "—");
       el.source.innerHTML = `<b>来源</b> ${escapeHtml(meta.source)}　·　${rich(meta.note)}`;
       el.report.innerHTML = html;
+      el.report.querySelector(":scope > .cro-import__lede")?.remove();
       el.report.scrollTop = 0;
       el.apply.disabled = !canApply;
     }
@@ -1441,8 +1464,20 @@
         cardEl.setAttribute("aria-selected", String(selected));
       });
       const preset = presetId(file);
-      if (preset) { previewPreset(preset); return; }
-      if (file === DEFAULT_FILE) { previewDefault(); return; }
+      if (preset) {
+        doc.dispatchEvent(new CustomEvent("cro:config-preview-change", {
+          detail: { file, kind: "preset" },
+        }));
+        previewPreset(preset);
+        return;
+      }
+      if (file === DEFAULT_FILE) {
+        doc.dispatchEvent(new CustomEvent("cro:config-preview-change", {
+          detail: { file, kind: "default" },
+        }));
+        previewDefault();
+        return;
+      }
       const meta = sampleOf(file);
       if (!meta) return;
       const token = ++previewToken;
@@ -1483,14 +1518,15 @@
          内置选项不拦截，仍完整走原来的 setConfigPreset 通路。 */
       mergedSelect.addEventListener("change", (event) => {
         const file = sampleFile(mergedSelect.value);
-        if (!file) { activeSampleFile = null; return; }
+        if (!file) { clearActiveSample(); return; }
         event.preventDefault();
         event.stopImmediatePropagation();
         openMenu(file);
       }, true);
       syncMergedOptions();
       doc.addEventListener("cro:change", () => {
-        if (!applyingSample) activeSampleFile = null;
+        if (!applyingSample && activeSampleFile
+          && activeSampleSignature !== currentConfigSignature()) clearActiveSample();
         global.queueMicrotask(() => {
           syncMergedOptions();
           if (activeSampleFile) mergedSelect.value = sampleValue(activeSampleFile);
@@ -1521,7 +1557,7 @@
     el.apply.addEventListener("click", () => {
       if (!pending || !global.croObserver) return;
       if (pending.kind === "preset") {
-        activeSampleFile = null;
+        clearActiveSample();
         global.croObserver.setConfigPreset(pending.presetId);
         syncMergedOptions();
         closeMenu(true);
@@ -1530,9 +1566,13 @@
       if (!global.croObserver.importConfig) return;
       const meta = pending.meta;
       applyingSample = Boolean(mergedSelect);
-      if (mergedSelect) activeSampleFile = meta.file === DEFAULT_FILE ? null : meta.file;
+      if (mergedSelect) {
+        if (meta.file === DEFAULT_FILE) clearActiveSample();
+        else activeSampleFile = meta.file;
+      }
       const result = global.croObserver.importConfig(pending.partial);
       applyingSample = false;
+      activeSampleSignature = activeSampleFile ? currentConfigSignature() : null;
       // 配平改掉的那几项：表单上会闪，这里再记进文件名旁的角标，免得一闪就没了
       const adjusted = diffApplied(pending.partial, result.before, result.after);
 

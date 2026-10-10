@@ -77,18 +77,20 @@
           <span>文档</span>
         </button>
         <!-- what is rank：rank 概念入口，独立静态页，放在右上角动作组最左侧 -->
-        <a class="btn btn-sm cro-export-btn" id="croRankIntro" href="../rank-intro/rank-intro.html" title="Rank 的设计表达 · 分步入门">
+        <a class="btn btn-sm cro-export-btn" id="croRankIntro" href="../rank-intro/rank-intro.html" target="_blank" rel="noopener noreferrer" title="Rank 的设计表达 · 分步入门">
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="12" r="9"></circle>
-            <path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5v.2"></path>
-            <path d="M12 17h.01"></path>
+            <path d="M14 3h7v7"></path>
+            <path d="M10 14 21 3"></path>
+            <path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"></path>
           </svg>
           <span>what is rank</span>
         </a>
         <!-- MindSpeed intro：MindSpeed × 工具矩阵的能力与 UX 机会地图，跟「what is rank」一样是独立静态页 -->
-        <a class="btn btn-sm cro-export-btn" id="croMindSpeedIntro" href="../mindspeed-intro/mindspeed-tool-matrix-analysis.html" title="MindSpeed × Profiling Insight · 双向能力与 UX 机会地图">
+        <a class="btn btn-sm cro-export-btn" id="croMindSpeedIntro" href="../mindspeed-intro/mindspeed-tool-matrix-analysis.html" target="_blank" rel="noopener noreferrer" title="MindSpeed × Profiling Insight · 双向能力与 UX 机会地图">
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M13 3 4 14h7l-1 7 9-11h-7z"></path>
+            <path d="M14 3h7v7"></path>
+            <path d="M10 14 21 3"></path>
+            <path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"></path>
           </svg>
           <span>MindSpeed intro</span>
         </a>
@@ -2916,7 +2918,7 @@ t  TP 序号              c  CP 序号      n  物理节点号</div>
           <input type="file" id="croImportFile" accept=".yaml,.yml,.sh,.bash,.json,.txt" hidden>
           <button class="btn btn-sm" id="croImportParse" type="button">解析</button>
           <button class="btn btn-sm btn-ghost cro-import__clear" id="croImportClear" type="button" hidden>清空</button>
-          <button class="btn btn-sm cro-import__apply" id="croImportApply" type="button" disabled>应用到表单</button>
+          <button class="btn btn-sm cro-import__apply" id="croImportApply" type="button" disabled>应用</button>
         </div>
         <textarea class="cro-import__text cro-code" id="croImportText"
                   aria-label="待导入的配置代码" spellcheck="false" wrap="off"

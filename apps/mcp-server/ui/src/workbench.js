@@ -34,8 +34,9 @@ const FIELD_GROUPS = [
     field("parallel.dp", "DP", "number"), field("parallel.pp", "PP", "number"),
     field("parallel.tp", "TP", "number"), field("parallel.cp", "CP", "number"),
     field("parallel.ep", "EP", "number"), field("parallel.vpp", "VPP", "number"),
-    field("parallel.pipeline_layer_mode", "PP 分层", "select", ["uniform", "dynamic"], true),
+    field("parallel.pipeline_layer_mode", "PP 分层", "select", ["uniform", "dynamic", "mindformers-offset"], true),
     field("parallel.num_layer_list", "各 Stage 层数", "integer-csv", undefined, true),
+    field("parallel.pipeline_layer_offsets", "MindFormers offset", "integer-matrix", undefined, true),
     field("parallel.ep_mode", "EP 口径", "select", ["split", "orthogonal", "mf"]),
     field("parallel.cp_mode", "CP 模式", "select", ["ulysses", "ring"]),
     field("parallel.sequence_parallel", "序列并行", "boolean"),
@@ -109,6 +110,7 @@ const OPTION_LABELS = {
   ring: "Ring",
   uniform: "均匀 PP",
   dynamic: "动态 PP",
+  "mindformers-offset": "MindFormers offset",
   bf16: "BF16",
   fp16: "FP16",
   fp8: "FP8",
@@ -504,10 +506,12 @@ export function createWorkbench({ app, renderResult }) {
       if (value !== undefined) control.value = String(value);
     } else {
       control = document.createElement("input");
-      control.type = ["csv", "integer-csv"].includes(definition.type) ? "text" : definition.type;
+      control.type = ["csv", "integer-csv", "integer-matrix"].includes(definition.type) ? "text" : definition.type;
       if (definition.type === "number") { control.min = "0"; control.step = "1"; }
-      if (value !== undefined) control.value = ["csv", "integer-csv"].includes(definition.type) && Array.isArray(value)
-        ? value.join(", ") : value;
+      if (value !== undefined) control.value = definition.type === "integer-matrix"
+        ? JSON.stringify(value)
+        : (["csv", "integer-csv"].includes(definition.type) && Array.isArray(value)
+          ? value.join(", ") : value);
     }
     return control;
   }
@@ -616,6 +620,15 @@ function readControl(control, type) {
   if (type === "integer-csv") {
     const values = control.value.split(",").map((item) => Number(item.trim())).filter(Number.isInteger);
     return values.length ? values : undefined;
+  }
+  if (type === "integer-matrix") {
+    try {
+      const value = JSON.parse(control.value);
+      return Array.isArray(value) && value.every((row) => Array.isArray(row)
+        && row.every(Number.isInteger)) ? value : undefined;
+    } catch {
+      return undefined;
+    }
   }
   return control.value;
 }

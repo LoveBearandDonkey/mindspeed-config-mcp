@@ -30,6 +30,7 @@ const PAGE_FIELDS = Object.freeze({
 const MCP_PAGE_FIELDS = Object.freeze({
   "parallel.pipeline_layer_mode": "mcpPipelineLayerMode",
   "parallel.num_layer_list": "mcpPipelineLayerMode",
+  "parallel.pipeline_layer_offsets": "mcpPipelineLayerMode",
 });
 
 const PATH_LABELS = Object.freeze({
@@ -48,6 +49,7 @@ const PATH_LABELS = Object.freeze({
   "parallel.vpp": "VPP",
   "parallel.pipeline_layer_mode": "PP 分层",
   "parallel.num_layer_list": "各 Stage 层数",
+  "parallel.pipeline_layer_offsets": "MindFormers offset",
   "parallel.ep_mode": "EP 口径",
   "parallel.cp_mode": "CP 口径",
   "parallel.sequence_parallel": "序列并行 SP",
@@ -133,10 +135,24 @@ export function toPagePartial(normalized = {}) {
   return partial;
 }
 
+/* 页面会把暂时不可用的控件停回默认档；这些档位在当前并行度下没有计算差异，
+   不应冒充对用户配置的有效修改。控件重新可用时，真实差异仍由下方比较照常报告。 */
+function isInactivePageNormalization(field, after) {
+  if (field === "cpMode") return Number(after.cp) <= 1;
+  if (["seqParallel", "vocabEmbDp"].includes(field)) return Number(after.tp) <= 1;
+  if (field === "expertTp") return Number(after.tp) <= 1 || after.epMode === "mf";
+  if (field === "shardMode") return Number(after.dp) <= 1;
+  if (field === "recomputeLayers") return after.recomputeMode !== "layers";
+  if (field === "loraRank") return !after.lora;
+  return false;
+}
+
 export function diffApplied(partial, after = {}) {
   return Object.entries(partial).flatMap(([field, want]) => {
     const got = after[field];
-    return Object.is(want, got) ? [] : [{ field, want, got }];
+    return Object.is(want, got) || isInactivePageNormalization(field, after)
+      ? []
+      : [{ field, want, got }];
   });
 }
 
@@ -168,6 +184,12 @@ function formatValue(value) {
   if (value === null) return "null";
   if (typeof value === "object") return escapeHtml(JSON.stringify(value));
   return escapeHtml(value);
+}
+
+function labelForPageField(field) {
+  if (field === "node") return "节点数";
+  const path = Object.entries(PAGE_FIELDS).find(([, pageField]) => pageField === field)?.[0];
+  return path ? labelForPath(path) : field;
 }
 
 function section(title, items, hint = "", className = "") {
@@ -203,8 +225,8 @@ export function renderParseReport(result, { adjusted = [] } = {}) {
   ];
 
   if (adjusted.length) {
-    output.push(`<div class="cro-import__block is-warn"><h4>页面配平后调整了 ${adjusted.length} 项</h4>`
-      + `<p class="cro-import__hint">外部配置已经回填；为维持并行乘积和整除约束，原页面的配平逻辑修改了以下值。</p><ul>`
+    output.push(`<div class="cro-import__block is-warn"><h4>已应用到表单；页面自动调整了 ${adjusted.length} 项</h4>`
+      + `<p class="cro-import__hint">应用已经完成。为维持并行乘积和整除约束，表单采用了以下自洽值；无需再次点击“应用到表单”。</p><ul>`
       + adjusted.map((item) => `<li><code>${escapeHtml(item.field)}</code>：`
         + `输入 <b>${formatValue(item.want)}</b> → 页面采用 <b>${formatValue(item.got)}</b></li>`).join("")
       + `</ul></div>`);
@@ -244,4 +266,26 @@ export function renderParseReport(result, { adjusted = [] } = {}) {
   ));
 
   return output.join("");
+}
+
+export function renderAppliedStatus(adjusted = []) {
+  const changed = Array.isArray(adjusted) ? adjusted : [];
+  const hasAdjustments = changed.length > 0;
+  const title = hasAdjustments
+    ? `配置已应用，页面自动调整了 ${changed.length} 项`
+    : "配置已成功应用到表单";
+  const description = hasAdjustments
+    ? "表单已更新为满足并行乘积和整除约束的结果。"
+    : "所有可回填项均已写入，可以继续检查或修改表单。";
+  const details = hasAdjustments
+    ? `<div class="mcp-import-applied__details"><ul>`
+      + changed.map((item) => `<li><b>${escapeHtml(labelForPageField(item.field))}</b>：`
+        + `输入 ${formatValue(item.want)} → 页面采用 ${formatValue(item.got)}</li>`).join("")
+      + `</ul></div>`
+    : "";
+  return `<section class="mcp-import-applied ${hasAdjustments ? "is-adjusted" : "is-success"}" `
+    + `id="mcpImportAppliedStatus" role="status" aria-live="polite" tabindex="-1">`
+    + `<div class="mcp-import-applied__copy"><strong>${title}</strong><p>${description}</p></div>`
+    + `<button class="btn btn-sm btn-ghost btn-icon mcp-import-applied__dismiss" type="button" `
+    + `data-dismiss-mcp-import-applied aria-label="关闭应用结果">×</button>${details}</section>`;
 }

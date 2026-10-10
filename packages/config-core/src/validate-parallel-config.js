@@ -14,6 +14,7 @@ const PAGE_VALIDATOR = "compute-graph-viewer-wzh:config-relation-observer.js:151
 const MEGATRON_PP = "Megatron-LM:megatron/training/arguments.py@core_v0.12.1";
 const MINDSPEED_DYNAMIC_PP = "MindSpeed-LLM:mindspeed_llm/training/arguments.py@7826e88";
 const MINDSPEED_CP = "MindSpeed:mindspeed/arguments.py:868-882@6563468";
+const MINDFORMERS_OFFSET = "compute-graph-viewer-wzh:config-test/mf_pretrain_deepseek3_671b.yaml:model.model_config.offset";
 
 function usesMindSpeedSemantics(input) {
   return input.rule_profile?.framework !== "generic";
@@ -38,6 +39,7 @@ export function validateParallelConfig(input) {
   const warnings = [];
   const ppLayerMode = pipelineLayerMode(input);
   const numLayerList = parallel.num_layer_list;
+  const layerOffsets = parallel.pipeline_layer_offsets;
 
   push(errors, config.layers < config.pp, diagnostic(
     "PAGE_LAYERS_AT_LEAST_PP",
@@ -48,7 +50,47 @@ export function validateParallelConfig(input) {
     "total_layers >= pp",
   ));
 
-  if (ppLayerMode === "dynamic") {
+  if (ppLayerMode === "mindformers-offset") {
+    push(errors, input.rule_profile?.framework !== "mindformers", diagnostic(
+      "MINDFORMERS_OFFSET_REQUIRES_MINDFORMERS_PROFILE",
+      "MindFormers offset 分层只按 MindFormers profile 校验。",
+      ["rule_profile.framework", "parallel.pipeline_layer_mode", "parallel.pipeline_layer_offsets"],
+      "compatibility-gap",
+      MINDFORMERS_OFFSET,
+      "framework === 'mindformers'",
+    ));
+    push(errors, !Array.isArray(layerOffsets) || !layerOffsets.length, diagnostic(
+      "MINDFORMERS_OFFSET_REQUIRES_MATRIX",
+      "选择 MindFormers offset 分层后必须提供 offset 矩阵。",
+      ["parallel.pipeline_layer_mode", "parallel.pipeline_layer_offsets"],
+      "compatibility-gap",
+      MINDFORMERS_OFFSET,
+    ));
+    if (Array.isArray(layerOffsets) && layerOffsets.length) {
+      const rectangular = layerOffsets.every((row) => Array.isArray(row) && row.length === config.pp);
+      push(errors, !rectangular || layerOffsets.length !== config.vpp, diagnostic(
+        "MINDFORMERS_OFFSET_SHAPE_MATCHES_VPP_PP",
+        `offset 矩阵必须是 VPP×PP=${config.vpp}×${config.pp}，当前为 ${layerOffsets.length}×${layerOffsets[0]?.length ?? 0}。`,
+        ["parallel.pp", "parallel.vpp", "parallel.pipeline_layer_offsets"],
+        "compatibility-gap",
+        MINDFORMERS_OFFSET,
+        "offset.length === vpp && every(row.length === pp)",
+      ));
+      if (rectangular && layerOffsets.length === config.vpp) {
+        const offsetSum = layerOffsets.flat().reduce((sum, value) => sum + value, 0);
+        const base = (config.layers - offsetSum) / (config.pp * config.vpp);
+        const positive = Number.isInteger(base) && layerOffsets.flat().every((value) => base + value > 0);
+        push(errors, !positive, diagnostic(
+          "MINDFORMERS_OFFSET_RESOLVES_ALL_LAYERS",
+          `offset 矩阵无法把 ${config.layers} 层分配为正整数虚拟 Stage。`,
+          ["model.total_layers", "parallel.pp", "parallel.vpp", "parallel.pipeline_layer_offsets"],
+          "compatibility-gap",
+          MINDFORMERS_OFFSET,
+          "base=(total_layers-sum(offset))/(pp*vpp) is positive integer",
+        ));
+      }
+    }
+  } else if (ppLayerMode === "dynamic") {
     push(errors, input.rule_profile?.framework !== "mindspeed-llm-mcore", diagnostic(
       "MINDSPEED_DYNAMIC_PP_REQUIRES_MCORE_PROFILE",
       "动态 PP 的 num_layer_list 当前只按 MindSpeed-LLM MCore 口径校验。",
@@ -284,7 +326,15 @@ export function validateParallelConfig(input) {
       pipeline_layer_mode: ppLayerMode,
       pipeline_stage_layers: ppLayerMode === "dynamic" && Array.isArray(numLayerList)
         ? [...numLayerList]
-        : null,
+        : (ppLayerMode === "mindformers-offset" && Array.isArray(layerOffsets)
+          && layerOffsets.length === config.vpp
+          && layerOffsets.every((row) => Array.isArray(row) && row.length === config.pp)
+          ? Array.from({ length: config.pp }, (_, stage) => {
+            const offsetSum = layerOffsets.flat().reduce((sum, value) => sum + value, 0);
+            const base = (config.layers - offsetSum) / (config.pp * config.vpp);
+            return layerOffsets.reduce((sum, row) => sum + base + row[stage], 0);
+          })
+          : null),
       ep_domain: epDomain(input),
       expert_data_parallel: Number.isInteger(expertDataParallel(input))
         ? expertDataParallel(input)

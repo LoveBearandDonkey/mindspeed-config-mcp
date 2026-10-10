@@ -84,10 +84,20 @@ test("JSON 语法错误返回结构化错误而不是抛出", () => {
 
   assert.equal(result.status, "error");
   assert.equal(result.errors[0].code, "PARSE_SYNTAX_ERROR");
+  assert.match(result.errors[0].message, /^输入格式不合法，无法按 JSON 解析：/);
   assert.equal(result.data.source_field_count, 0);
   assert.equal(result.data.required_field_count, 30);
   assert.equal(result.data.filled_required_field_count, 0);
   assert.equal(result.data.mapped_count, 0);
+});
+
+test("YAML 语法错误明确提示输入格式不合法并保留解析细节", () => {
+  const result = parseTrainingConfig(input("model:\n  hidden_size: [1, 2", "yaml", "broken.yaml"));
+
+  assert.equal(result.status, "error");
+  assert.equal(result.errors[0].code, "PARSE_SYNTAX_ERROR");
+  assert.match(result.errors[0].message, /^输入格式不合法，无法按 YAML 解析：/);
+  assert.ok(result.errors[0].message.length > "输入格式不合法，无法按 YAML 解析：".length);
 });
 
 test("识别 MindFormers 并行键、精度键并按 mf 口径派生 world size", () => {
@@ -177,4 +187,118 @@ bf16: true
   const zero3 = parseTrainingConfig(input(`{"zero_optimization":{"stage":3}}`, "json", "ds_z3.json"));
   assert.equal(zero3.data.normalized_config.memory.shard_mode, "fsdp2");
   assert.ok(zero3.warnings.some((warning) => warning.code === "PARSE_ZERO3_APPROXIMATED_AS_FSDP2"));
+});
+
+test("DeepSeek-V3 缺口由模型证据补齐，并返回经过复验的 MindFormers 方案", () => {
+  const result = parseTrainingConfig(input(`
+runner_config:
+  batch_size: 1
+parallel_config:
+  data_parallel: 4
+  model_parallel: 8
+  pipeline_stage: 8
+  expert_parallel: 32
+  micro_batch_num: 32
+model:
+  model_config:
+    model_type: deepseek_v3
+    num_hidden_layers: 61
+    hidden_size: 7168
+    seq_length: 4096
+    offset: [[1,1,1,1,1,1,1,1], [1,1,1,1,1,1,1,-2]]
+    pp_interleave_num: 2
+    params_dtype: float32
+    compute_dtype: bfloat16
+`, "yaml", "mf_pretrain_deepseek3_671b.yaml"));
+
+  assert.equal(result.data.normalized_config.rule_profile.framework, "mindformers");
+  assert.equal(result.data.normalized_config.parallel.pipeline_layer_mode, "mindformers-offset");
+  assert.equal(result.data.normalized_config.batch.micro_batch_size, 1);
+  assert.equal(result.data.completion.plans[0].proposed_config.model.num_attention_heads, 128);
+  assert.equal(result.data.completion.plans[0].proposed_config.model.routed_experts, 256);
+  assert.deepEqual(result.data.completion.plans.map((plan) => plan.id), [
+    "source-faithful",
+    "mindformers-uniform-fallback",
+  ]);
+  assert.ok(result.data.completion.plans.every((plan) => plan.validation.status === "valid"));
+});
+
+test("Megatron 命令行的缺口按本次输入即时求解，不依赖预置答案", () => {
+  const result = parseTrainingConfig(input(`
+WORLD_SIZE=8
+torchrun train.py \\
+  --num-layers 96 \\
+  --hidden-size 12288 \\
+  --num-attention-heads 96 \\
+  --seq-length 2048 \\
+  --micro-batch-size 1 \\
+  --global-batch-size 1536 \\
+  --tensor-model-parallel-size 8 \\
+  --pipeline-model-parallel-size 16 \\
+  --fp16
+`, "shell", "unknown-megatron-command.sh"));
+
+  assert.equal(result.data.completion.computation, "runtime-per-parse");
+  assert.equal(result.data.completion.strategy, "evidence-plus-constraint-solver");
+  assert.ok(result.data.completion.plans.length > 0);
+  assert.ok(result.data.completion.plans.every((plan) => plan.validation.status === "valid"));
+  assert.equal(result.data.completion.plans[0].proposed_config.cluster.total_ranks, 128);
+  assert.equal(result.data.completion.plans[0].proposed_config.memory.parameter_dtype, "bf16");
+});
+
+test("未知 MoE 命令行优先给出保留 EP 的扩容方案", () => {
+  const result = parseTrainingConfig(input(`
+WORLD_SIZE=8
+torchrun train.py \\
+  --num-layers 32 \\
+  --hidden-size 4096 \\
+  --num-attention-heads 32 \\
+  --num-experts 8 \\
+  --moe-router-topk 2 \\
+  --seq-length 4096 \\
+  --micro-batch-size 1 \\
+  --global-batch-size 256 \\
+  --pipeline-model-parallel-size 4 \\
+  --expert-model-parallel-size 8 \\
+  --bf16
+`, "shell", "unknown-moe-command.sh"));
+
+  const recommended = result.data.completion.plans[0];
+  assert.equal(recommended.id, "preserve-parallel-expansion");
+  assert.equal(recommended.proposed_config.parallel.ep, 8);
+  assert.equal(recommended.proposed_config.parallel.dp, 8);
+  assert.equal(recommended.proposed_config.cluster.total_ranks, 32);
+  assert.equal(recommended.validation.status, "valid");
+});
+
+test("常规搜索无解时生成经过复验的兜底方案并逐项暴露冲突字段", () => {
+  const result = parseTrainingConfig(input(`
+parallel_config:
+  data_parallel: 1
+  model_parallel: 4
+  pipeline_stage: 8
+  expert_parallel: 4
+model:
+  model_config:
+    model_type: hostile_moe
+    num_hidden_layers: 3
+    hidden_size: 64
+    num_attention_heads: 7
+    num_experts: 5
+    num_experts_per_tok: 9
+    seq_length: 10
+    offset: [[9]]
+    pp_interleave_num: 2
+`, "yaml", "hostile.yaml"));
+
+  const plan = result.data.completion.plans[0];
+  assert.equal(result.data.completion.complete, true);
+  assert.equal(plan.id, "static-safe-fallback");
+  assert.equal(plan.validation.status, "valid");
+  assert.ok(plan.values.some((item) => item.path === "model.top_k"));
+  assert.ok(plan.values.some((item) => item.path === "parallel.pp"));
+  assert.ok(plan.values.some((item) => item.path === "parallel.pipeline_layer_mode"));
+  assert.ok(plan.values.some((item) => item.path === "cluster.total_ranks"));
+  assert.ok(plan.values.every((item) => result.data.missing_required_fields.includes(item.path)
+    || item.confidence === "requires-confirmation"));
 });

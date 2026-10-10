@@ -9,12 +9,17 @@ import { validateTrainingConfig } from "@mindspeed-config/contracts";
 import { createTrainingConfig } from "../../../tests/fixtures/training-config.js";
 import { APP_RESOURCE_URI, createMcpServer } from "../src/server.js";
 import {
+  diffApplied,
   formatFillCoverageScore,
+  renderAppliedStatus,
   renderParseReport,
   toPagePartial,
 } from "../ui/src/mcp-parse-adapter.js";
 import {
   balancedPipelineLayers,
+  clearValidationMarks,
+  clearValidationPresentation,
+  isDismissibleValidationState,
   pageConfigToTrainingConfig,
   renderValidationConclusion,
   validationMarks,
@@ -145,7 +150,15 @@ test("MCP App 资源可读取且为单文件 HTML", async () => {
     assert.match(response.contents[0].text, /可回填/);
     assert.match(response.contents[0].text, /固定必填字段集合/);
     assert.match(response.contents[0].text, /MCP缺口配置补齐方案/);
-    assert.match(response.contents[0].text, /系统已填入当前页面的默认配置/);
+    assert.match(response.contents[0].text, /MCP缺口（/);
+    assert.match(response.contents[0].text, /mcp-completion-plan__cards/);
+    assert.match(response.contents[0].text, /核对并应用/);
+    assert.match(response.contents[0].text, /计算中… MCP 正在解析当前代码并求解完整候选/);
+    assert.match(response.contents[0].text, /aria-busy/);
+    assert.match(response.contents[0].text, /MCP 完整复验通过/);
+    assert.match(response.contents[0].text, /静态安全兜底方案/);
+    assert.match(response.contents[0].text, /MCP 已把缺失项和冲突项列在下方/);
+    assert.doesNotMatch(response.contents[0].text, /当前没有通过完整静态复验的候选，暂不可应用/);
     assert.match(response.contents[0].text, /mcp-missing-pane/);
     assert.match(response.contents[0].text, /MutationObserver/);
     assert.match(response.contents[0].text, /validate_parallel_config/);
@@ -263,6 +276,66 @@ test("原页面表单可转换为校验 Tool 输入，结论包含公式并定�
   assert.doesNotMatch(validHtml, /mcp-validation__offline/);
 });
 
+test("重新校验时只清理 MCP 结论，不篡改页面自身的阻断和建议状态", () => {
+  const classes = new Set([
+    "cro-config-error",
+    "is-blocking",
+    "is-guidance",
+    "is-warning",
+    "is-mcp-invalid",
+    "is-mcp-pending",
+  ]);
+  let conclusionRemoved = false;
+  const container = {
+    classList: {
+      remove(...names) {
+        names.forEach((name) => classes.delete(name));
+      },
+    },
+    querySelector(selector) {
+      assert.equal(selector, "#mcpValidationConclusion");
+      return { remove() { conclusionRemoved = true; } };
+    },
+  };
+
+  clearValidationPresentation(container);
+
+  assert.equal(conclusionRemoved, true);
+  assert.deepEqual([...classes].sort(), [
+    "cro-config-error",
+    "is-blocking",
+    "is-guidance",
+    "is-warning",
+  ]);
+});
+
+test("非阻塞校验提醒支持关闭并清除表单黄色标记", () => {
+  assert.equal(isDismissibleValidationState("valid"), true);
+  assert.equal(isDismissibleValidationState("warning"), true);
+  assert.equal(isDismissibleValidationState("invalid"), false);
+
+  const classes = new Set(["cro-stepper", "is-mcp-warning"]);
+  const warningField = {
+    classList: {
+      remove(...names) {
+        names.forEach((name) => classes.delete(name));
+      },
+    },
+    dataset: { mcpValidation: "MCP 静态校验提醒" },
+  };
+  const root = {
+    querySelectorAll(selector) {
+      assert.equal(selector, ".cro-stepper.is-mcp-invalid, .cro-stepper.is-mcp-warning");
+      return [warningField];
+    },
+  };
+
+  clearValidationMarks(root);
+
+  assert.deepEqual([...classes], ["cro-stepper"]);
+  assert.equal("mcpValidation" in warningField.dataset, false);
+});
+
 test("解析结果适配到原页面字段，并在原报告结构中区分映射来源", () => {
   const result = {
     tool: "parse_training_config",
@@ -305,6 +378,43 @@ test("解析结果适配到原页面字段，并在原报告结构中区分映�
   assert.match(html, /未识别 · 没有静默丢弃/);
   assert.match(html, /仍缺输入/);
   assert.match(html, /不启动训练/);
+});
+
+test("应用结果明确区分原值落地与页面自动配平", () => {
+  const success = renderAppliedStatus([]);
+  assert.match(success, /配置已成功应用到表单/);
+  assert.match(success, /所有可回填项均已写入/);
+  assert.doesNotMatch(success, /查看页面采用值/);
+
+  const adjusted = renderAppliedStatus([
+    { field: "dp", want: 3, got: 4 },
+  ]);
+  assert.match(adjusted, /配置已应用，页面自动调整了 1 项/);
+  assert.match(adjusted, /DP/);
+  assert.match(adjusted, /输入 3 → 页面采用 4/);
+  assert.match(adjusted, /<div class="mcp-import-applied__details"><ul>/);
+  assert.doesNotMatch(adjusted, /<details|查看页面采用值|请核对差异|无需再次应用/);
+});
+
+test("当前并行度下无效的控件归一化不显示为页面自动调整", () => {
+  const inactive = diffApplied(
+    { vocabEmbDp: false, shardMode: "none" },
+    { tp: 1, dp: 1, vocabEmbDp: true, shardMode: "zero1" },
+  );
+  assert.deepEqual(inactive, []);
+  assert.match(renderAppliedStatus(inactive), /配置已成功应用到表单/);
+  assert.doesNotMatch(renderAppliedStatus(inactive), /is-adjusted|自动调整/);
+
+  assert.deepEqual(
+    diffApplied(
+      { vocabEmbDp: false, shardMode: "none" },
+      { tp: 2, dp: 2, vocabEmbDp: true, shardMode: "zero1" },
+    ),
+    [
+      { field: "vocabEmbDp", want: false, got: true },
+      { field: "shardMode", want: "none", got: "zero1" },
+    ],
+  );
 });
 
 test("配置预览和导入弹窗共用固定 MCP 必填口径", () => {

@@ -13,6 +13,7 @@ import {
   inferSourceFormat,
   labelForPath,
   pageFieldForPath,
+  renderAppliedStatus,
   renderParseReport,
   sourceMarks,
   toPagePartial,
@@ -41,7 +42,10 @@ function parseInput(source) {
 
 if (previewMode) {
   document.documentElement.dataset.mcpPreview = "local-core";
-  installParseAdapter(async (source) => parseTrainingConfig(parseInput(source)));
+  installParseAdapter(
+    async (source) => parseTrainingConfig(parseInput(source)),
+    async (input) => validateParallelConfig(input),
+  );
   const validationAdapter = installValidationAdapter(async (input) => validateParallelConfig(input));
   installFixesAdapter(
     async (input) => suggestConfigFixes(input),
@@ -96,7 +100,10 @@ if (previewMode) {
     hostInteraction.report(error);
     console.error("MindSpeed Config MCP App:", error);
   };
-  installParseAdapter(async (source) => callServerTool("parse_training_config", parseInput(source)));
+  installParseAdapter(
+    async (source) => callServerTool("parse_training_config", parseInput(source)),
+    async (input) => callServerTool("validate_parallel_config", input),
+  );
   validationAdapter = installValidationAdapter(
     async (input) => callServerTool("validate_parallel_config", input),
   );
@@ -132,10 +139,15 @@ if (previewMode) {
   connectHost();
 }
 
-function installParseAdapter(callParseTool) {
+function installParseAdapter(callParseTool, callValidateTool) {
   const imported = { token: 0, current: null, lastSource: null };
   const sample = { token: 0, current: null, lastFile: null, lastCard: null };
   let lastParseKind = null;
+  let liveParseTimer = 0;
+  const LIVE_PARSE_DELAY_MS = 450;
+  const APPLIED_STATUS_DURATION_MS = 3000;
+  let appliedStatusSignature = null;
+  let appliedStatusTimer = 0;
 
   const BOOLEAN_PATHS = new Set([
     "parallel.sequence_parallel",
@@ -144,6 +156,7 @@ function installParseAdapter(callParseTool) {
     "memory.lora_enabled",
   ]);
   const ENUM_OPTIONS = Object.freeze({
+    "parallel.pipeline_layer_mode": [["uniform", "均匀 PP"], ["dynamic", "动态 PP"], ["mindformers-offset", "MindFormers offset"]],
     "parallel.ep_mode": [["split", "切分域"], ["orthogonal", "正交域"], ["mf", "MindFormers 口径"]],
     "parallel.cp_mode": [["ulysses", "Ulysses"], ["ring", "Ring"]],
     "memory.compute_dtype": [["bf16", "BF16"], ["fp16", "FP16"], ["fp8", "FP8"]],
@@ -225,6 +238,7 @@ function installParseAdapter(callParseTool) {
     if (menuBody && !document.getElementById("mcpPreviewMissingPane")) {
       menuBody.append(createMissingPane("mcpPreviewMissingPane"));
     }
+    ensureConfirmApplyButton(document.getElementById("croPreviewApply"));
   }
 
   function createMissingPane(id) {
@@ -234,14 +248,38 @@ function installParseAdapter(callParseTool) {
     pane.hidden = true;
     const title = document.createElement("h3");
     title.className = "mcp-import__pane-title cro-config-error__title";
+    title.dataset.mcpCompletionTitle = "";
     title.textContent = "MCP缺口配置补齐方案";
-    const hint = document.createElement("p");
-    hint.className = "cro-import__hint";
-    hint.textContent = "系统已填入当前页面的默认配置；可直接确认，也可修改后再应用。";
+    const plans = document.createElement("div");
+    plans.className = "mcp-completion-plans";
     const fields = document.createElement("div");
     fields.className = "mcp-missing-pane__fields";
-    pane.append(title, hint, fields);
+    const status = document.createElement("p");
+    status.className = "mcp-completion-status";
+    status.setAttribute("role", "status");
+    pane.append(title, status, plans, fields);
     return pane;
+  }
+
+  function ensureConfirmApplyButton(applyButton) {
+    if (!applyButton) return null;
+    const id = `${applyButton.id}Confirmed`;
+    const existing = document.getElementById(id);
+    if (existing) return existing;
+    const button = document.createElement("button");
+    button.id = id;
+    button.type = "button";
+    button.className = "btn btn-sm mcp-confirm-apply";
+    button.dataset.applyTarget = applyButton.id;
+    button.textContent = "核对并应用";
+    button.hidden = true;
+    button.disabled = true;
+    applyButton.insertAdjacentElement("afterend", button);
+    return button;
+  }
+
+  function confirmApplyButtonFor(applyButton) {
+    return applyButton ? document.getElementById(`${applyButton.id}Confirmed`) : null;
   }
 
   function mountConfigImportEntry() {
@@ -344,7 +382,7 @@ function installParseAdapter(callParseTool) {
     const footer = document.createElement("footer");
     footer.className = "mcp-import__footer";
     apply.classList.add("btn-solid");
-    footer.append(apply);
+    footer.append(apply, ensureConfirmApplyButton(apply));
     box.append(footer);
     resetImported({ focus: false });
 
@@ -364,6 +402,7 @@ function installParseAdapter(callParseTool) {
   }
 
   function resetImported({ focus = true } = {}) {
+    clearTimeout(liveParseTimer);
     const ui = importUi();
     imported.token += 1;
     imported.current = null;
@@ -374,7 +413,7 @@ function installParseAdapter(callParseTool) {
     ui.name.textContent = "未选择文件";
     ui.parse.disabled = false;
     ui.apply.disabled = true;
-    ui.report.innerHTML = `<p class="cro-import__empty">选择 YAML、JSON 或 Shell 文件后会自动解析；也可以粘贴配置代码后点击“解析”。</p>`;
+    ui.report.innerHTML = `<p class="cro-import__empty">选择 YAML、JSON 或 Shell 文件后会自动解析；粘贴配置代码会在停止输入后自动解析。</p>`;
     ui.score.textContent = "— · 等待解析";
     renderMissingInputs(null, imported, document.getElementById("mcpImportMissingPane"), ui.apply);
     syncClearButton();
@@ -432,31 +471,216 @@ function installParseAdapter(callParseTool) {
 
   function syncApplyState(state, button) {
     if (!button) return;
-    const valid = state.current?.result?.status !== "error"
-      && state.current?.supplementsValid !== false;
+    const selected = selectedCompletionPlan(state.current);
+    const requiresConfirmation = selected?.confidence === "requires-confirmation";
+    const valid = Boolean(state.current)
+      && state.current?.result?.status !== "error"
+      && state.current?.supplementsValid !== false
+      && state.current?.completionValidation === "valid";
     const normalized = state.current ? materializedConfig(state.current) : null;
-    button.disabled = !valid || !Object.keys(toPagePartial(normalized ?? {})).length;
+    const canApply = valid && Object.keys(toPagePartial(normalized ?? {})).length > 0;
+    button.disabled = !canApply || (requiresConfirmation && state.current?.planConfirmed !== true);
+    const confirmButton = confirmApplyButtonFor(button);
+    if (confirmButton) {
+      confirmButton.hidden = !requiresConfirmation || state.current?.planConfirmed === true;
+      confirmButton.disabled = !canApply;
+    }
+  }
+
+  function renderCompletionLoading(pane, applyButton, message = "MCP 正在计算补齐方案…") {
+    if (!pane) return;
+    pane.hidden = false;
+    pane.setAttribute("aria-busy", "true");
+    pane.parentElement?.classList.add("has-missing-inputs");
+    const title = pane.querySelector("[data-mcp-completion-title]");
+    if (title) title.textContent = "MCP缺口配置补齐方案";
+    pane.querySelector(".mcp-completion-plans")?.replaceChildren();
+    pane.querySelector(".mcp-missing-pane__fields")?.replaceChildren();
+    const status = pane.querySelector(".mcp-completion-status");
+    if (status) {
+      status.className = "mcp-completion-status is-pending";
+      status.textContent = message;
+    }
+    if (applyButton) {
+      applyButton.disabled = true;
+      const confirmButton = confirmApplyButtonFor(applyButton);
+      if (confirmButton) {
+        confirmButton.hidden = true;
+        confirmButton.disabled = true;
+      }
+    }
+  }
+
+  function selectedCompletionPlan(current) {
+    const plans = current?.result?.data?.completion?.plans ?? [];
+    return plans.find((plan) => plan.id === current.selectedPlanId)
+      ?? plans.find((plan) => plan.recommended)
+      ?? plans[0]
+      ?? null;
+  }
+
+  function completionPlanLabel(plan) {
+    return String(plan?.label ?? "MCP 处理方案")
+      .replace(/\s*[（(](?:推荐|需确认)[）)]\s*/g, "")
+      .trim();
+  }
+
+  async function validateCompletion(state, pane, applyButton) {
+    if (!state.current) return;
+    const current = state.current;
+    const token = (current.completionToken ?? 0) + 1;
+    current.completionToken = token;
+    current.completionValidation = "pending";
+    pane.setAttribute("aria-busy", "true");
+    const status = pane.querySelector(".mcp-completion-status");
+    if (status) {
+      status.className = "mcp-completion-status is-pending";
+      status.textContent = "正在调用 validate_parallel_config 复验完整候选…";
+    }
+    syncApplyState(state, applyButton);
+    try {
+      const result = await callValidateTool(materializedConfig(current));
+      if (state.current !== current || current.completionToken !== token) return;
+      const valid = result.status === "valid" && !(result.errors ?? []).length;
+      current.completionValidation = valid ? "valid" : "invalid";
+      if (status) {
+        status.className = `mcp-completion-status is-${valid ? "valid" : "review"}`;
+        status.textContent = valid
+          ? "MCP 完整复验通过：当前候选符合已建模静态约束。"
+          : `当前填写值仍需调整：${(result.errors ?? []).map((item) => item.message).join("；")}`;
+      }
+    } catch (error) {
+      if (state.current !== current || current.completionToken !== token) return;
+      current.completionValidation = "invalid";
+      if (status) {
+        status.className = "mcp-completion-status is-review";
+        status.textContent = `暂时无法完成复验，请保留当前填写项后重试：${error instanceof Error ? error.message : String(error)}`;
+      }
+    }
+    if (state.current === current && current.completionToken === token) {
+      pane.removeAttribute("aria-busy");
+    }
+    syncApplyState(state, applyButton);
   }
 
   function renderMissingInputs(result, state, pane, applyButton) {
     if (!pane) return;
-    const paths = result?.status === "error" ? [] : (result?.data?.missing_required_fields ?? []);
-    pane.hidden = paths.length === 0;
-    pane.parentElement?.classList.toggle("has-missing-inputs", paths.length > 0);
+    pane.removeAttribute("aria-busy");
+    const missingPaths = result?.status === "error" ? [] : (result?.data?.missing_required_fields ?? []);
+    const plans = result?.data?.completion?.plans ?? [];
+    const preferred = state.current
+      ? (plans.find((plan) => plan.id === state.current.selectedPlanId)
+        ?? plans.find((plan) => plan.recommended)
+        ?? plans[0])
+      : null;
+    const paths = [...new Set([
+      ...missingPaths,
+      ...(preferred?.values ?? []).map((item) => item.path),
+    ])];
+    const showPane = paths.length > 0 || plans.length > 1;
+    pane.hidden = !showPane;
+    pane.parentElement?.classList.toggle("has-missing-inputs", showPane);
+    const plansHost = pane.querySelector(".mcp-completion-plans");
+    plansHost.replaceChildren();
     const fields = pane.querySelector(".mcp-missing-pane__fields");
     fields.replaceChildren();
-    if (!state.current) return;
+    const title = pane.querySelector("[data-mcp-completion-title]");
+    if (title) title.textContent = `MCP缺口（${paths.length}）配置补齐方案`;
+    if (!state.current) {
+      syncApplyState(state, applyButton);
+      return;
+    }
+    state.current.selectedPlanId = preferred?.id ?? null;
+    const requiresConfirmation = preferred?.confidence === "requires-confirmation";
+    if (state.current.confirmedPlanId !== preferred?.id) {
+      state.current.planConfirmed = !requiresConfirmation;
+    }
+    if (plans.length === 1) {
+      const plan = document.createElement("div");
+      plan.className = "mcp-completion-plan is-single";
+      const caption = document.createElement("b");
+      caption.textContent = "处理方案";
+      const name = document.createElement("strong");
+      name.className = "mcp-completion-plan__name";
+      name.textContent = completionPlanLabel(preferred);
+      const description = document.createElement("span");
+      description.className = "mcp-completion-plan__description";
+      description.textContent = preferred?.summary ?? "";
+      plan.append(caption, name, description);
+      plansHost.append(plan);
+    } else if (plans.length > 1) {
+      const group = document.createElement("div");
+      group.className = "mcp-completion-plan";
+      group.setAttribute("role", "group");
+      group.setAttribute("aria-label", "MCP 缺口与冲突处理方案");
+      const caption = document.createElement("b");
+      caption.textContent = "选择处理方案";
+      const cards = document.createElement("div");
+      cards.className = "mcp-completion-plan__cards";
+      for (const plan of plans) {
+        const card = document.createElement("button");
+        const selected = plan.id === state.current.selectedPlanId;
+        card.type = "button";
+        card.className = `mcp-completion-plan__card${selected ? " is-selected" : ""}`;
+        card.dataset.planId = plan.id;
+        card.setAttribute("aria-pressed", String(selected));
+        const heading = document.createElement("span");
+        heading.className = "mcp-completion-plan__card-heading";
+        const name = document.createElement("strong");
+        name.textContent = completionPlanLabel(plan);
+        heading.append(name);
+        if (plan.recommended) {
+          const recommended = document.createElement("em");
+          recommended.className = "mcp-completion-plan__recommended";
+          recommended.textContent = "推荐";
+          heading.append(recommended);
+        }
+        const description = document.createElement("span");
+        description.textContent = plan.summary ?? "";
+        card.append(heading, description);
+        card.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          state.current.selectedPlanId = plan.id;
+          state.current.confirmedPlanId = null;
+          renderMissingInputs(result, state, pane, applyButton);
+        });
+        cards.append(card);
+      }
+      group.append(caption, cards);
+      plansHost.append(group);
+    }
+    if (requiresConfirmation) {
+      const confirmation = document.createElement("label");
+      confirmation.className = "mcp-completion-plan__confirmation";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = state.current.planConfirmed === true;
+      const text = document.createElement("span");
+      text.textContent = "我已核对源文件未提供的模型结构占位值";
+      checkbox.addEventListener("change", () => {
+        state.current.planConfirmed = checkbox.checked;
+        state.current.confirmedPlanId = checkbox.checked ? preferred.id : null;
+        syncApplyState(state, applyButton);
+      });
+      confirmation.append(checkbox, text);
+      plansHost.append(confirmation);
+    }
     state.current.supplements = new Map();
     state.current.supplementsValid = true;
     for (const path of paths) {
-      const value = defaultValueFor(path);
+      const value = getPath(preferred?.proposed_config, path) ?? defaultValueFor(path);
       state.current.supplements.set(path, value);
       const row = document.createElement("div");
       row.className = "cro-stepper mcp-missing-field";
       const name = document.createElement("label");
       name.className = "cro-stepper__label mcp-missing-field__label";
+      const evidence = preferred?.values?.find((item) => item.path === path);
       name.innerHTML = `<span class="cro-stepper__label-text"><b>${escapeHtml(labelForPath(path))}</b>`
-        + `<code>${escapeHtml(path)}</code></span>`;
+        + `<code>${escapeHtml(path)}</code>`
+        + (evidence ? `<small class="mcp-missing-field__reason">${escapeHtml(evidence.reason)}`
+          + ` · ${escapeHtml(evidence.confidence)}</small>` : "")
+        + `</span>`;
       const choices = optionsFor(path, value);
       let control;
       if (choices?.length) {
@@ -488,7 +712,7 @@ function installParseAdapter(callParseTool) {
         if (invalid) state.current.supplements.delete(path);
         else state.current.supplements.set(path, next);
         state.current.supplementsValid = !pane.querySelector('[aria-invalid="true"]');
-        syncApplyState(state, applyButton);
+        validateCompletion(state, pane, applyButton);
       });
       if (path === "cluster.card_model") {
         control.addEventListener("change", () => {
@@ -532,6 +756,16 @@ function installParseAdapter(callParseTool) {
       row.append(name, controlHost);
       fields.append(row);
     }
+    state.current.completionValidation = preferred?.validation?.status === "valid" ? "valid" : "invalid";
+    const status = pane.querySelector(".mcp-completion-status");
+    if (status) {
+      status.className = `mcp-completion-status is-${state.current.completionValidation === "valid" ? "valid" : "review"}`;
+      status.textContent = state.current.completionValidation === "valid"
+        ? (requiresConfirmation
+          ? "MCP 静态复验已通过；真实模型结构无法从源代码恢复，请核对占位值后确认。"
+          : "MCP 已对完整候选执行静态复验；修改任一补齐值后会重新复验。")
+        : "MCP 已把缺失项和冲突项列在下方；请调整后重新复验。";
+    }
     syncApplyState(state, applyButton);
   }
 
@@ -544,10 +778,28 @@ function installParseAdapter(callParseTool) {
     });
   }
 
+  function getPath(target, path) {
+    return String(path).split(".").reduce((current, key) => current?.[key], target);
+  }
+
   function materializedConfig(current) {
-    const normalized = structuredClone(current?.result?.data?.normalized_config ?? {});
+    const selected = selectedCompletionPlan(current);
+    const normalized = structuredClone(
+      selected?.proposed_config ?? current?.result?.data?.normalized_config ?? {},
+    );
     for (const [path, value] of current?.supplements ?? []) setPath(normalized, path, value);
     return normalized;
+  }
+
+  function resetSampleCompletion() {
+    sample.token += 1;
+    sample.current = null;
+    sample.lastFile = null;
+    sample.lastCard = null;
+    if (lastParseKind === "sample") lastParseKind = null;
+    const pane = document.getElementById("mcpPreviewMissingPane");
+    const applyButton = document.getElementById("croPreviewApply");
+    renderMissingInputs(null, sample, pane, applyButton);
   }
 
   function errorHtml(error) {
@@ -556,6 +808,7 @@ function installParseAdapter(callParseTool) {
   }
 
   async function parseImported(source) {
+    clearTimeout(liveParseTimer);
     const ui = importUi();
     const token = ++imported.token;
     lastParseKind = "imported";
@@ -565,7 +818,11 @@ function installParseAdapter(callParseTool) {
     ui.parse.disabled = true;
     ui.score.textContent = "解析中…";
     ui.report.innerHTML = `<p class="cro-import__empty">正在调用 <code>parse_training_config</code>，不启动训练…</p>`;
-    renderMissingInputs(null, imported, document.getElementById("mcpImportMissingPane"), ui.apply);
+    renderCompletionLoading(
+      document.getElementById("mcpImportMissingPane"),
+      ui.apply,
+      "计算中… MCP 正在解析当前代码并求解完整候选。",
+    );
     syncClearButton();
     try {
       const result = await callParseTool(source);
@@ -606,10 +863,15 @@ function installParseAdapter(callParseTool) {
     score.textContent = "MCP 解析中…";
     sourceLine.innerHTML = `<b>来源</b> config-test/${escapeHtml(file)} · 由 parse_training_config 解析，不启动训练`;
     report.innerHTML = `<p class="cro-import__empty">正在调用 <code>parse_training_config</code>…</p>`;
-    renderMissingInputs(null, sample, document.getElementById("mcpPreviewMissingPane"), apply);
+    renderCompletionLoading(
+      document.getElementById("mcpPreviewMissingPane"),
+      apply,
+      "计算中… MCP 正在解析预置配置并求解完整候选。",
+    );
     if (content === undefined) {
       report.innerHTML = errorHtml(new Error(`单文件 App 中缺少内置样例 ${file}`));
       score.textContent = "— · 样例缺失";
+      renderMissingInputs(null, sample, document.getElementById("mcpPreviewMissingPane"), apply);
       return;
     }
     try {
@@ -622,6 +884,7 @@ function installParseAdapter(callParseTool) {
         : formatFillCoverageScore(result);
       score.title = FILL_COVERAGE_HINT;
       report.innerHTML = renderParseReport(result);
+      report.querySelector(":scope > .cro-import__lede")?.remove();
       renderMissingInputs(result, sample, document.getElementById("mcpPreviewMissingPane"), apply);
       report.scrollTop = 0;
     } catch (error) {
@@ -636,12 +899,9 @@ function installParseAdapter(callParseTool) {
     if (!current || !window.croObserver?.importConfig) return null;
     const normalizedConfig = materializedConfig(current);
     const partial = toPagePartial(normalizedConfig);
+    window.__mcpPipelinePolicy?.prepare?.(normalizedConfig);
     const applied = window.croObserver.importConfig(partial);
     const adjusted = diffApplied(partial, applied.after);
-    document.dispatchEvent(new CustomEvent("mcp:parsed-config-applied", { detail: {
-      normalizedConfig,
-      supplements: Object.fromEntries(current.supplements ?? []),
-    } }));
     report.innerHTML = renderParseReport(current.result, { adjusted });
     report.scrollTop = 0;
     document.dispatchEvent(new CustomEvent("cro:source", { detail: {
@@ -652,8 +912,58 @@ function installParseAdapter(callParseTool) {
       text: current.source?.content ?? current.content,
       marks: sourceMarks(current.result, adjusted),
     } }));
+    document.dispatchEvent(new CustomEvent("mcp:parsed-config-applied", { detail: {
+      normalizedConfig,
+      supplements: Object.fromEntries(current.supplements ?? []),
+    } }));
     return adjusted;
   }
+
+  function returnToFormAfterApply(adjusted) {
+    const left = document.getElementById("cropLeft");
+    const formTab = document.querySelector('#cropLeftTabs [data-pane="form"]')
+      ?? left?.querySelector('[data-pane="form"]');
+    formTab?.click();
+
+    if (left?.classList.contains("is-collapsed")) {
+      const toggle = document.querySelector('[aria-label="显示 / 收起配置栏"]');
+      if (toggle) toggle.click();
+      else {
+        left.classList.remove("is-collapsed");
+        document.getElementById("croBoard")?.classList.remove("is-left-collapsed");
+      }
+    }
+
+    const pane = left?.querySelector(".crop-pane--form")
+      ?? document.querySelector(".crop-pane--form");
+    if (!pane) return;
+    clearAppliedStatus();
+    document.body.insertAdjacentHTML("beforeend", renderAppliedStatus(adjusted));
+    appliedStatusSignature = currentPageConfigSignature();
+    const scrollHost = pane.closest(".crop-left__body");
+    if (scrollHost) scrollHost.scrollTop = 0;
+    appliedStatusTimer = window.setTimeout(clearAppliedStatus, APPLIED_STATUS_DURATION_MS);
+  }
+
+  function currentPageConfigSignature() {
+    const config = window.croObserver?.config ?? {};
+    return JSON.stringify(Object.keys(config).sort().map((key) => [key, config[key]]));
+  }
+
+  function clearAppliedStatus() {
+    window.clearTimeout(appliedStatusTimer);
+    appliedStatusTimer = 0;
+    document.getElementById("mcpImportAppliedStatus")?.remove();
+    appliedStatusSignature = null;
+  }
+
+  /* 这张卡只说明“刚刚导入的那份配置”发生了什么。切换预设或继续编辑任意字段后，
+     当前表单已不再是那次应用的结果，旧差异必须立即失效，不能冒充当前配置的问题。
+     MCP 拓扑完成后也会 refresh 同一份配置，因此按配置快照判断，不能见事件就清。 */
+  document.addEventListener("cro:config-change", () => {
+    if (appliedStatusSignature !== null
+      && appliedStatusSignature !== currentPageConfigSignature()) clearAppliedStatus();
+  });
 
   document.addEventListener("change", (event) => {
     if (event.target?.id !== "croImportFile") return;
@@ -670,26 +980,76 @@ function installParseAdapter(callParseTool) {
     }).catch((error) => { ui.report.innerHTML = errorHtml(error); });
   }, true);
 
+  document.addEventListener("cro:config-preview-change", () => {
+    resetSampleCompletion();
+  });
+
   document.addEventListener("input", (event) => {
     if (event.target?.id !== "croImportText") return;
+    clearTimeout(liveParseTimer);
     imported.token += 1;
     imported.current = null;
     const ui = importUi();
     ui.apply.disabled = true;
-    ui.score.textContent = "— · 等待解析";
+    ui.score.textContent = event.target.value ? "等待输入完成…" : "— · 等待解析";
     ui.report.innerHTML = event.target.value
-      ? `<p class="cro-import__empty">配置代码已修改，点击“解析”查看最新校验结果。</p>`
-      : `<p class="cro-import__empty">选择 YAML、JSON 或 Shell 文件后会自动解析；也可以粘贴配置代码后点击“解析”。</p>`;
-    renderMissingInputs(null, imported, document.getElementById("mcpImportMissingPane"), ui.apply);
+      ? `<p class="cro-import__empty">检测到配置代码变化，将自动解析并实时计算补齐方案…</p>`
+      : `<p class="cro-import__empty">选择 YAML、JSON 或 Shell 文件后会自动解析；粘贴配置代码会在停止输入后自动解析。</p>`;
+    if (event.target.value.trim()) {
+      renderCompletionLoading(
+        document.getElementById("mcpImportMissingPane"),
+        ui.apply,
+        "计算中… 等待输入结束后自动调用 MCP。",
+      );
+      const content = event.target.value;
+      const visibleName = ui.name.textContent?.trim();
+      const name = visibleName && visibleName !== "未选择文件"
+        ? visibleName : "粘贴的训练配置.txt";
+      liveParseTimer = window.setTimeout(() => {
+        parseImported({ name, content });
+      }, LIVE_PARSE_DELAY_MS);
+    } else {
+      renderMissingInputs(null, imported, document.getElementById("mcpImportMissingPane"), ui.apply);
+    }
     syncClearButton();
   }, true);
 
   document.addEventListener("click", (event) => {
     const target = event.target;
+    const dismissApplied = target?.closest?.("[data-dismiss-mcp-import-applied]");
+    if (dismissApplied) {
+      clearAppliedStatus();
+      return;
+    }
+
+    const confirmApply = target?.closest?.(".mcp-confirm-apply");
+    if (confirmApply) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const applyButton = document.getElementById(confirmApply.dataset.applyTarget);
+      const state = applyButton?.id === "croImportApply" ? imported : sample;
+      const plan = selectedCompletionPlan(state.current);
+      if (!state.current || !applyButton || plan?.confidence !== "requires-confirmation") return;
+      const pane = document.getElementById(
+        applyButton.id === "croImportApply" ? "mcpImportMissingPane" : "mcpPreviewMissingPane",
+      );
+      const checkbox = pane?.querySelector('.mcp-completion-plan__confirmation input[type="checkbox"]');
+      if (checkbox && !checkbox.checked) checkbox.click();
+      else {
+        state.current.planConfirmed = true;
+        state.current.confirmedPlanId = plan.id;
+        syncApplyState(state, applyButton);
+      }
+      if (state.current?.planConfirmed !== true) return;
+      applyButton.click();
+      return;
+    }
+
     const parseButton = target?.closest?.("#croImportParse");
     if (parseButton) {
       event.preventDefault();
       event.stopImmediatePropagation();
+      clearTimeout(liveParseTimer);
       const ui = importUi();
       const content = ui.text.value ?? "";
       if (!content.trim()) {
@@ -707,7 +1067,11 @@ function installParseAdapter(callParseTool) {
     if (importApply) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      applyParsed(imported.current, importUi().report);
+      const adjusted = applyParsed(imported.current, importUi().report);
+      if (adjusted) {
+        document.getElementById("croImportClose")?.click();
+        returnToFormAfterApply(adjusted);
+      }
       return;
     }
 
@@ -732,20 +1096,12 @@ function installParseAdapter(callParseTool) {
     if (sampleApply && sample.current) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      applyParsed(sample.current, document.getElementById("croPreviewReport"));
+      const appliedSample = sample.current;
+      const adjusted = applyParsed(appliedSample, document.getElementById("croPreviewReport"));
+      window.croImport?.selectAppliedSample?.(appliedSample.file);
       document.getElementById("croPreviewCancel")?.click();
-      const select = document.getElementById("croConfigPresetSelect");
-      const optionValue = `__yaml_sample__:${sample.current.file}`;
-      if (select && Array.from(select.options).some((option) => option.value === optionValue)) {
-        select.value = optionValue;
-        const option = select.selectedOptions[0];
-        const trigger = document.getElementById("croConfigPresetTrigger");
-        if (trigger && option) {
-          trigger.textContent = option.textContent;
-          trigger.title = option.textContent;
-        }
-      }
       sample.current = null;
+      if (adjusted) returnToFormAfterApply(adjusted);
     }
   }, true);
 

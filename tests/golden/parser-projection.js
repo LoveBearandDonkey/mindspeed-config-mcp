@@ -80,6 +80,48 @@ bf16: true
 
   const zero3 = parse('{"zero_optimization":{"stage":3}}', "json", "ds_z3.json");
 
+  const deepseek = parse(`
+runner_config:
+  batch_size: 1
+parallel_config:
+  data_parallel: 4
+  model_parallel: 8
+  pipeline_stage: 8
+  expert_parallel: 32
+  micro_batch_num: 32
+model:
+  model_config:
+    model_type: deepseek_v3
+    num_hidden_layers: 61
+    hidden_size: 7168
+    seq_length: 4096
+    offset: [[1,1,1,1,1,1,1,1], [1,1,1,1,1,1,1,-2]]
+    pp_interleave_num: 2
+    params_dtype: float32
+    compute_dtype: bfloat16
+`, "yaml", "mf_pretrain_deepseek3_671b.yaml");
+
+  const hostile = parse(`
+parallel_config:
+  data_parallel: 1
+  model_parallel: 4
+  pipeline_stage: 8
+  expert_parallel: 4
+model:
+  model_config:
+    model_type: hostile_moe
+    num_hidden_layers: 3
+    hidden_size: 64
+    num_attention_heads: 7
+    num_experts: 5
+    num_experts_per_tok: 9
+    seq_length: 10
+    offset: [[9]]
+    pp_interleave_num: 2
+`, "yaml", "hostile.yaml");
+
+  const invalidYaml = parse("model:\n  hidden_size: [1, 2", "yaml", "broken.yaml");
+
   return {
     mindformers: summary(mindformers, [
       "parallel.tp", "parallel.pp", "parallel.ep", "parallel.ep_mode",
@@ -96,6 +138,35 @@ bf16: true
       "batch.micro_batch_count", "memory.compute_dtype", "memory.lora_enabled", "memory.lora_rank",
     ]),
     deepspeed_zero3: summary(zero3, ["memory.shard_mode"]),
+    deepseek_completion: {
+      computation: deepseek.data.completion.computation,
+      strategy: deepseek.data.completion.strategy,
+      mode: deepseek.data.normalized_config.parallel.pipeline_layer_mode,
+      profile: deepseek.data.normalized_config.rule_profile.framework,
+      plan_ids: deepseek.data.completion.plans.map((plan) => plan.id),
+      plan_statuses: deepseek.data.completion.plans.map((plan) => plan.validation.status),
+      recommended_stage_layers: deepseek.data.completion.plans[0].validation.status === "valid"
+        ? [8, 8, 8, 8, 8, 8, 8, 5]
+        : [],
+      completed_heads: deepseek.data.completion.plans[0].proposed_config.model.num_attention_heads,
+      completed_experts: deepseek.data.completion.plans[0].proposed_config.model.routed_experts,
+    },
+    fallback_completion: {
+      plan_id: hostile.data.completion.plans[0].id,
+      status: hostile.data.completion.plans[0].validation.status,
+      review_paths: hostile.data.completion.plans[0].values.map((item) => item.path),
+      proposed_parallel: Object.fromEntries([
+        "dp", "pp", "tp", "cp", "ep", "vpp", "pipeline_layer_mode",
+      ].map((key) => [key, hostile.data.completion.plans[0].proposed_config.parallel[key]])),
+      proposed_top_k: hostile.data.completion.plans[0].proposed_config.model.top_k,
+      proposed_total_ranks: hostile.data.completion.plans[0].proposed_config.cluster.total_ranks,
+    },
+    invalid_yaml: {
+      status: invalidYaml.status,
+      code: invalidYaml.errors[0].code,
+      message_prefix: invalidYaml.errors[0].message.split("：")[0],
+      source_ref: invalidYaml.errors[0].source_ref,
+    },
   };
 }
 

@@ -14,10 +14,12 @@ const baselineHtmlFile = path.join(
   "config-relation-plane-mindspeed-config-mcp.html",
 );
 const observerFile = path.join(baselineDirectory, "js/config-relation-observer.js");
+const importFile = path.join(baselineDirectory, "js/config-relation-import.js");
 const planeFile = path.join(baselineDirectory, "js/config-relation-plane.js");
 const capacityFile = path.join(baselineDirectory, "js/config-relation-capacity.js");
 const boundaryDocument = path.join(repositoryRoot, "docs/MCP UI边界清单.md");
 const mcpShellStyleFile = path.join(repositoryRoot, "apps/mcp-server/ui/src/mcp-shell.css");
+const mcpShellEntryFile = path.join(repositoryRoot, "apps/mcp-server/ui/src/mcp-shell-entry.js");
 const mcpFixesAdapterFile = path.join(repositoryRoot, "apps/mcp-server/ui/src/mcp-fixes-adapter.js");
 const mcpValidationAdapterFile = path.join(repositoryRoot, "apps/mcp-server/ui/src/mcp-validation-adapter.js");
 const viteConfigFile = path.join(repositoryRoot, "apps/mcp-server/vite.config.js");
@@ -500,7 +502,22 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
     "zoom-control-readout cro-stepper__input mcp-missing-field__input",
     "zoom-control-group cro-stepper__control mcp-missing-field__control",
     "MCP缺口配置补齐方案",
-    "系统已填入当前页面的默认配置",
+    "MCP缺口（",
+    "mcp-completion-plan is-single",
+    "mcp-completion-plan__cards",
+    "mcp-completion-plan__card",
+    "mcp-completion-plan__recommended",
+    "mcp-completion-plan__confirmation",
+    "我已核对源文件未提供的模型结构占位值",
+    "静态安全兜底方案",
+    "MCP 已把缺失项和冲突项列在下方",
+    "核对并应用",
+    "计算中… MCP 正在解析当前代码并求解完整候选",
+    "计算中… MCP 正在解析预置配置并求解完整候选",
+    "停止输入后自动解析",
+    "aria-busy",
+    "MCP 完整复验通过",
+    "处理方案",
     "910 · 32G",
     "910B · 64G",
     "950PR · 128G",
@@ -510,6 +527,110 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
     assert.ok(builtShell.includes(marker), `MCP App 缺少仍缺输入补值能力：${marker}`);
   }
   const sourceStyle = read(mcpShellStyleFile);
+  const shellSource = read(mcpShellEntryFile);
+  const missingPaneSource = shellSource.slice(
+    shellSource.indexOf("function createMissingPane"),
+    shellSource.indexOf("function mountConfigImportEntry"),
+  );
+  assert.doesNotMatch(missingPaneSource, /cro-import__hint/, "第三栏仍然创建 cro-import__hint");
+  assert.doesNotMatch(
+    shellSource,
+    /mcp-completion-plan__select/,
+    "处理方案仍在使用下拉框",
+  );
+  assert.match(
+    shellSource,
+    /plans\.length === 1[\s\S]*?mcp-completion-plan is-single[\s\S]*?plans\.length > 1[\s\S]*?mcp-completion-plan__cards/,
+    "单方案纯文本与多方案卡片选择没有按方案数量分流",
+  );
+  assert.match(
+    shellSource,
+    /function completionPlanLabel[\s\S]*?推荐\|需确认[\s\S]*?plans\.length === 1[\s\S]*?completionPlanLabel\(preferred\)/,
+    "方案名称没有移除多余的“推荐/需确认”后缀",
+  );
+  assert.match(
+    shellSource,
+    /plans\.length > 1[\s\S]*?plan\.recommended[\s\S]*?mcp-completion-plan__recommended[\s\S]*?推荐/,
+    "多方案卡片没有显式标注推荐项",
+  );
+  assert.match(
+    shellSource,
+    /plans\.find\(\(plan\) => plan\.id === state\.current\.selectedPlanId\)[\s\S]*?plans\.find\(\(plan\) => plan\.recommended\)/,
+    "多方案首次打开时没有默认选中推荐项",
+  );
+  const cardSelectionSource = shellSource.slice(
+    shellSource.indexOf('card.addEventListener("click"'),
+    shellSource.indexOf("cards.append(card)"),
+  );
+  assert.doesNotMatch(
+    cardSelectionSource,
+    /applyParsed|importConfig|applyButton\.click/,
+    "点击处理方案卡片不应直接应用到表单",
+  );
+  assert.match(
+    cardSelectionSource,
+    /event\.preventDefault\(\)[\s\S]*?event\.stopPropagation\(\)/,
+    "处理方案卡片点击仍会冒泡并被弹窗误判为外部点击",
+  );
+  assert.match(
+    shellSource,
+    /MCP缺口（\$\{paths\.length\}）配置补齐方案/,
+    "第三栏标题没有显示本次解析的真实缺口数",
+  );
+  assert.match(
+    shellSource,
+    /\.\.\.missingPaths[\s\S]*?preferred\?\.values[\s\S]*?\.map\(\(item\) => item\.path\)/,
+    "第三栏没有合并显示缺失字段与候选修复的冲突字段",
+  );
+  const importSource = read(importFile);
+  assert.match(
+    importSource,
+    /if \(preset\) \{[\s\S]*?cro:config-preview-change[\s\S]*?previewPreset\(preset\)/,
+    "切换到内置预设时没有先通知 MCP 清理上一份补齐状态",
+  );
+  assert.match(
+    shellSource,
+    /function resetSampleCompletion\(\)[\s\S]*?sample\.token \+= 1;[\s\S]*?sample\.current = null;[\s\S]*?renderMissingInputs\(null, sample, pane, applyButton\)[\s\S]*?cro:config-preview-change[\s\S]*?resetSampleCompletion\(\)/,
+    "MCP 适配层没有在预览目标切换时失效旧请求并清空第三栏",
+  );
+  assert.doesNotMatch(
+    shellSource,
+    /mcp-completion-status is-invalid|当前没有通过完整静态复验的候选，暂不可应用/,
+    "第三栏仍保留无操作项的红色无解提示",
+  );
+  assert.match(
+    shellSource,
+    /mcp-confirm-apply[\s\S]*?mcp-completion-plan__confirmation input[\s\S]*?checkbox\.click\(\)[\s\S]*?applyButton\.click\(\)/,
+    "核对并应用没有先完成可见勾选再立即应用",
+  );
+  assert.match(
+    read(mcpShellEntryFile),
+    /LIVE_PARSE_DELAY_MS\s*=\s*450[\s\S]*?setTimeout\([\s\S]*?parseImported\([\s\S]*?LIVE_PARSE_DELAY_MS/,
+    "导入配置代码没有在停止输入后进行防抖实时计算",
+  );
+  assert.match(
+    sourceStyle,
+    /\.mcp-completion-status\.is-pending[\s\S]*?animation:\s*mcp-completion-spin/,
+    "第三栏计算中状态没有可见的 loading 动画",
+  );
+  assert.match(
+    sourceStyle,
+    /\.mcp-completion-status\.is-valid::before[\s\S]*?border-bottom:[^;]+;[\s\S]*?border-left:[^;]+;/,
+    "第三栏有效状态左侧没有线性对勾图标",
+  );
+  assert.match(
+    sourceStyle,
+    /\.mcp-completion-status\.is-review\s*\{[\s\S]*?var\(--warning\)/,
+    "用户修改导致待复验时没有使用可操作的审核态",
+  );
+  assert.match(
+    sourceStyle,
+    /\.mcp-completion-plan__confirmation\s*\{[\s\S]*?var\(--warning\)/,
+    "待核对内容没有保留黄色确认提示",
+  );
+  const baseline = read(baselineHtmlFile);
+  assert.match(baseline, /id="croImportApply"[^>]*>应用<\/button>/, "导入弹窗按钮没有改为“应用”");
+  assert.doesNotMatch(baseline, /id="croImportApply"[^>]*>应用到表单<\/button>/);
   assert.match(
     read(mcpValidationAdapterFile),
     /supplementOverrides[\s\S]*?trainingConfigFor/,
@@ -545,6 +666,92 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
     /页面内置预设 · .*项已完整落入表单/,
     "页面内置预设仍冒充 MCP 文件适配度",
   );
+});
+
+test("应用配置后关闭弹窗、返回表单页签并保留应用结果", () => {
+  const builtShell = read(builtShellFile);
+  for (const marker of [
+    "mcpImportAppliedStatus",
+    "配置已成功应用到表单",
+    "配置已应用，页面自动调整了",
+    '#cropLeftTabs [data-pane="form"]',
+  ]) {
+    assert.ok(builtShell.includes(marker), `MCP App 缺少应用后返回表单交互：${marker}`);
+  }
+  assert.match(
+    builtShell,
+    /croImportClose["'`]\)\?\.click\(\)/,
+    "应用成功后没有关闭导入弹窗",
+  );
+  assert.match(
+    read(mcpShellEntryFile),
+    /addEventListener\("cro:config-change", \(\) => \{[\s\S]*?appliedStatusSignature !== currentPageConfigSignature\(\)[\s\S]*?clearAppliedStatus\(\)/,
+    "应用结果没有按配置快照失效",
+  );
+  assert.match(
+    read(mcpShellEntryFile),
+    /APPLIED_STATUS_DURATION_MS\s*=\s*3000[\s\S]*?document\.body\.insertAdjacentHTML\("beforeend", renderAppliedStatus\(adjusted\)\)[\s\S]*?setTimeout\(clearAppliedStatus, APPLIED_STATUS_DURATION_MS\)/,
+    "应用结果没有作为页面级 Toast 显示并在 3 秒后自动关闭",
+  );
+  assert.match(
+    read(mcpShellEntryFile),
+    /data-dismiss-mcp-import-applied[\s\S]*?clearAppliedStatus\(\)/,
+    "应用结果 Toast 没有保留手动关闭入口",
+  );
+  assert.match(
+    read(mcpShellStyleFile),
+    /\.mcp-import-applied\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?top:\s*var\(--space-4\);[\s\S]*?right:\s*var\(--space-4\);[\s\S]*?z-index:\s*10000;/,
+    "应用结果没有固定浮动在页面右上角",
+  );
+  assert.match(
+    read(mcpShellStyleFile),
+    /\.mcp-import-applied\.is-adjusted\s*\{[\s\S]*?var\(--warning\)/,
+    "自动配平后的应用结果没有使用非阻断警示语义",
+  );
+});
+
+test("补齐后的样例配置继续在配置步进器显示用户所选名称", () => {
+  const importSource = read(importFile);
+  const shellSource = read(mcpShellEntryFile);
+  assert.match(
+    importSource,
+    /croImport\.selectAppliedSample[\s\S]*?activeSampleFile = file;[\s\S]*?activeSampleSignature = currentConfigSignature\(\);[\s\S]*?restoreMergedSelection\(\)/,
+    "配置下拉没有提供补齐后保留样例身份的入口",
+  );
+  assert.match(
+    importSource,
+    /activeSampleSignature !== currentConfigSignature\(\)[\s\S]*?clearActiveSample\(\)/,
+    "配置下拉仍会把不改变配置值的 MCP 视图刷新误判为手动修改",
+  );
+  assert.match(
+    shellSource,
+    /croImport\?\.selectAppliedSample\?\.\(appliedSample\.file\)/,
+    "MCP 应用样例后没有把用户所选配置名称写回配置下拉",
+  );
+  assert.doesNotMatch(
+    shellSource,
+    /optionValue = `__yaml_sample__:/,
+    "MCP 适配层不应继续只抢写一次下拉 DOM",
+  );
+});
+
+test("配置选择面板保留来源说明并删除重复的解析总账", () => {
+  const baseline = read(baselineHtmlFile);
+  const observer = read(path.join(baselineDirectory, "config-relation-observer.html"));
+  const importSource = read(importFile);
+  const shellSource = read(mcpShellEntryFile);
+  for (const source of [baseline, observer]) {
+    assert.ok(source.includes('class="cro-preview__source" id="croPreviewSource"'), "配置选择面板缺少来源说明行");
+  }
+  assert.match(importSource, /source: doc\.getElementById\("croPreviewSource"\)/, "页面预览没有恢复来源说明引用");
+  assert.match(shellSource, /sourceLine = document\.getElementById\("croPreviewSource"\)/, "MCP 预览没有恢复来源说明引用");
+  for (const source of [importSource, shellSource]) {
+    assert.match(
+      source,
+      /querySelector\(":scope > \.cro-import__lede"\)\?\.remove\(\)/,
+      "配置选择面板没有删除重复的 cro-import__lede",
+    );
+  }
 });
 
 test("第 12 项以 compute_rank_topology 快照驱动原 Rank 页面", () => {
@@ -629,7 +836,7 @@ test("第 13 项以 suggest_config_fixes 驱动原建议区域并保留字段锁
   assert.doesNotMatch(sourceStyle, /\.cro-config-error__msg \+ \.mcp-validation/, "整体问题与校验明细之间不应继续显示分割线");
   assert.match(
     sourceStyle,
-    /\.cro-config-error\.is-blocking\.is-mcp-invalid \.mcp-fixes__candidate\s*\{[\s\S]*?display:\s*grid;[\s\S]*?\}/,
+    /\.cro-config-error\.is-mcp-invalid \.mcp-fixes__candidate\s*\{[\s\S]*?display:\s*grid;[\s\S]*?\}/,
     "修复候选的标题、修改内容和操作按钮应各自占行",
   );
   assert.match(
@@ -655,6 +862,14 @@ test("第 13 项以 suggest_config_fixes 驱动原建议区域并保留字段锁
   assert.ok(
     read(mcpFixesAdapterFile).includes('element("details", "mcp-fixes__policy")'),
     "锁定字段应使用默认折叠的 details",
+  );
+  assert.ok(
+    !read(mcpFixesAdapterFile).includes('container?.classList.add("is-blocking", "is-mcp-invalid")'),
+    "修复建议适配器不得写入校验容器的阻断状态",
+  );
+  assert.ok(
+    read(mcpValidationAdapterFile).includes('document.addEventListener("cro:config-change"'),
+    "MCP 校验必须监听包含无效配置在内的配置尝试事件",
   );
   assert.ok(!builtShell.includes("找到 ${suggestions.length} 个按评分排序的候选"), "修复区头部不应显示候选数量");
   for (const marker of ["croConfigError", "取消修改", "is-mcp-invalid"]) {
@@ -718,6 +933,30 @@ test("第 14 项以 estimate_training_capacity 驱动原容量与瓶颈展示", 
     /\.crop-memory-legend__marker--caution::before\s*\{[\s\S]*?background:\s*var\(--warning\);[\s\S]*?\}/,
     "Rank HBM 警戒线应使用警示色",
   );
+});
+
+test("MCP App 空闲右栏不保留浏览器本地配置评估", () => {
+  const builtShell = read(builtShellFile);
+  for (const marker of [
+    "function renderAssessment()",
+    "当前配置评估",
+    'gradeSec("L-A"',
+    'gradeSec("L-B"',
+    'gradeSec("L-C"',
+    'gradeSec("L-D"',
+    'safe: "预计可跑"',
+    'metric("流水线气泡"',
+    'metric("估算证据等级"',
+  ]) {
+    assert.ok(!builtShell.includes(marker), `MCP App 不应保留空闲态本地评估公式或结论：${marker}`);
+  }
+  for (const marker of [
+    "MCP App 的右栏只展示选中对象详情",
+    "单卡容量只随有效的对象详情显示",
+    "点画布上的 rank 行、layer 列、PP Stage 条或格子里的专家",
+  ]) {
+    assert.ok(builtShell.includes(marker), `MCP App 缺少对象详情空闲态边界：${marker}`);
+  }
 });
 
 test("第 16 项提供宿主加载、取消、超时、鉴权失效、Tool 错误和重试状态", () => {
