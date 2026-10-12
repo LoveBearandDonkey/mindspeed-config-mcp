@@ -54,6 +54,7 @@ deploy/             # 后续服务器部署文件
 ```powershell
 npm test
 npm run build:ui
+npm run package:github-pages
 npm run test:contracts
 npm run test:golden
 npm run test:mcp
@@ -64,6 +65,9 @@ npm run verify:upstream
 
 `verify:upstream` 默认读取同级目录 `D:\Projects\compute-graph-viewer-wzh`，也可通过
 `TOOL_MATRIX_ROOT` 指定其他只读工作区。
+
+`package:github-pages` 会在 `deploy/github-pages/` 生成可直接发布的自包含静态体验包。
+其中五项计算在浏览器内调用同一份 `config-core`；GitHub Pages 不提供 MCP 协议端点。
 
 ## 项目文档
 

@@ -24,9 +24,15 @@ import { installFixesAdapter } from "@mcp-bridge/mcp-fixes-adapter.js";
 import { installCapacityAdapter } from "@mcp-bridge/mcp-capacity-adapter.js";
 import { createMcpHostInteraction } from "@mcp-bridge/mcp-host-interaction.js";
 
-const previewMode = new URLSearchParams(window.location.search).has("preview");
+const staticDemoMode = __MCP_STATIC_DEMO__;
+const previewMode = staticDemoMode || new URLSearchParams(window.location.search).has("preview");
 const BUILTIN_SOURCES = __MCP_BUILTIN_SOURCES__;
 const FILL_COVERAGE_HINT = "文件总项按源配置统计；总适配度按 MCP 后续工具所需的固定必填字段集合统计。";
+
+if (staticDemoMode) {
+  document.documentElement.dataset.mcpDistribution = "github-pages";
+  document.documentElement.dataset.mcpWorkbench = "static-demo";
+}
 
 function installConfigErrorViewportLimit() {
   function mount() {

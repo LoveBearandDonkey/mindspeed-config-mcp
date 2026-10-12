@@ -1,0 +1,7 @@
+interface:
+  display_name: "MindSpeed MCP 腾讯云部署"
+  short_description: "安全打包、发布、回滚并验收腾讯云上的 MCP 服务版本"
+  default_prompt: "Use $mindspeed-config-mcp-deploy to package, deploy, and verify the latest committed MindSpeed Config MCP release on Tencent Cloud."
+
+policy:
+  allow_implicit_invocation: true

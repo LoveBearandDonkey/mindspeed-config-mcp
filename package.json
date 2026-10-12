@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "build:ui": "npm run build:ui --workspace @mindspeed-config/mcp-server",
+    "package:github-pages": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/package-github-pages.ps1",
     "preview:adapted-ui": "npm run build:ui && vite preview --config apps/mcp-server/vite.config.js --host 127.0.0.1 --port 4174 --strictPort --open /training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html?preview=1",
     "dev:adapted-ui": "vite --config apps/mcp-server/vite.config.js --host 127.0.0.1 --port 4174 --strictPort --open /training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html?preview=1",
     "preview:baseline-ui": "vite apps/web/config-relation-plane-baseline --host 127.0.0.1 --port 4173 --strictPort --open /training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html",

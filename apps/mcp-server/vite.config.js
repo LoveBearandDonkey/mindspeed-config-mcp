@@ -69,6 +69,9 @@ function bundledSamples() {
 
 function bridgeSource() {
   return fs.readFileSync(bridgeFile, "utf8")
+    .replace("__MCP_STATIC_DEMO__", JSON.stringify(
+      process.env.MINDSPEED_CONFIG_MCP_STATIC_DEMO === "1",
+    ))
     .replace("__MCP_BUILTIN_SOURCES__", JSON.stringify(bundledSamples()));
 }
 

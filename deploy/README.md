@@ -1,5 +1,9 @@
 # 部署
 
+如果只需要让团队先体验页面和五项纯计算能力，可使用
+[`github-pages/`](github-pages/) 中的静态体验包。它不连接远程服务，也不提供 MCP 协议端点；
+重新生成命令是 `npm run package:github-pages`。
+
 第一版部署目标是无 NPU、无 CANN、无 PyTorch 依赖的 CPU 服务。当前配置面向腾讯云
 Ubuntu 24.04 x86_64 服务器的团队内部测试：容器端口只发布到宿主机回环地址，测试人员
 通过 SSH 隧道访问，不开放公网 MCP 端口。

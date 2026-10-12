@@ -58,6 +58,34 @@ ssh -o IdentitiesOnly=yes -i $key ubuntu@42.192.111.92
 - `Permission denied (publickey)`：让管理员核对 `.pub` 公钥是否绑定到正确服务器和 `ubuntu` 用户；
 - `Connection timed out`：更换网络，仍失败则让管理员检查腾讯云 `22` 端口。
 
+遇到 `Connection timed out` 时，先在 Windows PowerShell 检查服务器的 `22` 端口：
+
+```powershell
+Test-NetConnection 42.192.111.92 -Port 22 -InformationLevel Detailed
+```
+
+重点查看 `TcpTestSucceeded`：
+
+- 返回 `True`：`22` 端口可达，执行下面的命令查看详细 SSH 日志：
+
+  ```powershell
+  $key = "$env:USERPROFILE\.ssh\mindspeed_config_mcp"
+  ssh.exe -vvv -o ConnectTimeout=10 -o IdentitiesOnly=yes `
+    -i $key ubuntu@42.192.111.92
+  ```
+
+- 返回 `False`：连接还没有进入公钥鉴权阶段，与公钥内容无关。更换手机热点后再次检查，以排除当前网络封禁 `22` 端口；如果仍为 `False`，请管理员检查腾讯云安全组是否允许入站 `TCP 22`、实例公网 IP 是否正确，以及 Ubuntu 的 SSH 服务和防火墙状态。
+
+管理员可在服务器上执行：
+
+```bash
+sudo systemctl status ssh
+sudo ss -lntp 'sport = :22'
+sudo ufw status verbose
+```
+
+`Connection timed out` 通常表示安全组、防火墙或网络正在丢弃连接；公钥不正确通常会显示 `Permission denied (publickey)`。
+
 ## 2. 推荐：手动启动
 
 手动流程分为四步：建立 SSH 隧道、确认远端服务健康、在独立 VS Code 工作区配置并启动 MCP、
