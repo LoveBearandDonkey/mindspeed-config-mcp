@@ -106,7 +106,8 @@ export function formatFillCoverageScore(result) {
     requiredTotal - (data.missing_required_fields ?? []).length,
   );
   const gap = Math.max(0, requiredTotal - filledRequired);
-  return `本文件共 ${sourceTotal} 个配置，其中 ${filledRequired} 项可回填 MCP，缺口 ${gap} 项。`
+  const sourceLabel = data.model_source_name ? "两份来源" : "本文件";
+  return `${sourceLabel}共 ${sourceTotal} 个配置，其中 ${filledRequired} 项可回填 MCP，缺口 ${gap} 项。`
     + `总适配度 ${filledRequired}/${requiredTotal}`;
 }
 
@@ -220,8 +221,16 @@ export function renderParseReport(result, { adjusted = [] } = {}) {
   const partial = toPagePartial(data.normalized_config);
   const format = { yaml: "YAML", json: "JSON", shell: "Shell 命令行" }[data.detected_format]
     ?? data.detected_format ?? "未知格式";
+  const modelFormat = { yaml: "YAML", json: "JSON", shell: "Shell 命令行" }[data.model_detected_format]
+    ?? data.model_detected_format ?? "未知格式";
+  const sourceSummary = data.model_source_name
+    ? `训练配置 <b>${escapeHtml(format)}</b> + 模型结构 <b>${escapeHtml(modelFormat)}</b>`
+    : `<b>${escapeHtml(format)}</b>`;
+  const parseLead = data.model_source_name
+    ? `MCP 已联动解析 ${sourceSummary}`
+    : `MCP 识别为 ${sourceSummary}`;
   const output = [
-    `<p class="cro-import__lede" data-mcp-parse-report="valid">MCP 识别为 <b>${escapeHtml(format)}</b>：`
+    `<p class="cro-import__lede" data-mcp-parse-report="valid">${parseLead}：`
       + `原文映射 <b>${data.explicit_mapped_count ?? 0}</b> 项，`
       + `同文件推导 <b>${data.derived_count ?? 0}</b> 项，`
       + `省略态默认 <b>${data.defaulted_count ?? 0}</b> 项；`
@@ -230,6 +239,16 @@ export function renderParseReport(result, { adjusted = [] } = {}) {
       + `仍缺输入 <b>${(data.missing_required_fields ?? []).length}</b> 项。`
       + `解析过程<b>不启动训练</b>。</p>`,
   ];
+
+  output.push(section(
+    "来源冲突 · 已显式列出",
+    (data.source_conflicts ?? []).map((item) => `<li><b>${escapeHtml(labelForPath(item.path))}</b>`
+      + `<br><span class="cro-import__note">训练配置 ${escapeHtml(item.training.source_key)} = `
+      + `<b>${formatValue(item.training.value)}</b>；模型结构 ${escapeHtml(item.model.source_key)} = `
+      + `<b>${formatValue(item.model.value)}</b>。联合候选采用${item.resolution === "training_source" ? "训练配置" : "模型结构"}值。</span></li>`),
+    "模型结构文件负责 model.*；冲突按 explicit > derived > default 合并，同级采用模型结构值，请在应用前核对。",
+    "is-warn",
+  ));
 
   if (adjusted.length) {
     output.push(`<div class="cro-import__block is-warn"><h4>已应用到表单；页面自动调整了 ${adjusted.length} 项</h4>`
@@ -243,7 +262,7 @@ export function renderParseReport(result, { adjusted = [] } = {}) {
     const rows = mapped.filter((item) => item.mapping_kind === kind).map((item) => {
       const pageField = pageFieldForPath(item.target_path);
       return `<li><b>${escapeHtml(labelForPath(item.target_path))}</b> = <b>${formatValue(item.value)}</b>`
-        + `<span class="cro-import__from">← ${escapeHtml(item.source_key)}</span>`
+        + `<span class="cro-import__from">← ${item.source_role === "model" ? "模型结构 · " : ""}${escapeHtml(item.source_key)}</span>`
         + (pageField ? "" : `<br><span class="cro-import__note">已进入统一配置，但当前页面没有对应旋钮，不自动覆盖页面。</span>`)
         + `</li>`;
     });
@@ -252,14 +271,14 @@ export function renderParseReport(result, { adjusted = [] } = {}) {
 
   output.push(section(
     "未识别 · 没有静默丢弃",
-    (data.unmapped_fields ?? []).map((item) => `<li><code>${escapeHtml(item.source_key)}</code> = `
+    (data.unmapped_fields ?? []).map((item) => `<li><code>${item.source_role === "model" ? "模型结构 · " : ""}${escapeHtml(item.source_key)}</code> = `
       + `<b>${formatValue(item.value)}</b><br><span class="cro-import__note">${escapeHtml(item.reason)}</span></li>`),
     "这些键没有已登记映射，保留在报告中供补规则或人工判断。",
     "is-unknown",
   ));
   output.push(section(
     "已识别 · 第一版暂不建模",
-    (data.ignored_fields ?? []).map((item) => `<li><code>${escapeHtml(item.source_key)}</code>`
+    (data.ignored_fields ?? []).map((item) => `<li><code>${item.source_role === "model" ? "模型结构 · " : ""}${escapeHtml(item.source_key)}</code>`
       + `<span class="cro-import__from">${escapeHtml(item.reason)}</span></li>`),
     "训练路径、日志、优化器超参等不进入当前配置关系平面。",
     "is-skip",

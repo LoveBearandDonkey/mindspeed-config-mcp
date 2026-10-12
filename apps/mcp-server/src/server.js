@@ -65,7 +65,7 @@ const TOOL_DEFINITIONS = Object.freeze([
   {
     name: "parse_training_config",
     title: "解析训练配置",
-    description: "解析 YAML、JSON 或 Shell 启动参数，显式返回未识别和缺失字段，并为缺口生成经过完整静态复验的候选方案。不启动训练。",
+    description: "解析 YAML、JSON 或 Shell 训练配置，并可联动解析独立模型结构文件；显式返回来源冲突、未识别和缺失字段，并为缺口生成经过完整静态复验的候选方案。不启动训练。",
     inputSchema: parseInputSchema,
     assertInput: assertParseTrainingConfig,
     run: parseTrainingConfig,

@@ -56,16 +56,6 @@
   flex-wrap: wrap;
 }
 
-.mcp-import__box .cro-import__head .cro-import__intro {
-  order: 2;
-  flex: 0 0 100%;
-  margin: calc(-1 * var(--space-1)) 0 0;
-  color: var(--foreground-secondary);
-  font-size: var(--font-size-label-xs);
-  font-weight: var(--font-weight-regular, 400);
-  line-height: 1.4;
-}
-
 .mcp-import__box #croImportClose {
   margin-left: auto;
 }
@@ -611,12 +601,72 @@
   flex: 0 0 auto;
 }
 
-.mcp-import__code-pane .cro-import__text {
+.mcp-import__source {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.mcp-import__training-source {
+  flex: 1 1 68%;
+}
+
+.mcp-import__model-source {
+  flex: 0 1 32%;
+  min-height: 118px;
+}
+
+.mcp-import__source-head {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.mcp-import__source-title {
+  margin: 0;
+  color: var(--foreground);
+  font-size: var(--font-size-label-sm);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.mcp-import__source-title span {
+  color: var(--foreground-secondary);
+  font-weight: var(--font-weight-regular, 400);
+}
+
+.mcp-import__source-name {
+  min-width: 0;
+  margin-right: auto;
+  overflow: hidden;
+  color: var(--foreground-secondary);
+  font-size: var(--font-size-label-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mcp-import__source-upload {
+  flex: 0 0 auto;
+}
+
+.mcp-import__source-clear[hidden] {
+  display: none;
+}
+
+.mcp-import__source .cro-import__text {
   flex: 1 1 auto;
   width: 100%;
   min-height: 0;
   max-height: none;
   resize: none;
+}
+
+.mcp-import__model-source .cro-import__text {
+  min-height: 92px;
 }
 
 .mcp-import__result-pane .cro-import__report {
@@ -764,9 +814,13 @@
     border-left: 0;
   }
 
-  .mcp-import__code-pane .cro-import__text,
+  .mcp-import__training-source .cro-import__text,
   .mcp-import__result-pane .cro-import__report {
     min-height: 220px;
+  }
+
+  .mcp-import__model-source .cro-import__text {
+    min-height: 140px;
   }
 }
 

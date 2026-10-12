@@ -58,7 +58,7 @@ function installConfigErrorViewportLimit() {
 installConfigErrorViewportLimit();
 
 function parseInput(source) {
-  return {
+  const input = {
     schema_version: "1.0",
     rule_profile: { framework: "generic", version: "v1-workbench" },
     source: {
@@ -67,6 +67,14 @@ function parseInput(source) {
       content: source.content,
     },
   };
+  if (source.modelSource?.content?.trim()) {
+    input.model_source = {
+      format: inferSourceFormat(source.modelSource.name),
+      name: source.modelSource.name,
+      content: source.modelSource.content,
+    };
+  }
+  return input;
 }
 
 if (previewMode) {
@@ -241,7 +249,10 @@ function installParseAdapter(callParseTool, callValidateTool) {
     file: document.getElementById("croImportFile"),
     name: document.getElementById("croImportName"),
     text: document.getElementById("croImportText"),
-    parse: document.getElementById("croImportParse"),
+    modelFile: document.getElementById("mcpImportModelFile"),
+    modelName: document.getElementById("mcpImportModelName"),
+    modelText: document.getElementById("mcpImportModelText"),
+    modelClear: document.getElementById("mcpImportModelClear"),
     apply: document.getElementById("croImportApply"),
     report: document.getElementById("croImportReport"),
     clear: document.getElementById("croImportClear"),
@@ -353,20 +364,19 @@ function installParseAdapter(callParseTool, callValidateTool) {
     const box = panel?.querySelector(".cro-import__box");
     const head = panel?.querySelector(".cro-import__head");
     const body = panel?.querySelector(".cro-import__body");
-    const intro = body?.querySelector(".cro-import__intro");
+    body?.querySelector(".cro-import__intro")?.remove();
     const name = document.getElementById("croImportName");
     const close = document.getElementById("croImportClose");
     const actions = body?.querySelector(".cro-import__actions");
     const text = document.getElementById("croImportText");
     const report = document.getElementById("croImportReport");
     const apply = document.getElementById("croImportApply");
-    if (!box || !head || !body || !intro || !actions || !text || !report || !apply
+    if (!box || !head || !body || !actions || !text || !report || !apply
       || document.getElementById("mcpImportWorkspace")) return;
 
     box.classList.add("mcp-import__box");
-    name.hidden = true;
-    intro.textContent = "支持三种方言：MindFormers / LLaMA-Factory 的 YAML、Megatron 的 Shell、HF config.json 与 DeepSpeed JSON。";
-    head.append(intro);
+    name.hidden = false;
+    name.classList.add("mcp-import__source-name");
     close.classList.add("btn-icon");
     close.title = "关闭";
     close.setAttribute("aria-label", "关闭导入配置");
@@ -382,6 +392,16 @@ function installParseAdapter(callParseTool, callValidateTool) {
       clear.hidden = true;
       document.getElementById("croImportParse")?.insertAdjacentElement("afterend", clear);
     }
+    clear.classList.add("mcp-import__source-clear");
+    /* 原页面的导入脚本会在 DOMContentLoaded 时给这枚按钮注册事件；直接删除会让
+       boot() 提前异常，连带阻断配置预置选择器的创建。保留兼容节点但不展示，
+       实际解析仍只由下面的上传 / 输入自动触发。 */
+    const legacyParse = document.getElementById("croImportParse");
+    if (legacyParse) {
+      legacyParse.hidden = true;
+      legacyParse.setAttribute("aria-hidden", "true");
+      legacyParse.tabIndex = -1;
+    }
 
     const workspace = document.createElement("div");
     workspace.id = "mcpImportWorkspace";
@@ -393,6 +413,61 @@ function installParseAdapter(callParseTool, callValidateTool) {
     codeTitle.id = "mcpImportCodeTitle";
     codeTitle.className = "mcp-import__pane-title";
     codeTitle.textContent = "配置代码";
+    const trainingSource = document.createElement("section");
+    trainingSource.className = "mcp-import__source mcp-import__training-source";
+    const trainingHead = document.createElement("div");
+    trainingHead.className = "mcp-import__source-head";
+    const trainingTitle = document.createElement("h4");
+    trainingTitle.className = "mcp-import__source-title";
+    trainingTitle.textContent = "训练配置";
+    const trainingUpload = actions.querySelector('label[for="croImportFile"]');
+    if (trainingUpload) {
+      trainingUpload.classList.add("mcp-import__source-upload");
+      const uploadText = trainingUpload.querySelector("span");
+      if (uploadText) uploadText.textContent = "上传训练配置";
+    }
+    text.placeholder = "上传或粘贴 YAML、Shell 或 JSON 训练配置内容…";
+    trainingHead.append(trainingTitle, name, clear);
+    if (trainingUpload) trainingHead.append(trainingUpload);
+    trainingSource.append(trainingHead, text, document.getElementById("croImportFile"));
+
+    const modelSource = document.createElement("section");
+    modelSource.className = "mcp-import__source mcp-import__model-source";
+    const modelHead = document.createElement("div");
+    modelHead.className = "mcp-import__source-head";
+    const modelTitle = document.createElement("h4");
+    modelTitle.className = "mcp-import__source-title";
+    modelTitle.innerHTML = `模型结构 <span>（可选）</span>`;
+    const modelFile = document.createElement("input");
+    modelFile.id = "mcpImportModelFile";
+    modelFile.type = "file";
+    modelFile.accept = ".json,.yaml,.yml,.txt,application/json,text/yaml";
+    modelFile.hidden = true;
+    const modelUpload = document.createElement("label");
+    modelUpload.className = "btn btn-sm mcp-import__source-upload";
+    modelUpload.htmlFor = modelFile.id;
+    modelUpload.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" `
+      + `stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"></path>`
+      + `<path d="M5 12h14"></path></svg><span>上传模型结构</span>`;
+    const modelClear = document.createElement("button");
+    modelClear.id = "mcpImportModelClear";
+    modelClear.type = "button";
+    modelClear.className = "btn btn-sm btn-ghost mcp-import__source-clear";
+    modelClear.textContent = "清空";
+    modelClear.hidden = true;
+    const modelName = document.createElement("span");
+    modelName.id = "mcpImportModelName";
+    modelName.className = "mcp-import__source-name";
+    modelName.textContent = "未选择文件";
+    const modelText = document.createElement("textarea");
+    modelText.id = "mcpImportModelText";
+    modelText.className = "cro-import__text cro-code mcp-import__model-text";
+    modelText.setAttribute("aria-label", "可选的模型结构配置代码");
+    modelText.spellcheck = false;
+    modelText.wrap = "off";
+    modelText.placeholder = "上传或粘贴 config.json 文件内容…";
+    modelHead.append(modelTitle, modelName, modelClear, modelUpload);
+    modelSource.append(modelHead, modelText, modelFile);
     const resultPane = document.createElement("section");
     resultPane.className = "mcp-import__pane mcp-import__result-pane";
     resultPane.setAttribute("aria-labelledby", "mcpImportResultTitle");
@@ -408,7 +483,7 @@ function installParseAdapter(callParseTool, callValidateTool) {
     resultScore.textContent = "— · 等待解析";
     resultScore.title = FILL_COVERAGE_HINT;
     const resultBanner = createParseBanner(resultScore);
-    codePane.append(codeTitle, actions, text);
+    codePane.append(codeTitle, trainingSource, modelSource);
     resultHead.append(resultTitle);
     resultPane.append(resultHead, resultBanner, report);
     workspace.append(codePane, resultPane, createMissingPane("mcpImportMissingPane"));
@@ -431,9 +506,24 @@ function installParseAdapter(callParseTool, callValidateTool) {
 
   function syncClearButton() {
     const ui = importUi();
-    const hasContent = Boolean(ui.text?.value?.trim());
-    if (ui.clear) ui.clear.hidden = !hasContent;
-    ui.parse?.classList.toggle("btn-solid", hasContent);
+    if (ui.clear) ui.clear.hidden = !ui.text?.value?.trim();
+    if (ui.modelClear) ui.modelClear.hidden = !ui.modelText?.value?.trim();
+  }
+
+  function importedSourceFromUi() {
+    const ui = importUi();
+    const visibleName = ui.name.textContent?.trim();
+    const name = visibleName && visibleName !== "未选择文件"
+      ? visibleName : "粘贴的训练配置.txt";
+    const visibleModelName = ui.modelName?.textContent?.trim();
+    const modelName = visibleModelName && visibleModelName !== "未选择文件"
+      ? visibleModelName : "粘贴的模型结构 config.json";
+    const modelContent = ui.modelText?.value ?? "";
+    return {
+      name,
+      content: ui.text.value ?? "",
+      ...(modelContent.trim() ? { modelSource: { name: modelName, content: modelContent } } : {}),
+    };
   }
 
   function resetImported({ focus = true } = {}) {
@@ -445,10 +535,12 @@ function installParseAdapter(callParseTool, callValidateTool) {
     if (lastParseKind === "imported") lastParseKind = null;
     ui.text.value = "";
     ui.file.value = "";
+    ui.modelText.value = "";
+    ui.modelFile.value = "";
     ui.name.textContent = "未选择文件";
-    ui.parse.disabled = false;
+    ui.modelName.textContent = "未选择文件";
     ui.apply.disabled = true;
-    ui.report.innerHTML = `<p class="cro-import__empty">选择 YAML、JSON 或 Shell 文件后会自动解析；粘贴配置代码会在停止输入后自动解析。</p>`;
+    ui.report.innerHTML = `<p class="cro-import__empty">先提供训练配置；模型结构可选。上传文件后会立即解析，停止输入后自动解析两个输入框中的现有内容。</p>`;
     ui.score.textContent = "— · 等待解析";
     renderMissingInputs(null, imported, document.getElementById("mcpImportMissingPane"), ui.apply);
     syncClearButton();
@@ -696,6 +788,7 @@ function installParseAdapter(callParseTool, callValidateTool) {
   ) {
     const current = state.current;
     if (!current || !missingModelPaths.length) return;
+    if (pane.id === "mcpImportMissingPane" && document.getElementById("mcpImportModelText")) return;
     const fields = pane.querySelector(".mcp-missing-pane__fields");
     if (!fields) return;
 
@@ -1174,7 +1267,6 @@ function installParseAdapter(callParseTool, callValidateTool) {
     imported.lastSource = source;
     imported.current = null;
     ui.apply.disabled = true;
-    ui.parse.disabled = true;
     ui.score.textContent = "解析中…";
     ui.report.innerHTML = `<p class="cro-import__empty">正在调用 <code>parse_training_config</code>，不启动训练…</p>`;
     renderCompletionLoading(
@@ -1197,8 +1289,6 @@ function installParseAdapter(callParseTool, callValidateTool) {
       ui.score.textContent = "— · MCP 调用失败";
       ui.report.innerHTML = errorHtml(error);
       renderMissingInputs(null, imported, document.getElementById("mcpImportMissingPane"), ui.apply);
-    } finally {
-      if (token === imported.token) ui.parse.disabled = false;
     }
   }
 
@@ -1340,17 +1430,22 @@ function installParseAdapter(callParseTool, callValidateTool) {
   });
 
   document.addEventListener("change", (event) => {
-    if (event.target?.id !== "croImportFile") return;
+    if (!new Set(["croImportFile", "mcpImportModelFile"]).has(event.target?.id)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     const file = event.target.files?.[0];
     if (!file) return;
     const ui = importUi();
     file.text().then((content) => {
-      ui.text.value = content;
-      ui.name.textContent = file.name;
+      if (event.target.id === "mcpImportModelFile") {
+        ui.modelText.value = content;
+        ui.modelName.textContent = file.name;
+      } else {
+        ui.text.value = content;
+        ui.name.textContent = file.name;
+      }
       syncClearButton();
-      parseImported({ name: file.name, content });
+      if (ui.text.value.trim()) parseImported(importedSourceFromUi());
     }).catch((error) => { ui.report.innerHTML = errorHtml(error); });
   }, true);
 
@@ -1368,28 +1463,26 @@ function installParseAdapter(callParseTool, callValidateTool) {
   });
 
   document.addEventListener("input", (event) => {
-    if (event.target?.id !== "croImportText") return;
+    if (!new Set(["croImportText", "mcpImportModelText"]).has(event.target?.id)) return;
     clearTimeout(liveParseTimer);
     imported.token += 1;
     imported.current = null;
     const ui = importUi();
     ui.apply.disabled = true;
-    ui.score.textContent = event.target.value ? "等待输入完成…" : "— · 等待解析";
-    ui.report.innerHTML = event.target.value
-      ? `<p class="cro-import__empty">检测到配置代码变化，将自动解析并实时计算补齐方案…</p>`
-      : `<p class="cro-import__empty">选择 YAML、JSON 或 Shell 文件后会自动解析；粘贴配置代码会在停止输入后自动解析。</p>`;
-    if (event.target.value.trim()) {
+    const hasTraining = Boolean(ui.text.value.trim());
+    const hasAnyContent = hasTraining || Boolean(ui.modelText.value.trim());
+    ui.score.textContent = hasAnyContent ? "等待输入完成…" : "— · 等待解析";
+    ui.report.innerHTML = hasTraining
+      ? `<p class="cro-import__empty">检测到输入变化，将联动解析训练配置与已有的模型结构内容…</p>`
+      : `<p class="cro-import__empty">请先上传或粘贴训练配置；模型结构文件为可选输入。</p>`;
+    if (hasTraining) {
       renderCompletionLoading(
         document.getElementById("mcpImportMissingPane"),
         ui.apply,
         "计算中… 等待输入结束后自动调用 MCP。",
       );
-      const content = event.target.value;
-      const visibleName = ui.name.textContent?.trim();
-      const name = visibleName && visibleName !== "未选择文件"
-        ? visibleName : "粘贴的训练配置.txt";
       liveParseTimer = window.setTimeout(() => {
-        parseImported({ name, content });
+        parseImported(importedSourceFromUi());
       }, LIVE_PARSE_DELAY_MS);
     } else {
       renderMissingInputs(null, imported, document.getElementById("mcpImportMissingPane"), ui.apply);
@@ -1428,24 +1521,6 @@ function installParseAdapter(callParseTool, callValidateTool) {
       return;
     }
 
-    const parseButton = target?.closest?.("#croImportParse");
-    if (parseButton) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      clearTimeout(liveParseTimer);
-      const ui = importUi();
-      const content = ui.text.value ?? "";
-      if (!content.trim()) {
-        ui.apply.disabled = true;
-        ui.report.innerHTML = `<p class="cro-import__empty">先贴一份配置，或选一个文件。</p>`;
-        return;
-      }
-      const visibleName = ui.name.textContent?.trim();
-      const name = visibleName && visibleName !== "未选择文件" ? visibleName : "粘贴的训练配置.txt";
-      parseImported({ name, content });
-      return;
-    }
-
     const importApply = target?.closest?.("#croImportApply");
     if (importApply) {
       event.preventDefault();
@@ -1462,7 +1537,25 @@ function installParseAdapter(callParseTool, callValidateTool) {
     if (clearButton) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      resetImported();
+      const ui = importUi();
+      ui.text.value = "";
+      ui.file.value = "";
+      ui.name.textContent = "未选择文件";
+      ui.text.dispatchEvent(new Event("input", { bubbles: true }));
+      ui.text.focus();
+      return;
+    }
+
+    const modelClearButton = target?.closest?.("#mcpImportModelClear");
+    if (modelClearButton) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const ui = importUi();
+      ui.modelText.value = "";
+      ui.modelFile.value = "";
+      ui.modelName.textContent = "未选择文件";
+      ui.modelText.dispatchEvent(new Event("input", { bubbles: true }));
+      ui.modelText.focus();
       return;
     }
 

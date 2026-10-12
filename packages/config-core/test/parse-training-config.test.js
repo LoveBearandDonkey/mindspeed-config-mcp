@@ -43,6 +43,73 @@ torchrun --nnodes 2 --nproc-per-node 8 pretrain_gpt.py \\
   );
 });
 
+test("联动解析训练配置与可选模型结构，并显式报告来源冲突", () => {
+  const result = parseTrainingConfig({
+    ...input(`
+WORLD_SIZE=8
+torchrun train.py \\
+  --num-layers 44 --hidden-size 4096 --num-attention-heads 64 \\
+  --num-experts 256 --moe-router-topk 6 --moe-ffn-hidden-size 2048 \\
+  --tensor-model-parallel-size 2 --pipeline-model-parallel-size 2 \\
+  --micro-batch-size 1 --seq-length 4096 --bf16
+`, "shell", "train.sh"),
+    model_source: {
+      format: "json",
+      name: "config.json",
+      content: JSON.stringify({
+        model_type: "deepseek_v4",
+        num_hidden_layers: 43,
+        hidden_size: 4096,
+        num_attention_heads: 64,
+        moe_intermediate_size: 2048,
+        n_routed_experts: 256,
+        n_shared_experts: 1,
+        num_experts_per_tok: 6,
+        vocab_size: 129280,
+      }),
+    },
+  });
+
+  assert.equal(result.status, "valid");
+  assert.equal(result.data.model_source_name, "config.json");
+  assert.equal(result.data.normalized_config.model.total_layers, 43);
+  assert.equal(result.data.normalized_config.model.shared_experts, 1);
+  assert.ok(result.data.source_conflicts.some((item) => item.path === "model.total_layers"));
+  assert.ok(result.data.source_conflicts.some((item) => item.path === "model.shared_experts"));
+  assert.ok(result.warnings.some((item) => item.code === "PARSE_SOURCE_CONFLICT"));
+  assert.ok(result.data.mapped_fields.some((item) => (
+    item.target_path === "model.total_layers" && item.source_role === "model"
+  )));
+});
+
+test("可选模型结构语法错误定位到 model_source", () => {
+  const result = parseTrainingConfig({
+    ...input("--num-layers 32", "shell", "train.sh"),
+    model_source: { format: "json", name: "config.json", content: "{ broken" },
+  });
+
+  assert.equal(result.status, "error");
+  assert.equal(result.errors[0].code, "PARSE_SYNTAX_ERROR");
+  assert.deepEqual(result.errors[0].fields, ["model_source.content"]);
+});
+
+test("训练配置显式模型值不会被模型文件的省略态默认覆盖", () => {
+  const result = parseTrainingConfig({
+    ...input("--num-experts 8 --num-shared-experts 2", "shell", "train.sh"),
+    model_source: {
+      format: "json",
+      name: "config.json",
+      content: JSON.stringify({ model_type: "mixtral", num_local_experts: 8 }),
+    },
+  });
+
+  assert.equal(result.data.normalized_config.model.shared_experts, 2);
+  assert.equal(
+    result.data.source_conflicts.find((item) => item.path === "model.shared_experts")?.resolution,
+    "training_source",
+  );
+});
+
 test("解析 MindSpeed-LLM num-layer-list 并推导为动态 PP", () => {
   const result = parseTrainingConfig(input(`
 torchrun pretrain_gpt.py \\

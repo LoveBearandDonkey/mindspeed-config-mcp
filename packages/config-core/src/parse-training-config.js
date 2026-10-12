@@ -3,7 +3,7 @@ import { parseDocument } from "yaml";
 import { diagnostic, toolResult } from "./result.js";
 import { planTrainingConfigCompletion } from "./plan-training-config-completion.js";
 
-const PARSER_SOURCE = "mindspeed-config-mcp:parse-training-config@0.2.2";
+const PARSER_SOURCE = "mindspeed-config-mcp:parse-training-config@0.3.0";
 const FORMAT_LABELS = Object.freeze({
   yaml: "YAML",
   json: "JSON",
@@ -198,7 +198,7 @@ const IGNORED_KEYS = new Set([
   "distributed-backend", "wandb-project", "tensorboard-dir", "seed"
 ]);
 
-export function parseTrainingConfig(input) {
+function parseSingleTrainingConfig(input) {
   const detectedFormat = detectFormat(input.source.content, input.source.format, input.source.name);
   let entries;
   try {
@@ -361,6 +361,156 @@ export function parseTrainingConfig(input) {
         detectedFormat,
       }),
     }
+  });
+}
+
+export function parseTrainingConfig(input) {
+  if (!input.model_source) return parseSingleTrainingConfig(input);
+
+  const trainingResult = parseSingleTrainingConfig(input);
+  if (trainingResult.status === "error") return trainingResult;
+
+  const modelInput = { ...input, source: input.model_source };
+  delete modelInput.model_source;
+  const modelResult = parseSingleTrainingConfig(modelInput);
+  if (modelResult.status === "error") {
+    return toolResult({
+      tool: "parse_training_config",
+      input,
+      status: "error",
+      errors: modelResult.errors.map((item) => ({
+        ...item,
+        fields: item.fields.map((field) => field.replace(/^source\./, "model_source.")),
+      })),
+      warnings: trainingResult.warnings,
+      assumptions: trainingResult.assumptions,
+      data: {
+        ...trainingResult.data,
+        model_source_name: input.model_source.name ?? null,
+        model_detected_format: modelResult.data.detected_format,
+      },
+    });
+  }
+
+  return mergeParsedSources(input, trainingResult, modelResult);
+}
+
+function mergeParsedSources(input, trainingResult, modelResult) {
+  const normalized = structuredClone(trainingResult.data.normalized_config);
+  const trainingFields = trainingResult.data.mapped_fields.map((field) => ({
+    ...field,
+    source_role: "training",
+  }));
+  const modelFields = modelResult.data.mapped_fields
+    .filter((field) => field.target_path.startsWith("model."))
+    .map((field) => ({ ...field, source_role: "model" }));
+  const ignoredModelMappings = modelResult.data.mapped_fields
+    .filter((field) => !field.target_path.startsWith("model."))
+    .map((field) => ({
+      source_key: field.source_key,
+      value: field.value,
+      reason: `模型结构文件只合并 model.*；${field.target_path} 保留为来源证据`,
+      source_role: "model",
+    }));
+  const trainingByPath = new Map();
+  const modelByPath = new Map();
+  for (const field of trainingFields) trainingByPath.set(field.target_path, field);
+  for (const field of modelFields) modelByPath.set(field.target_path, field);
+
+  const conflicts = [];
+  const evidencePriority = { default: 1, derived: 2, explicit: 3 };
+  for (const [path, modelField] of modelByPath) {
+    const trainingField = trainingByPath.get(path);
+    const trainingValue = getPath(normalized, path);
+    const useModelValue = trainingValue === undefined
+      || (evidencePriority[modelField.mapping_kind] ?? 0) >= (evidencePriority[trainingField?.mapping_kind] ?? 0);
+    if (trainingValue !== undefined && JSON.stringify(trainingValue) !== JSON.stringify(modelField.value)) {
+      conflicts.push({
+        path,
+        training: {
+          value: trainingValue,
+          source_key: trainingField?.source_key ?? path,
+          mapping_kind: trainingField?.mapping_kind ?? "derived",
+        },
+        model: {
+          value: modelField.value,
+          source_key: modelField.source_key,
+          mapping_kind: modelField.mapping_kind,
+        },
+        resolution: useModelValue ? "model_source" : "training_source",
+      });
+    }
+    if (useModelValue) setPath(normalized, path, modelField.value);
+  }
+
+  const requiredPaths = requiredPathsFor(normalized);
+  const missingRequiredFields = requiredPaths.filter((path) => getPath(normalized, path) === undefined);
+  const mappedFields = [...trainingFields, ...modelFields];
+  const unmappedFields = [
+    ...trainingResult.data.unmapped_fields.map((field) => ({ ...field, source_role: "training" })),
+    ...modelResult.data.unmapped_fields.map((field) => ({ ...field, source_role: "model" })),
+  ];
+  const ignoredFields = [
+    ...trainingResult.data.ignored_fields.map((field) => ({ ...field, source_role: "training" })),
+    ...modelResult.data.ignored_fields.map((field) => ({ ...field, source_role: "model" })),
+    ...ignoredModelMappings,
+  ];
+  const conflictWarnings = conflicts.map((item) => diagnostic(
+    "PARSE_SOURCE_CONFLICT",
+    `训练配置与模型结构文件对 ${item.path} 的声明不一致；联合结果按证据强度采用${item.resolution === "model_source" ? "模型结构" : "训练配置"}值。`,
+    [item.path, `source.${item.training.source_key}`, `model_source.${item.model.source_key}`],
+    "parser-rule",
+    PARSER_SOURCE,
+  ));
+  const sourceWarnings = [...trainingResult.warnings, ...modelResult.warnings]
+    .filter((item) => item.code !== "PARSE_INCOMPLETE");
+  const incompleteWarnings = missingRequiredFields.length
+    ? [diagnostic(
+      "PARSE_INCOMPLETE",
+      `已联动解析训练配置与模型结构，但距离可直接调用其余工具还缺少 ${missingRequiredFields.length} 个必填字段。`,
+      missingRequiredFields,
+      "parser-rule",
+      PARSER_SOURCE,
+    )]
+    : [];
+
+  return toolResult({
+    tool: "parse_training_config",
+    input,
+    status: "valid",
+    warnings: [...sourceWarnings, ...conflictWarnings, ...incompleteWarnings],
+    assumptions: [...new Set([
+      ...trainingResult.assumptions,
+      ...modelResult.assumptions,
+      "训练配置提供并行、批次、集群与运行参数；可选模型结构文件只合并 model.* 字段。",
+      "两份来源对 model.* 的声明不一致时显式返回 source_conflicts；优先采用 explicit，其次 derived、default，同级采用模型结构文件。",
+    ])],
+    data: {
+      detected_format: trainingResult.data.detected_format,
+      model_detected_format: modelResult.data.detected_format,
+      source_name: input.source.name ?? null,
+      model_source_name: input.model_source.name ?? null,
+      complete: missingRequiredFields.length === 0,
+      source_field_count: trainingResult.data.source_field_count + modelResult.data.source_field_count,
+      required_field_count: requiredPaths.length,
+      filled_required_field_count: requiredPaths.length - missingRequiredFields.length,
+      mapped_count: mappedFields.length,
+      explicit_mapped_count: mappedFields.filter((field) => field.mapping_kind === "explicit").length,
+      derived_count: mappedFields.filter((field) => field.mapping_kind === "derived").length,
+      defaulted_count: mappedFields.filter((field) => field.mapping_kind === "default").length,
+      unmapped_count: unmappedFields.length,
+      ignored_count: ignoredFields.length,
+      normalized_config: normalized,
+      mapped_fields: mappedFields,
+      unmapped_fields: unmappedFields,
+      ignored_fields: ignoredFields,
+      missing_required_fields: missingRequiredFields,
+      source_conflicts: conflicts,
+      completion: planTrainingConfigCompletion(normalized, missingRequiredFields, {
+        sourceName: input.source.name,
+        detectedFormat: trainingResult.data.detected_format,
+      }),
+    },
   });
 }
 

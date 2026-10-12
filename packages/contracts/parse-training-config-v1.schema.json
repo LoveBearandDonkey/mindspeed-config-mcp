@@ -35,6 +35,16 @@
         "content": { "type": "string", "minLength": 1, "maxLength": 1048576 },
         "name": { "type": "string", "minLength": 1 }
       }
+    },
+    "model_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "content"],
+      "properties": {
+        "format": { "enum": ["auto", "yaml", "json", "shell"] },
+        "content": { "type": "string", "minLength": 1, "maxLength": 1048576 },
+        "name": { "type": "string", "minLength": 1 }
+      }
     }
   }
 }

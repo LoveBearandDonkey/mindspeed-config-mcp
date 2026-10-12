@@ -1136,6 +1136,20 @@
     const presetId = (value) => String(value || "").startsWith(PRESET_PREFIX)
       ? String(value).slice(PRESET_PREFIX.length) : null;
 
+    /* observer 只知道“已经脱离预设”，配置导入层才知道它原来叫什么。把来源名留在
+       select 的显示态上：后续参数手调时 observer 会用它生成“原名（已手动调整）”，
+       菜单卡片又直接复用该 option 文本，因此两处名称始终一致。 */
+    function setSourceConfigName(name) {
+      if (!mergedSelect) return;
+      const sourceName = String(name || "").trim();
+      if (!sourceName) return;
+      mergedSelect.dataset.sourceConfigName = sourceName;
+      delete mergedSelect.dataset.presetSignature;
+      const customOption = mergedSelect.querySelector('option[value="__custom__"]');
+      if (customOption) customOption.textContent = `${sourceName}（已手动调整）`;
+      syncMergedTrigger();
+    }
+
     function syncMergedTrigger() {
       if (!mergedSelect || !mergedTrigger) return;
       const selected = mergedSelect.selectedOptions && mergedSelect.selectedOptions[0];
@@ -1202,12 +1216,19 @@
        适配层应用完成后通过这个入口写回样例身份；后续用户真正拨动表单时，下面的
        cro:change 监听仍会清空 activeSampleFile，让下拉如实回到自定义状态。 */
     global.croImport.selectAppliedSample = (file) => {
-      if (!mergedSelect || !sampleOf(file)) return false;
+      const sample = sampleOf(file);
+      if (!mergedSelect || !sample) return false;
       activeSampleFile = file;
       activeSampleSignature = currentConfigSignature();
+      setSourceConfigName(sample.label);
       restoreMergedSelection();
       return true;
     };
+
+    doc.addEventListener("cro:source", (event) => {
+      const source = event.detail;
+      if (source) setSourceConfigName(source.label || source.name);
+    });
 
     /* 预览右栏按字段中文名 + 取值列出；旋钮字段名取自 FIELD_SPECS / FLAG_SPECS，
        开关类取值用 flagText 转成「开 / 关」或选项名，epMode 不在两张表里单独兜底。 */

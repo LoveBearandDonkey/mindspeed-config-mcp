@@ -583,6 +583,17 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
     /if \(activeSampleFile\) \{[\s\S]*?option\[value="__custom__"\][\s\S]*?\.remove\(\)[\s\S]*?delete mergedSelect\.dataset\.presetSignature/,
     "切换到其它配置后仍会保留不可再次选择的自定义临时项",
   );
+  const observerSource = read(observerFile);
+  assert.match(
+    observerSource,
+    /sourceConfigName[\s\S]*?customLabel = `\$\{sourceName \|\| "自定义"\}（已手动调整）`[\s\S]*?option\.textContent = customLabel/,
+    "手动调整配置后，下拉没有保留原配置名",
+  );
+  assert.match(
+    importSource,
+    /function setSourceConfigName\(name\)[\s\S]*?dataset\.sourceConfigName = sourceName[\s\S]*?customOption\.textContent = `\$\{sourceName\}（已手动调整）`[\s\S]*?addEventListener\("cro:source"/,
+    "导入配置名没有同步给下拉与选项卡片",
+  );
   assert.match(
     sourceStyle,
     /\.mcp-model-structure-import\s*\{[\s\S]*?grid-template-columns:[^;]+;[\s\S]*?border:\s*1px dashed/,
@@ -824,6 +835,62 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
     /页面内置预设 · .*项已完整落入表单/,
     "页面内置预设仍冒充 MCP 文件适配度",
   );
+});
+
+test("导入弹窗默认提供大小有别的训练配置与可选模型结构输入", () => {
+  const shellSource = read(mcpShellEntryFile);
+  const sourceStyle = read(mcpShellStyleFile);
+  assert.match(
+    shellSource,
+    /querySelector\("\.cro-import__intro"\)\?\.remove\(\)/,
+    "MCP 导入弹窗没有删除顶部说明文案",
+  );
+  assert.ok(!shellSource.includes("训练配置支持 MindFormers"), "MCP 适配层仍会恢复导入说明文案");
+  assert.ok(!sourceStyle.includes("cro-import__intro"), "导入说明删除后仍残留专用样式");
+  for (const marker of [
+    "mcpImportModelFile",
+    "mcpImportModelText",
+    "mcpImportModelName",
+    "mcpImportModelClear",
+    "上传训练配置",
+    "上传模型结构",
+    "模型结构 <span>（可选）</span>",
+    "上传或粘贴 config.json 文件内容",
+    "importedSourceFromUi",
+    "modelSource",
+  ]) {
+    assert.ok(shellSource.includes(marker), `双源导入缺少标记：${marker}`);
+  }
+  assert.match(
+    shellSource,
+    /function parseInput\(source\)[\s\S]*?source\.modelSource[\s\S]*?input\.model_source/,
+    "模型结构内容没有进入 parse_training_config 的 model_source 契约",
+  );
+  assert.match(
+    shellSource,
+    /const legacyParse = document\.getElementById\("croImportParse"\)[\s\S]*?legacyParse\.hidden = true[\s\S]*?legacyParse\.tabIndex = -1/,
+    "自动解析启用后没有隐藏兼容用的旧解析按钮",
+  );
+  assert.match(
+    shellSource,
+    /trainingHead\.append\(trainingTitle, name, clear\)[\s\S]*?trainingHead\.append\(trainingUpload\)[\s\S]*?modelHead\.append\(modelTitle, modelName, modelClear, modelUpload\)/,
+    "两个输入框的清空按钮没有分别放在上传按钮左侧",
+  );
+  assert.match(
+    shellSource,
+    /#croImportClear[\s\S]*?ui\.text\.value = ""[\s\S]*?ui\.text\.dispatchEvent[\s\S]*?#mcpImportModelClear[\s\S]*?ui\.modelText\.value = ""[\s\S]*?ui\.modelText\.dispatchEvent/,
+    "两个清空按钮没有分别只清理自己的输入源",
+  );
+  assert.match(
+    sourceStyle,
+    /\.mcp-import__training-source\s*\{[\s\S]*?flex:\s*1 1 68%;[\s\S]*?\.mcp-import__model-source\s*\{[\s\S]*?flex:\s*0 1 32%;/,
+    "训练配置与模型结构输入没有保持上大下小的布局比例",
+  );
+  const modelStyle = sourceStyle.slice(
+    sourceStyle.indexOf(".mcp-import__model-source {"),
+    sourceStyle.indexOf("}", sourceStyle.indexOf(".mcp-import__model-source {")) + 1,
+  );
+  assert.doesNotMatch(modelStyle, /border-top|border-bottom/, "模型结构输入区仍保留分割线");
 });
 
 test("应用配置后关闭弹窗、返回表单页签并保留应用结果", () => {

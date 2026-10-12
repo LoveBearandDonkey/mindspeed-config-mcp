@@ -192,7 +192,7 @@ test("MCP App 资源可读取且为单文件 HTML", async () => {
     assert.match(response.contents[0].text, /mcpPreview/);
     assert.match(response.contents[0].text, /local-core/);
     assert.match(response.contents[0].text, /关闭导入配置/);
-    assert.match(response.contents[0].text, /Megatron 的 Shell/);
+    assert.match(response.contents[0].text, /mcpImportModelText/);
     assert.match(response.contents[0].text, /mcpImportScore/);
     assert.match(response.contents[0].text, /可回填/);
     assert.match(response.contents[0].text, /固定必填字段集合/);

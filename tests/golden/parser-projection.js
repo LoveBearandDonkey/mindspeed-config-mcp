@@ -132,6 +132,28 @@ model:
 `, "yaml", "hostile.yaml");
 
   const invalidYaml = parse("model:\n  hidden_size: [1, 2", "yaml", "broken.yaml");
+  const pairedSources = parseTrainingConfig({
+    schema_version: "1.0",
+    rule_profile: { framework: "generic", version: "golden" },
+    source: {
+      format: "shell",
+      name: "train.sh",
+      content: "--num-layers 44 --hidden-size 4096 --num-attention-heads 64 --num-experts 8 --moe-router-topk 2",
+    },
+    model_source: {
+      format: "json",
+      name: "config.json",
+      content: JSON.stringify({
+        model_type: "deepseek_v4",
+        num_hidden_layers: 43,
+        hidden_size: 4096,
+        num_attention_heads: 64,
+        n_routed_experts: 8,
+        n_shared_experts: 1,
+        num_experts_per_tok: 2,
+      }),
+    },
+  });
 
   return {
     mindformers: summary(mindformers, [
@@ -193,6 +215,13 @@ model:
       code: invalidYaml.errors[0].code,
       message_prefix: invalidYaml.errors[0].message.split("：")[0],
       source_ref: invalidYaml.errors[0].source_ref,
+    },
+    paired_sources: {
+      model_source: pairedSources.data.model_source_name,
+      layers: pairedSources.data.normalized_config.model.total_layers,
+      shared_experts: pairedSources.data.normalized_config.model.shared_experts,
+      conflicts: pairedSources.data.source_conflicts.map((item) => item.path),
+      warning_codes: pairedSources.warnings.map((item) => item.code),
     },
   };
 }

@@ -57,7 +57,12 @@ test("待解析文件使用独立输入 Schema", () => {
   delete invalid.source.content;
 
   assert.deepEqual(validateParseTrainingConfig(valid), { valid: true, errors: [] });
+  assert.deepEqual(validateParseTrainingConfig({
+    ...valid,
+    model_source: { format: "json", content: "{\"num_hidden_layers\":32}", name: "config.json" },
+  }), { valid: true, errors: [] });
   assert.equal(validateParseTrainingConfig(invalid).valid, false);
+  assert.equal(validateParseTrainingConfig({ ...valid, model_source: { format: "json" } }).valid, false);
 });
 
 test("缺字段和未知字段会被输入 Schema 拒绝", () => {

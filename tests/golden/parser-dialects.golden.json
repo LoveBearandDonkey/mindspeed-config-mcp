@@ -210,6 +210,22 @@
     "status": "error",
     "code": "PARSE_SYNTAX_ERROR",
     "message_prefix": "输入格式不合法，无法按 YAML 解析",
-    "source_ref": "mindspeed-config-mcp:parse-training-config@0.2.2"
+    "source_ref": "mindspeed-config-mcp:parse-training-config@0.3.0"
+  },
+  "paired_sources": {
+    "model_source": "config.json",
+    "layers": 43,
+    "shared_experts": 1,
+    "conflicts": [
+      "model.id",
+      "model.total_layers",
+      "model.shared_experts"
+    ],
+    "warning_codes": [
+      "PARSE_SOURCE_CONFLICT",
+      "PARSE_SOURCE_CONFLICT",
+      "PARSE_SOURCE_CONFLICT",
+      "PARSE_INCOMPLETE"
+    ]
   }
 }
