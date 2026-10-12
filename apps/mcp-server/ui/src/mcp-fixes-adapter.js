@@ -8,6 +8,10 @@ export const FIXABLE_FIELDS = Object.freeze([
   "parallel.cp",
   "parallel.ep",
   "parallel.vpp",
+  "parallel.pipeline_layer_mode",
+  "parallel.num_layer_list",
+  "parallel.pipeline_layer_offsets",
+  "rule_profile.framework",
   "model.top_k",
 ]);
 
@@ -47,8 +51,26 @@ function renderObjectiveControl(host, objective, onChange) {
 export function suggestionPagePartial(suggestion) {
   return Object.fromEntries((suggestion?.changes ?? []).flatMap((change) => {
     const field = pageFieldForPath(change.path);
-    return field ? [[field, change.new_value]] : [];
+    return field && field !== "mcpPipelineLayerMode" ? [[field, change.new_value]] : [];
   }));
+}
+
+export function suggestionPipelineSettings(suggestion) {
+  const changesPipeline = (suggestion?.changes ?? []).some((change) => (
+    change.path === "parallel.pipeline_layer_mode"
+      || change.path === "parallel.num_layer_list"
+      || change.path === "parallel.pipeline_layer_offsets"
+      || change.path === "rule_profile.framework"
+  ));
+  if (!changesPipeline) return null;
+  const proposed = suggestion?.proposed_config;
+  if (!proposed?.parallel?.pipeline_layer_mode) return null;
+  return {
+    mode: proposed.parallel.pipeline_layer_mode,
+    numLayerList: proposed.parallel.num_layer_list,
+    layerOffsets: proposed.parallel.pipeline_layer_offsets,
+    framework: proposed.rule_profile?.framework,
+  };
 }
 
 export function changesLockedBySuggestion(suggestion, lockedFields) {
@@ -129,7 +151,9 @@ function renderChanges(suggestion) {
   for (const change of suggestion.changes ?? []) {
     const item = element("li");
     const label = element("b", "", labelForPath(change.path));
-    item.append(label, document.createTextNode(` ${change.old_value} → ${change.new_value}`));
+    const oldValue = Array.isArray(change.old_value) ? JSON.stringify(change.old_value) : change.old_value;
+    const newValue = Array.isArray(change.new_value) ? JSON.stringify(change.new_value) : change.new_value;
+    item.append(label, document.createTextNode(` ${oldValue ?? "未设置"} → ${newValue}`));
     list.append(item);
   }
   return list;
@@ -179,7 +203,7 @@ function renderCandidate(suggestion, applySuggestion, totalSuggestions) {
   return card;
 }
 
-export function installFixesAdapter(callFixesTool, trainingConfigFor) {
+export function installFixesAdapter(callFixesTool, trainingConfigFor, applyPipelineSettings) {
   const lockedFields = new Set();
   let token = 0;
   let debounceTimer = 0;
@@ -282,13 +306,23 @@ export function installFixesAdapter(callFixesTool, trainingConfigFor) {
       return;
     }
     const partial = suggestionPagePartial(suggestion);
-    if (!Object.keys(partial).length || !window.croObserver?.importConfig) return;
+    const pipelineSettings = suggestionPipelineSettings(suggestion);
+    if ((!Object.keys(partial).length && !pipelineSettings) || !window.croObserver?.importConfig) return;
     button.disabled = true;
-    const applied = window.croObserver.importConfig(partial);
-    const mismatches = Object.entries(partial).filter(([field, value]) => !Object.is(applied?.after?.[field], value));
+    const applied = Object.keys(partial).length
+      ? window.croObserver.importConfig(partial)
+      : { after: window.croObserver.config };
+    const mismatches = Object.entries(partial).filter(
+      ([field, value]) => !Object.is(applied?.after?.[field], value),
+    );
     if (mismatches.length) {
-      const host = renderFrame("回填后被页面规则调整，未宣称修复完成", "error");
-      host?.append(element("p", "mcp-fixes__empty", "页面规则与 MCP 候选存在差异，请检查高亮字段。"));
+      const host = renderFrame("回填结果与 MCP 候选不一致，未宣称修复完成", "error");
+      host?.append(element("p", "mcp-fixes__empty", "表单没有完整保留 Tool 返回值，请检查高亮字段。"));
+      return;
+    }
+    if (pipelineSettings && !applyPipelineSettings?.(pipelineSettings)) {
+      const host = renderFrame("PP 分层方案回填失败", "error");
+      host?.append(element("p", "mcp-fixes__empty", "PP 分层设置应用通道不可用，请刷新工作台后重试。"));
       return;
     }
     lastAppliedRank = suggestion.rank;

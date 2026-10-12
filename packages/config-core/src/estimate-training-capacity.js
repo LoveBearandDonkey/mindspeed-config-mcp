@@ -8,7 +8,20 @@ import { diagnostic, toolResult } from "./result.js";
 import { validateParallelConfig } from "./validate-parallel-config.js";
 
 const GIB = 1024 ** 3;
-const THRESHOLDS = Object.freeze({ tight: 0.70, alert: 0.88 });
+// 80% 不是框架 OOM 硬边界，而是 theoretical 结果在尚未用短跑峰值校准时的保守产品策略。
+// PyTorch 文档把 0.8 用作缓存分配器开始主动回收的示例压力点；DeepSpeed 的容量估算
+// 另用 1.5 buffer factor 保守放大部分模型状态。当前模型已经显式计入通信、workspace
+// 与碎片预留，因此不再套 1.5 倍，而是额外保留 20% 整卡余量并把依据随结果返回。
+const THRESHOLDS = Object.freeze({ tight: 0.80, alert: 0.88 });
+const THRESHOLD_POLICY = Object.freeze({
+  classification: "heuristic",
+  calibration: "uncalibrated",
+  warning_headroom_ratio: 0.20,
+  sources: Object.freeze([
+    "PyTorch:docs/notes/cuda.html#memory-management:garbage_collection_threshold-example-0.8",
+    "DeepSpeed:docs/memory.html:additional_buffer_factor-1.5",
+  ]),
+});
 const RUNTIME = Object.freeze({
   base_gib: 2,
   hccl_buffer_gib: 0.2,
@@ -273,12 +286,14 @@ export function estimateTrainingCapacity(input) {
     assumptions: [
       "结果复现页面六段容量口径，属于理论估算，不是设备实测峰值。",
       "运行时底座、HCCL buffer、workspace、碎片率和 FSDP2 预取深度使用页面经验系数。",
+      "80% 警戒线是未校准的保守策略：当前估算已含运行时预留，仍额外保留 20% 以覆盖静态估算误差；它不是框架 OOM 标准。",
       ...(inferredMoeLayout ? ["未提供 first_k_dense_layers，按所有 Transformer 层均为 MoE 层估算。"] : []),
     ],
     confidence: "theoretical",
     data: {
       valid: true,
       thresholds: THRESHOLDS,
+      threshold_policy: THRESHOLD_POLICY,
       runtime_coefficients: RUNTIME,
       bottleneck_stage: bottleneck.stage,
       bottleneck_level: bottleneck.level,

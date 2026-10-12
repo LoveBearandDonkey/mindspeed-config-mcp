@@ -22,6 +22,8 @@
   "A12": {
     "confidence": "theoretical",
     "bottleneck_level": "safe",
+    "thresholds": { "tight": 0.8, "alert": 0.88 },
+    "threshold_policy": { "classification": "heuristic", "calibration": "uncalibrated", "warning_headroom_ratio": 0.2 },
     "stages": [
       { "stage": 0, "level": "safe", "total_gib": 4.581702, "weight_gib": 0.092285, "gradient_gib": 0.092285, "optimizer_gib": 0.046143, "activation_gib": 0.132813, "micro_batch_count": 4, "vpp_chunks": 1, "recomputed_layers": 0 },
       { "stage": 1, "level": "safe", "total_gib": 4.511975, "weight_gib": 0.092285, "gradient_gib": 0.092285, "optimizer_gib": 0.046143, "activation_gib": 0.066406, "micro_batch_count": 4, "vpp_chunks": 1, "recomputed_layers": 0 }
@@ -34,5 +36,43 @@
     "fsdp2": { "stage": 0, "level": "safe", "total_gib": 4.558423, "weight_gib": 0.023071, "gradient_gib": 0.023071, "optimizer_gib": 0.046143, "activation_gib": 0.132813, "micro_batch_count": 4, "vpp_chunks": 1, "recomputed_layers": 0 }
   },
   "A15": { "bottleneck_stage": 0, "stage_weights_gib": [0.07666, 0.015625, 0.015625, 0.07666] },
-  "dynamic_pp_topology": { "status": "valid", "stage_layer_counts": [20, 12], "stage_layer_ranges": [[0, 19], [20, 31]] }
+  "dynamic_pp_topology": { "status": "valid", "stage_layer_counts": [20, 12], "stage_layer_ranges": [[0, 19], [20, 31]] },
+  "dynamic_pp_fix": {
+    "rank": 1,
+    "changes": [
+      { "path": "parallel.pipeline_layer_mode", "new_value": "dynamic" },
+      { "path": "parallel.num_layer_list", "new_value": [16, 15] }
+    ],
+    "profile": "mindspeed-llm-mcore",
+    "validation_status": "valid"
+  },
+  "dynamic_pp_layer_list_fix": {
+    "solved": true,
+    "changes": [
+      { "path": "parallel.num_layer_list", "new_value": [12, 12, 11, 11] }
+    ],
+    "validation_status": "valid"
+  },
+  "dynamic_pp_profile_fix": {
+    "solved": true,
+    "changes": [
+      { "path": "rule_profile.framework", "new_value": "mindspeed-llm-mcore" },
+      { "path": "rule_profile.version", "new_value": "master@7826e88" },
+      { "path": "rule_profile.source_commit", "new_value": "7826e883ab40f06dd54f0fa2ce6508d18036843c" }
+    ],
+    "validation_status": "valid"
+  },
+  "mindformers_offset_matrix_fix": {
+    "solved": true,
+    "changes": [
+      {
+        "path": "parallel.pipeline_layer_offsets",
+        "new_value": [
+          [1, 1, 1, 1, 1, 1, 1, 1],
+          [1, 1, 1, 1, 1, 0, 0, 0]
+        ]
+      }
+    ],
+    "validation_status": "valid"
+  }
 }

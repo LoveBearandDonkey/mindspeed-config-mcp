@@ -18,6 +18,26 @@ const MAX_CHANGED_FIELDS = 4;
 const MAX_RETURNED_SUGGESTIONS = 10;
 const SCORE_FIELD_WEIGHT = 1000;
 const SEARCH_BEAM_WIDTH = 256;
+const DYNAMIC_PP_PROFILE = Object.freeze({
+  framework: "mindspeed-llm-mcore",
+  version: "master@7826e88",
+  source_commit: "7826e883ab40f06dd54f0fa2ce6508d18036843c",
+});
+const DYNAMIC_PP_PROFILE_PATHS = Object.freeze([
+  "rule_profile.framework",
+  "rule_profile.version",
+  "rule_profile.source_commit",
+]);
+const MINDFORMERS_OFFSET_PROFILE = Object.freeze({
+  framework: "mindformers",
+  version: "page-baseline",
+  source_commit: "page-form",
+});
+const MINDFORMERS_OFFSET_PROFILE_PATHS = Object.freeze([
+  "rule_profile.framework",
+  "rule_profile.version",
+  "rule_profile.source_commit",
+]);
 
 const OBJECTIVES = Object.freeze({
   "mindspeed-compatible": {
@@ -136,8 +156,11 @@ function valuesFor(input, path) {
 }
 
 function editCost(oldValue, newValue) {
-  if (oldValue > 0 && newValue > 0) return Math.abs(Math.log2(newValue / oldValue));
-  return Math.abs(newValue - oldValue);
+  if (typeof oldValue === "number" && typeof newValue === "number") {
+    if (oldValue > 0 && newValue > 0) return Math.abs(Math.log2(newValue / oldValue));
+    return Math.abs(newValue - oldValue);
+  }
+  return JSON.stringify(oldValue) === JSON.stringify(newValue) ? 0 : 1;
 }
 
 function applyEdits(input, edits) {
@@ -155,6 +178,197 @@ function candidateScore(edits) {
     (sum, edit) => sum + editCost(edit.old_value, edit.new_value),
     0,
   );
+}
+
+function balancedPipelineLayers(totalLayers, pipelineParallel) {
+  const base = Math.floor(totalLayers / pipelineParallel);
+  const remainder = totalLayers % pipelineParallel;
+  return Array.from(
+    { length: pipelineParallel },
+    (_, index) => base + (index < remainder ? 1 : 0),
+  );
+}
+
+/*
+ * MindFormers 定义 offset[i] 为各 Stage 相对 floor(num_layers / PP) 的层数偏置，
+ * 且偏置和等于余数。当前契约把同一规则扩展为 VPP×PP 矩阵；按行展开后生成
+ * 确定性的近均衡分配。来源：MindFormers
+ * docs/feature_cards/Offset_Recompute.md@aa5681d281cd66c032e32363206b928e95223d5d。
+ */
+function balancedMindFormersOffsets(totalLayers, pipelineParallel, virtualPipelineParallel) {
+  const cells = pipelineParallel * virtualPipelineParallel;
+  if (!Number.isInteger(totalLayers) || !Number.isInteger(cells) || cells < 1 || totalLayers < cells) {
+    return null;
+  }
+  const remainder = totalLayers % cells;
+  return Array.from({ length: virtualPipelineParallel }, (_, row) => Array.from(
+    { length: pipelineParallel },
+    (_, column) => (row * pipelineParallel + column < remainder ? 1 : 0),
+  ));
+}
+
+function dynamicPipelineState(input, validation, lockedFields) {
+  const hasUniformDivisionError = validation.errors.some(
+    (error) => error.code === "MINDSPEED_LAYERS_DIVISIBLE_BY_PP",
+  );
+  const blockedPaths = [
+    "parallel.pipeline_layer_mode",
+    "parallel.num_layer_list",
+    ...DYNAMIC_PP_PROFILE_PATHS,
+  ];
+  if (!hasUniformDivisionError
+    || validation.data?.pipeline_layer_mode !== "uniform"
+    || blockedPaths.some((path) => isLocked(path, lockedFields))) return null;
+
+  const numLayerList = balancedPipelineLayers(input.model.total_layers, input.parallel.pp);
+  const edits = [
+    {
+      path: "parallel.pipeline_layer_mode",
+      old_value: input.parallel.pipeline_layer_mode,
+      new_value: "dynamic",
+    },
+    {
+      path: "parallel.num_layer_list",
+      old_value: input.parallel.num_layer_list,
+      new_value: numLayerList,
+    },
+  ];
+  const proposal = applyEdits(input, edits);
+  proposal.rule_profile = { ...DYNAMIC_PP_PROFILE };
+  const nextValidation = validateParallelConfig(proposal);
+  return {
+    edits,
+    key: candidateKey(edits),
+    score: candidateScore(edits),
+    proposal,
+    validation: nextValidation,
+    reason: "改用 MindSpeed-LLM MCore 动态 PP，并按当前总层数与 PP 生成逐 Stage 层数。",
+  };
+}
+
+function dynamicLayerListState(input, validation, lockedFields) {
+  const listErrorCodes = new Set([
+    "MINDSPEED_DYNAMIC_PP_REQUIRES_NUM_LAYER_LIST",
+    "MINDSPEED_DYNAMIC_PP_LIST_LENGTH_MATCHES_PP",
+    "MINDSPEED_DYNAMIC_PP_LIST_SUM_MATCHES_LAYERS",
+  ]);
+  const needsLayerList = validation.errors.some((error) => listErrorCodes.has(error.code));
+  const needsMcoreProfile = input.rule_profile?.framework !== DYNAMIC_PP_PROFILE.framework;
+  if (!needsLayerList
+    || validation.data?.pipeline_layer_mode !== "dynamic"
+    || input.model.total_layers < input.parallel.pp
+    || isLocked("parallel.num_layer_list", lockedFields)
+    || (needsMcoreProfile
+      && DYNAMIC_PP_PROFILE_PATHS.some((path) => isLocked(path, lockedFields)))) return null;
+
+  const numLayerList = balancedPipelineLayers(input.model.total_layers, input.parallel.pp);
+  const edits = [{
+    path: "parallel.num_layer_list",
+    old_value: input.parallel.num_layer_list,
+    new_value: numLayerList,
+  }, ...(needsMcoreProfile ? DYNAMIC_PP_PROFILE_PATHS.map((path) => {
+    const key = path.split(".").at(-1);
+    return {
+      path,
+      old_value: getAtPath(input, path),
+      new_value: DYNAMIC_PP_PROFILE[key],
+    };
+  }).filter((edit) => edit.old_value !== edit.new_value) : [])];
+  const proposal = applyEdits(input, edits);
+  const nextValidation = validateParallelConfig(proposal);
+  return {
+    edits,
+    key: candidateKey(edits),
+    score: candidateScore(edits),
+    proposal,
+    validation: nextValidation,
+    reason: needsMcoreProfile
+      ? "切换到 MindSpeed-LLM MCore 规则口径，并按总层数与 PP 生成尽量均衡的逐 Stage 层数。"
+      : "按总层数与 PP 生成数量匹配、总和一致且尽量均衡的逐 Stage 层数。",
+  };
+}
+
+function dynamicProfileState(input, validation, lockedFields) {
+  const requiresMcoreProfile = validation.errors.some(
+    (error) => error.code === "MINDSPEED_DYNAMIC_PP_REQUIRES_MCORE_PROFILE",
+  );
+  if (!requiresMcoreProfile
+    || validation.data?.pipeline_layer_mode !== "dynamic"
+    || DYNAMIC_PP_PROFILE_PATHS.some((path) => isLocked(path, lockedFields))) return null;
+
+  const edits = DYNAMIC_PP_PROFILE_PATHS.map((path) => {
+    const key = path.split(".").at(-1);
+    return {
+      path,
+      old_value: getAtPath(input, path),
+      new_value: DYNAMIC_PP_PROFILE[key],
+    };
+  }).filter((edit) => edit.old_value !== edit.new_value);
+  const proposal = applyEdits(input, edits);
+  const nextValidation = validateParallelConfig(proposal);
+  return {
+    edits,
+    key: candidateKey(edits),
+    score: candidateScore(edits),
+    proposal,
+    validation: nextValidation,
+    reason: "动态 PP 的 num_layer_list 采用 MindSpeed-LLM MCore 规则，因此同步切换并锁定对应规则来源。",
+  };
+}
+
+function mindFormersOffsetState(input, validation, lockedFields) {
+  if (validation.data?.pipeline_layer_mode !== "mindformers-offset") return null;
+  const offsetErrorCodes = new Set([
+    "MINDFORMERS_OFFSET_REQUIRES_MATRIX",
+    "MINDFORMERS_OFFSET_SHAPE_MATCHES_VPP_PP",
+    "MINDFORMERS_OFFSET_RESOLVES_ALL_LAYERS",
+  ]);
+  const needsOffsets = validation.errors.some((error) => offsetErrorCodes.has(error.code));
+  const needsProfile = validation.errors.some(
+    (error) => error.code === "MINDFORMERS_OFFSET_REQUIRES_MINDFORMERS_PROFILE",
+  );
+  if (!needsOffsets && !needsProfile) return null;
+  if ((needsOffsets && isLocked("parallel.pipeline_layer_offsets", lockedFields))
+    || (needsProfile && MINDFORMERS_OFFSET_PROFILE_PATHS.some(
+      (path) => isLocked(path, lockedFields),
+    ))) return null;
+
+  const layerOffsets = needsOffsets
+    ? balancedMindFormersOffsets(
+      input.model.total_layers,
+      input.parallel.pp,
+      input.parallel.vpp,
+    )
+    : input.parallel.pipeline_layer_offsets;
+  if (needsOffsets && !layerOffsets) return null;
+
+  const edits = [
+    ...(needsOffsets ? [{
+      path: "parallel.pipeline_layer_offsets",
+      old_value: input.parallel.pipeline_layer_offsets,
+      new_value: layerOffsets,
+    }] : []),
+    ...(needsProfile ? MINDFORMERS_OFFSET_PROFILE_PATHS.map((path) => {
+      const key = path.split(".").at(-1);
+      return {
+        path,
+        old_value: getAtPath(input, path),
+        new_value: MINDFORMERS_OFFSET_PROFILE[key],
+      };
+    }).filter((edit) => edit.old_value !== edit.new_value) : []),
+  ];
+  const proposal = applyEdits(input, edits);
+  const nextValidation = validateParallelConfig(proposal);
+  return {
+    edits,
+    key: candidateKey(edits),
+    score: candidateScore(edits),
+    proposal,
+    validation: nextValidation,
+    reason: needsOffsets
+      ? "按当前总层数、PP 与 VPP 生成 MindFormers VPP×PP offset 矩阵，使虚拟 Stage 层数尽量均衡。"
+      : "MindFormers PP 层偏置采用 MindFormers 规则口径，因此同步切换对应规则来源。",
+  };
 }
 
 function normalizedObjective(input) {
@@ -234,6 +448,12 @@ function stateOrder(left, right) {
     || left.key.localeCompare(right.key);
 }
 
+function solutionKindPriority(solution) {
+  return solution.changes.some((change) => (
+    change.path === "parallel.pipeline_layer_mode" && change.new_value === "dynamic"
+  )) ? 0 : 1;
+}
+
 export function suggestConfigFixes(input) {
   const objective = normalizedObjective(input);
   const validation = validateParallelConfig(input);
@@ -262,12 +482,34 @@ export function suggestConfigFixes(input) {
   ]));
   let frontier = [{ edits: [], key: "", score: 0, proposal: input, validation }];
   let solutions = [];
+  const directSolutions = [];
   let searchPruned = false;
+
+  const specializedStates = [
+    dynamicPipelineState(input, validation, lockedFields),
+    dynamicLayerListState(input, validation, lockedFields),
+    dynamicProfileState(input, validation, lockedFields),
+    mindFormersOffsetState(input, validation, lockedFields),
+  ].filter(Boolean);
+  for (const specialized of specializedStates) {
+    if (specialized.validation.errors.length) frontier.push(specialized);
+    else {
+      directSolutions.push({
+        changes: specialized.edits.map((item) => ({
+          ...item,
+          reason: specialized.reason,
+        })),
+        proposed_config: specialized.proposal,
+        warnings: specialized.validation.warnings,
+      });
+    }
+  }
 
   for (let depth = 1; depth <= MAX_CHANGED_FIELDS && frontier.length; depth += 1) {
     const next = new Map();
     const generatedKeys = new Set();
     for (const state of frontier) {
+      if (state.edits.length >= MAX_CHANGED_FIELDS) continue;
       const selectedPaths = new Set(state.edits.map((edit) => edit.path));
       const relevantPaths = new Set(state.validation.errors.flatMap((error) => error.fields ?? []));
       for (const path of editablePaths) {
@@ -307,11 +549,14 @@ export function suggestConfigFixes(input) {
     frontier = ordered.slice(0, SEARCH_BEAM_WIDTH);
   }
 
+  solutions.push(...directSolutions);
+
   solutions = solutions.map((solution) => scoreSolution(input, solution, objective));
   solutions.sort((left, right) => left.score - right.score
     || left.score_details.secondary_value - right.score_details.secondary_value
     || left.score_details.compatibility_warning_count - right.score_details.compatibility_warning_count
     || left.score_details.minimal_change_tie_breaker - right.score_details.minimal_change_tie_breaker
+    || solutionKindPriority(left) - solutionKindPriority(right)
     || candidateKey(left.changes).localeCompare(candidateKey(right.changes)));
   const solutionCount = solutions.length;
   solutions = solutions.slice(0, MAX_RETURNED_SUGGESTIONS);

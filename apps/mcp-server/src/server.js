@@ -1,5 +1,3 @@
-import fs from "node:fs/promises";
-
 import { registerAppResource, registerAppTool, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/server";
 import { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod/v4";
@@ -20,6 +18,12 @@ import {
   trainingConfigSchema,
 } from "@mindspeed-config/contracts";
 
+import {
+  APP_RESOURCE_META,
+  APP_RESOURCE_URI,
+  loadPackagedAppHtml,
+} from "./app-resource.js";
+
 const trainingInputSchema = z.fromJSONSchema(trainingConfigSchema);
 const parseInputSchema = z.fromJSONSchema(parseTrainingConfigSchema);
 const outputSchema = z.fromJSONSchema(toolResultSchema);
@@ -31,11 +35,6 @@ const workbenchOutputSchema = z.object({
     target_tool: z.string().nullable(),
   }),
 });
-const APP_RESOURCE_URI = "ui://mindspeed-config/result-view.html";
-const APP_HTML_URL = new URL(
-  "../ui/dist/ui-shell-v1/training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html",
-  import.meta.url,
-);
 const WORKBENCH_TOOL_NAME = "open_config_workbench";
 
 const TOOL_DEFINITIONS = Object.freeze([
@@ -188,16 +187,13 @@ export function createMcpServer() {
 
   registerAppResource(server, "MindSpeed 配置分析结果界面", APP_RESOURCE_URI, {
     description: "以上游配置关系平面为界面基线，采集或解析训练配置，并用三栏画布展示校验、Rank 拓扑、修复差异、字段映射和理论容量。",
+    _meta: { ui: APP_RESOURCE_META },
   }, async () => ({
     contents: [{
       uri: APP_RESOURCE_URI,
       mimeType: RESOURCE_MIME_TYPE,
-      text: await fs.readFile(APP_HTML_URL, "utf8"),
-      _meta: {
-        ui: {
-          csp: { connectDomains: [], resourceDomains: [] },
-        },
-      },
+      text: await loadPackagedAppHtml(),
+      _meta: { ui: APP_RESOURCE_META },
     }],
   }));
 

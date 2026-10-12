@@ -424,7 +424,7 @@
               <div class="cro-region__heading">
                 <h2 class="cro-region__title">混合专家（MoE）</h2>
                 <div class="segmented-control segmented-control-muted cro-ep-mode" id="croEpMode"
-                     role="group" aria-label="EP 与 DP 的口径">
+                     role="group" aria-label="MoE 专家并行 Rank 口径">
                   <button class="btn btn-sm is-selected" type="button" data-ep-mode="split" aria-pressed="true"
                           data-hint="拿不准就用这一档：Megatron / MindSpeed-LLM / MindFormers 都这么记，昇腾上的训练基本都落在这里。&#10;&#10;这不是性能选项 —— 两档说的是同一批卡，切换它一张卡都不会多、也不会少，变的只是页面怎么读你填的数字（DP 会在 512 与 8 之间换算）。所以按你要跑的框架选，不必权衡快慢。&#10;&#10;EP 切出 = 专家并行不额外占卡，而是把已有的数据并行组再切一刀：一张卡既是某个模型副本的成员，又持有其中一份专家。加大 EP 只是把同一批卡分得更细。&#10;world = DP×PP×TP×CP（EP 不进乘积） · EDP = DP/EP · 要求 DP % EP == 0&#10;一整套专家由横着的 EP 张卡合持（集群矩阵的一整行 = 一个 EP 组 = all-to-all 域），单个 DP 副本并不持有整套；EDP 是这样的完整组共有几个。">EP 切出（主流）</button>
                   <button class="btn btn-sm" type="button" data-ep-mode="orthogonal" aria-pressed="false"
@@ -433,7 +433,7 @@
                        没有它，config-test/ 里那份 mf_pretrain_deepseek3_671b.yaml
                        （dp:4 / mp:8 / pp:8 / ep:32）两档都接不住 —— 而 README 说它「最贴页面口径」。 -->
                   <button class="btn btn-sm" type="button" data-ep-mode="mf" aria-pressed="false"
-                          data-hint="读 MindFormers 的配置时用这一档。MindSpore / MindFormers 的 expert_parallel 是在 dp × mp 域上切的：一个 EP 组的成员既跨数据并行、也跨张量并行。&#10;&#10;认它的办法：配置里 dp 明显小于 ep（比如 dp:4 / mp:8 / ep:32），按切出档算 4 % 32 除不尽、按正交档算总卡数又对不上 —— 而 dp×mp = 32 正好整除。&#10;&#10;world = DP×PP×TP×CP（ep 不进乘积，与切出档相同） · 要求 (DP × TP) % EP == 0 · EDP = DP×TP/EP&#10;集群矩阵的行数因此比切出档多 TP 倍：域大了 TP 倍，一整套专家仍由横着的 EP 张卡合持。&#10;&#10;⚠️ 这一档固定按专家张量并行 ETP=1 建模：路由专家只 ÷EP、不再另 ÷TP（EP 已经吃掉了 mp 那一维），MoE 区那枚「专家切 TP」开关在此档置灰。真实 MindFormers 里 ETP>1 时，严格式是 (DP×TP) % (EP×ETP) == 0，专家还要再 ÷ETP —— 那一档本页没建。">MindFormers</button>
+                          data-hint="这是 MoE 的 EP Rank 域口径，只决定专家组从哪些 Rank 中切分；它不设置 PP/VPP 的层数，与 PP 分层里的「MF 层偏置」互相独立。&#10;&#10;读 MindFormers 的 expert_parallel 配置时用这一档。MindSpore / MindFormers 的 expert_parallel 是在 dp × mp 域上切的：一个 EP 组的成员既跨数据并行、也跨张量并行。&#10;&#10;认它的办法：配置里 dp 明显小于 ep（比如 dp:4 / mp:8 / ep:32），按切出档算 4 % 32 除不尽、按正交档算总卡数又对不上 —— 而 dp×mp = 32 正好整除。&#10;&#10;world = DP×PP×TP×CP（ep 不进乘积，与切出档相同） · 要求 (DP × TP) % EP == 0 · EDP = DP×TP/EP&#10;集群矩阵的行数因此比切出档多 TP 倍：域大了 TP 倍，一整套专家仍由横着的 EP 张卡合持。&#10;&#10;⚠️ 这一档固定按专家张量并行 ETP=1 建模：路由专家只 ÷EP、不再另 ÷TP（EP 已经吃掉了 mp 那一维），MoE 区那枚「专家切 TP」开关在此档置灰。真实 MindFormers 里 ETP>1 时，严格式是 (DP×TP) % (EP×ETP) == 0，专家还要再 ÷ETP —— 那一档本页没建。">MF EP 域</button>
                 </div>
               </div>
 
@@ -513,8 +513,31 @@
                          （Node 已收进行末的「高级选项」：它是 Total Rank ÷ 整机卡数，
                          算得出来、拨不动，不该占首屏那一格。） -->
                     <div class="cro-stepper cro-cluster__card">
-                      <label class="cro-stepper__label" for="croCardSelect">卡型号</label>
-                      <select class="cro-select" id="croCardSelect"></select>
+                      <label class="cro-stepper__label" for="croCardTrigger">卡型号</label>
+                      <div class="cro-card-picker">
+                        <select class="cro-select cro-card-picker__native" id="croCardSelect"
+                                aria-hidden="true" tabindex="-1"></select>
+                        <button class="cro-select cro-card-picker__trigger" id="croCardTrigger"
+                                type="button" aria-haspopup="listbox" aria-expanded="false"
+                                aria-controls="croCardMenu">
+                          <span id="croCardTriggerText">—</span>
+                        </button>
+                        <div class="cro-card-picker__menu" id="croCardMenu" hidden>
+                          <div class="cro-card-picker__options" id="croCardOptions" role="listbox"
+                               aria-label="卡型号"></div>
+                          <div class="cro-card-picker__divider" aria-hidden="true"></div>
+                          <label class="cro-card-picker__custom-label" for="croCardMemoryInput">自定义（GB）</label>
+                          <div class="zoom-control-group cro-stepper__control cro-card-picker__custom-control">
+                            <button class="btn btn-ghost btn-icon btn-sm" id="croCardMemoryDecrease"
+                                    type="button" aria-label="减少自定义容量"></button>
+                            <input class="zoom-control-readout cro-stepper__input cro-card-picker__custom-input"
+                                   id="croCardMemoryInput" type="text" inputmode="decimal"
+                                   placeholder="容量" autocomplete="off" size="5">
+                            <button class="btn btn-ghost btn-icon btn-sm" id="croCardMemoryIncrease"
+                                    type="button" aria-label="增加自定义容量"></button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <!-- Global Batch / Micro Batch / Seq Length / Hidden：不参与切分、
                          不进 world_size，所以接在卡型号之后 —— 型号给容量框的高度，
@@ -635,7 +658,7 @@
                 <h2 class="cro-region__title cro-yaml__title">配置文件</h2>
                 <!-- 文件名同时是**样例配置的切换口**：路径由 js 按模型名生成
                      （configs/<家族>/run_<全名>.yaml，与 MindFormers 仓的 configs/
-                     目录同形），点开则是 config-test/ 那 11 份公开配置的卡片菜单。
+                     目录同形），点开则是 config-test/ 中 8 份公开配置的卡片菜单。
                      摆在这儿而不是导入面板里：这一格本来就在回答「你现在看的是哪份
                      配置」，换一份的动作理应从同一处发起。
                      选项做成两行卡片（第一行名字 + 来源，第二行「选它能看到什么」），
@@ -657,7 +680,7 @@
                            aria-label="配置文件选项"></div>
                       <section class="cro-yaml__preview" aria-live="polite">
                         <header class="cro-import__head">
-                          <h2 class="cro-import__title" id="croPreviewTitle">兼容度</h2>
+                          <h2 class="cro-import__title" id="croPreviewTitle">MCP 适配度</h2>
                           <span class="cro-import__name" id="croPreviewName">—</span>
                         </header>
                         <p class="cro-preview__source" id="croPreviewSource"></p>
@@ -1602,7 +1625,7 @@
                           <div class="cro-doc__map-box-title">一定联调</div>
                           <ul>
                             <li><code>Routed Expert</code> —— 必须被 EP 整除</li>
-                            <li>正交口径下 <code>Total Rank</code>；切出口径下 <code>DP</code>；MindFormers 口径下 <code>DP × TP</code> —— 必须被 EP 整除</li>
+                            <li>正交口径下 <code>Total Rank</code>；切出口径下 <code>DP</code>；MF EP 域下 <code>DP × TP</code> —— 必须被 EP 整除</li>
                             <li>单卡显存（专家那一段 ÷ EP）</li>
                           </ul>
                         </div>
@@ -2908,13 +2931,20 @@ t  TP 序号              c  CP 序号      n  物理节点号</div>
           解析只读**并行 / 批次 / MoE / 开关**这几类键 ——
           结构常量（hidden / vocab / heads / intermediate）由计算图那条路线给，本页<b>不覆盖</b>。
           <br>手上没有配置也能试：切到<b>「YAML 视图」</b>，点文件名那一格，
-          里面是 <code>config-test/</code> 的 11 份公开配置。
+          里面是 <code>config-test/</code> 中 8 份信息较完整的公开配置。
         </p>
         <!-- 这个面板只留「传文件 / 贴文本」两条 —— 切换 config-test/ 的样例配置
              挪到了 YAML 视图的文件名那一格（.cro-yaml__picker），那里本来就在
              回答「你现在看的是哪份配置」，换一份理应从同一处发起。 -->
         <div class="cro-import__actions">
-          <label class="btn btn-sm" for="croImportFile">选择文件…</label>
+          <label class="btn btn-sm" for="croImportFile">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M12 5v14"></path>
+              <path d="M5 12h14"></path>
+            </svg>
+            <span>选择文件</span>
+          </label>
           <input type="file" id="croImportFile" accept=".yaml,.yml,.sh,.bash,.json,.txt" hidden>
           <button class="btn btn-sm" id="croImportParse" type="button">解析</button>
           <button class="btn btn-sm btn-ghost cro-import__clear" id="croImportClear" type="button" hidden>清空</button>
@@ -2946,13 +2976,13 @@ t  TP 序号              c  CP 序号      n  物理节点号</div>
   <script src="./js/config-relation-capacity.js?v=20260917-etp-switch"></script>
   <!-- YAML 视图：同样排在主脚本之后（要读它导出的 croObserver.topology）。
        它同时是 #croViewTabs 三档切换的唯一监听方。 -->
-  <script src="./js/config-relation-yaml.js?v=20261009-shared-code"></script>
+  <script src="./js/config-relation-yaml.js?v=20261010-preserve-real-source"></script>
   <!-- 文档视图：只从正文的章节标题建目录 + 滚动高亮，不依赖 croObserver，
        所以排在哪里都行；跟着另两个视图模块放在一起便于对照。 -->
   <script src="./js/config-relation-doc.js?v=20260821-doc-arrow"></script>
   <!-- 导入配置（行 20）：同样排在主脚本之后（要用它导出的 croObserver.importConfig）。
        解析层与 DOM 无关、整块导出到 croImport，好让 tools/cro-selfcheck.js
-       拿 config-test/ 那 11 份样本直接撞它。 -->
+       拿 config-test/ 的回归样本直接撞它。 -->
   <script src="./js/config-relation-import.js?v=20261009-plain-textarea"></script>
   <script>
     // 主题切换：与 training-monitoring-v2.html 同款单图标按钮，只改 data-theme。

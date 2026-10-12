@@ -1,4 +1,4 @@
-const PAGE_FIELDS = Object.freeze({
+export const PAGE_FIELDS = Object.freeze({
   "model.total_layers": "totalLayer",
   "model.routed_experts": "routedExpert",
   "model.top_k": "topK",
@@ -38,6 +38,10 @@ const PATH_LABELS = Object.freeze({
   "model.total_layers": "Total Layer",
   "model.hidden_size": "Hidden Size",
   "model.num_attention_heads": "Attention Heads",
+  "model.ffn_hidden_size": "Dense FFN Hidden Size",
+  "model.expert_ffn_hidden_size": "Expert FFN Hidden Size",
+  "model.vocab_size": "Vocab Size",
+  "model.first_k_dense_layers": "前置 Dense 层数",
   "model.routed_experts": "Routed",
   "model.top_k": "Top-K",
   "model.shared_experts": "Shared",
@@ -49,7 +53,10 @@ const PATH_LABELS = Object.freeze({
   "parallel.vpp": "VPP",
   "parallel.pipeline_layer_mode": "PP 分层",
   "parallel.num_layer_list": "各 Stage 层数",
-  "parallel.pipeline_layer_offsets": "MindFormers offset",
+  "parallel.pipeline_layer_offsets": "MindFormers PP 层偏置矩阵",
+  "rule_profile.framework": "规则口径",
+  "rule_profile.version": "规则版本",
+  "rule_profile.source_commit": "规则来源 Commit",
   "parallel.ep_mode": "EP 口径",
   "parallel.cp_mode": "CP 口径",
   "parallel.sequence_parallel": "序列并行 SP",

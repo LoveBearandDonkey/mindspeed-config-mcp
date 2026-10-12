@@ -600,7 +600,10 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
   box-sizing: border-box;
   overflow: hidden;
   z-index: var(--z-raised);
-  background: transparent;
+  /* Keep canvas content legible when it pans underneath the fixed rulers. */
+  background: color-mix(in srgb, var(--surface-1) 90%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   /* 顶尺与左尺都作为完整的量尺框出现，不再只画朝向画布内容的内侧边。 */
   border: 1px solid var(--border-default);
   pointer-events: none;             /* 只有刻度本身可点，底板不挡画布 */
@@ -655,7 +658,9 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
+  background: color-mix(in srgb, var(--surface-1) 90%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   border-right: 1px solid var(--border-default);
   border-bottom: 1px solid var(--border-default);
   font-size: var(--font-size-label-xs);
@@ -663,6 +668,13 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
   color: var(--foreground-secondary);
   letter-spacing: var(--letter-spacing-label);
   white-space: nowrap;
+}
+
+/* 暗黑主题的画布基底是固定的 #080a0f；量尺从这个确切色值取色，
+   只留少量透明度给 backdrop blur，避免误用更亮的通用 surface token。 */
+html[data-theme="dark"] .crop-ruler,
+html[data-theme="dark"] .crop-ruler__corner {
+  background: color-mix(in srgb, #080a0f 90%, transparent);
 }
 
 /* 极小缩放档在顶尺第二层增加一个公共 Layer 轴名。它与 Emb 使用同一个量尺坐标
@@ -706,14 +718,27 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
    原先右端还切成箭头，想读出「流水线往下一段流」；块与块的先后由横轴本身就给得
    出来，而那个角吃掉右端 12px、把靠边的 stage 名截掉。 */
 .crop-tick--pp {
+  min-width: 0;
   justify-content: center;
-  padding: 0 var(--space-3);
+  padding: 0;
   background: transparent;
   color: var(--foreground-secondary);
   font-weight: var(--font-weight-medium);
   letter-spacing: var(--letter-spacing-label);
   border-radius: 0;
   border-left: 1px solid var(--border-subtle);
+}
+
+/* Stage 名始终保留完整文本，极小缩放时由 JS 按可用槽位水平压缩；不再靠 min-width
+   撑破刻度盒，否则相邻 Stage 会在 7% 一类缩放下互相覆盖。 */
+.crop-tick__pp-label {
+  position: absolute;
+  left: 50%;
+  width: var(--crop-stage-label-w);
+  text-align: center;
+  transform: translateX(-50%) scaleX(var(--crop-stage-label-scale, 1));
+  transform-origin: center;
+  white-space: nowrap;
 }
 
 .crop-tick--pp:hover { background: transparent; color: var(--foreground); }
@@ -940,7 +965,7 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
 .crop-tp-bracket.is-selected,
 .crop-tp-marker.is-selected { font-weight: var(--font-weight-semibold); }
 
-/* 悬浮分组时让真实 peers 横向浮出，但不覆盖热力色、专家着色或既有选择描边。 */
+/* 悬浮分组时让真实 peers 横向浮出，但不覆盖热力色或既有选择描边。 */
 .crop-rowlabel.is-tp-peer {
   color: var(--primary);
   font-weight: var(--font-weight-semibold);
@@ -961,41 +986,16 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
   border-radius: var(--radius-sm);
 }
 
-/* ── 「一套完整专家」的着色 ──────────────────────────────────────────────────
-   着色的单位是**一套完整专家** = 一个 MoE 层 × 一个 DP/EDP 副本：那一块矩形里的
-   卡各持一片，合起来正好是 routedExpert 个专家的一整套。整块一个颜色，读的人因此
-   一眼看得出「这一片就是一整套」。
-   js 那边取 **层号 % 4**：颜色说的是「哪一个逻辑层」，左右相邻换层就换色。
-   副本号**不参与** —— 上下两个 EDP 持有逻辑相同、物理独立的权重副本；副本边界
-   由贯穿全部 PP Stage 的外框、组间距、左量尺和斜纹共同表达。
-   ⚠️ 这**不是** EP 的颜色：EP 是同一套内部的分片，同一套里的每张卡同色、编号不同，
-   那才是「一整套被切开」该有的读法。EP 归属去看格子里的编号与悬浮提示。
-   色值取 training-run-twin.css 里 .ep-tint-N 那套的前四色，不另造一套色板。
-   ⚠️ 下面这五行是**留痕**：真值在 ../../shared/plane-rules.js 的 SET_COLORS /
-   SET_NEUTRAL（与 rank-intro 共用一份），由 config-relation-plane.js 在挂载时写成
-   board 的行内变量盖过这里。要改颜色请改那一处，两页同时生效；这里保持同值，
-   为的是脚本没跑起来时样式仍兜得住。 */
 .cro-board.is-plane {
-  --crop-set-0: #3B82F6;
-  --crop-set-1: #F59E0B;
-  --crop-set-2: #10B981;
-  --crop-set-3: #8B5CF6;
   /* Match rank-intro step 10 exactly. Do not derive these from --foreground:
      that token already carries alpha, so color-mix would make both values dimmer. */
   --crop-cell-fill: rgb(255 255 255 / 0.07);
   --crop-cell-stroke: rgb(255 255 255 / 0.34);
   --crop-cell-micro: rgb(255 255 255 / 0.14);
-  /* 着色**关掉**时专家胶囊退到的那一色。必须是真中性的灰蓝 —— 原先退到
-     --pto-model-deck-moe（#EA580C，橙红）：那是「MoE」的语义色，关掉着色之后
-     满屏橙红读起来像一片告警，而这一档的本意恰恰是「不表达任何分组」。 */
+  /* 专家胶囊使用中性灰蓝，避免与告警或数据状态色混淆。 */
   --crop-set-neutral: #64748B;
 
-  /* 链路三档（机内 HCCS / 机内+机间 / 机间 RDMA）的颜色。
-     ⚠️ 必须**避开上面那四色**：连线与图例是画在专家色块上面的，用同一批色相就成了
-     「蓝线压在蓝格子上」—— 两套图例说的是完全不同的两件事（一套是"属于哪一套专
-     家"，一套是"这条通信出不出机器"），撞色等于把它们读成同一件事。
-     四色占了蓝 / 琥珀 / 绿 / 紫，这里取剩下的三段：青 → 品红 → 绯红，同时也是一
-     条「越往右越贵」的成本坡（机内几乎不要钱，机间要走 RDMA）。 */
+  /* 链路三档（机内 HCCS / 机内+机间 / 机间 RDMA）的颜色。 */
   --crop-link-local: #06B6D4;
   --crop-link-mixed: #D946EF;
   --crop-link-inter: #E11D48;
@@ -1052,7 +1052,7 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
   border-width: 0;
 }
 
-.crop-cell[data-micro="1"]:not(.is-related):not(.is-cross):not(.is-selected):not([data-heat="1"]):not([data-paint="bg"]) {
+.crop-cell[data-micro="1"]:not(.is-related):not(.is-cross):not(.is-selected):not([data-heat="1"]) {
   background: var(--crop-cell-micro);
 }
 
@@ -1062,41 +1062,6 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
    胶囊现在缩进了详情面板的 Expert Compute 盒子里，按设计像素排 grid，两条规则
    都没有对象了，与它们配套的 --crop-chip-w / --crop-chips-w 也一并撤掉。
    列宽仍由那一行胶囊的实测宽度定 —— 格子的世界尺寸这一版没有动。） */
-
-/* 标签画不出来（缩得太小、或整机档一行代表 8 张卡）时，颜色退回到格子底上 ——
-   那时它是唯一还能表达「这一片属于哪一套专家」的东西。由 js 写 data-paint。 */
-.crop-cell[data-paint="bg"] {
-  background: color-mix(in srgb, var(--crop-set, var(--foreground)) 42%, transparent);
-}
-
-/* 专家着色只负责静息态。进入行 / 列 / 交叉高亮后，和第 10 步一样改由蓝色关系态接管。 */
-/* EDP 1 起的副本：同色 + 45° 斜纹（由 js 写 data-replica）。色相说「哪一份权重」，
-   斜纹说「这是它的一个副本」——块界留住，身份不改口。三档各接一条：整格底、
-   MoE 带、编号胶囊。只写 background-image 长手，颜色仍由上面各档的 background 给；
-   放在 :hover 那条之后，同特异度靠后者赢，悬浮时条纹不掉。 */
-/* 条纹用**前景色**而不是同一个专家色：同色只差一档透明度，叠在 42% 的底上几乎看
-   不出来。前景随主题反转（暗色下是浅纹、亮色下是深纹），在四种专家色上都有对比。
-   整格底那一档画在随画布缩放的 world 里，条纹宽度乘 --crop-stripe-unit（= 1/k，
-   applyTransform 每帧写）抵消缩放，屏幕上恒为 3px 纹 / 9px 周期；MoE 带与编号
-   胶囊住在按设计像素排的面板里，直接写屏幕像素。 */
-.crop-cell[data-replica="1"][data-paint="bg"] {
-  background-image: repeating-linear-gradient(45deg,
-    color-mix(in srgb, var(--foreground) 30%, transparent) 0 calc(3px * var(--crop-stripe-unit, 1)),
-    transparent calc(3px * var(--crop-stripe-unit, 1)) calc(9px * var(--crop-stripe-unit, 1)));
-}
-
-/* Step 10 paints relationship states instead of the normal tile, so neither the
-   expert replica stripe nor the normal stroke remains on a highlighted cell. */
-.crop-cell[data-replica="1"][data-paint="bg"]:is(.is-related, .is-cross, .is-selected) {
-  background-image: none;
-}
-
-.crop-cell[data-replica="1"] .crop-seg[data-seg="moe"],
-.crop-cell[data-replica="1"] .crop-expert {
-  background-image: repeating-linear-gradient(45deg,
-    color-mix(in srgb, var(--foreground) 30%, transparent) 0 2.5px,
-    transparent 2.5px 7px);
-}
 
 /* 关系集里的格子：行相关（这张卡） / 列相关（这一层） / 交叉（两者都在）。
    三档不是同一个亮度 —— 「交叉」才是这一版视图想让人一眼看到的东西。 */
@@ -1195,7 +1160,7 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
   box-shadow: inset 0 0 0 var(--crop-selected-line, 1.5px) var(--primary);
 }
 
-/* 内存观测：一格就是一张 Rank 卡，段高相对物理 HBM 容量自底向上堆叠。
+/* 内存预估：一格就是一张 Rank 卡，段高相对物理 HBM 容量自底向上堆叠。
    色值直接复用右栏单卡容量的语义变量，主题与口径保持一致。 */
 .crop-cell.is-memory {
   position: absolute;
@@ -1266,7 +1231,7 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
   height: 14px;
   padding: 0 4px;
   border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--crop-set, var(--crop-set-neutral)) 55%, transparent);
+  background: color-mix(in srgb, var(--crop-set-neutral) 55%, transparent);
   color: var(--foreground);
   font-size: 9px;
   font-family: var(--font-mono);
@@ -1276,12 +1241,12 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
 }
 
 .crop-expert.is-related {
-  background: color-mix(in srgb, var(--crop-set, var(--crop-set-neutral)) 85%, transparent);
+  background: color-mix(in srgb, var(--crop-set-neutral) 85%, transparent);
 }
 
-/* 选中的那一枚不换色系，只加实底 + 一圈描边 —— EP 的颜色身份得留住 */
+/* 选中的那一枚使用中性实底并增加一圈描边。 */
 .crop-expert.is-selected {
-  background: var(--crop-set, var(--crop-set-neutral));
+  background: var(--crop-set-neutral);
   color: #fff;
   font-weight: var(--font-weight-semibold);
   outline: 1px solid var(--foreground);
@@ -1326,21 +1291,13 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
   color: var(--foreground-secondary);
 }
 
-/* ⚠️ 两条带子里**只有 MoE 那条带颜色**，另一条一律是中性灰的深浅。
-   这幅图上颜色只说一件事：「这一片属于哪一套专家」。给 Attention 涂上蓝、给
-   Dense 涂上靛，就是在同一个画面上并排放两套互不相干的色码 —— 满屏五颜六色之后
-   「同色一块 = 一整套」这条读法先没的就是它自己。两条带子谁是谁，靠文案与位置
-   （从上到下就是数据流的次序）说，那本来就够了。
-   （原先还有一条 [data-seg="hidden"]，给最淡的一档。带子撤了，规则一并删。） */
+/* 两条带子使用中性灰的深浅，靠文案与位置区分。 */
 .crop-seg[data-seg="attn"] { background: color-mix(in srgb, var(--foreground) 15%, transparent); }
 .crop-seg[data-seg="dense"] { background: color-mix(in srgb, var(--foreground) 15%, transparent); }
 .crop-seg[data-seg="unit"] { background: color-mix(in srgb, var(--foreground) 15%, transparent); }
 
-/* MoE 这一条接 --crop-set：整格上色那一档说的「同色一块 = 一整套专家」，在这里
-   由半格的面积继续说，穿过档口时图案不断。dense 层没有专家，所以上面那条
-   走中性 —— 涂成一套专家的颜色是在说谎。 */
 .crop-seg[data-seg="moe"] {
-  background: color-mix(in srgb, var(--crop-set, var(--crop-set-neutral)) 55%, transparent);
+  background: color-mix(in srgb, var(--crop-set-neutral) 55%, transparent);
   color: var(--foreground);
 }
 
@@ -1499,19 +1456,12 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
   align-items: center;
   justify-content: center;
   border-radius: 1.5px;
-  background: color-mix(in srgb, var(--crop-set, var(--crop-set-neutral)) 40%, transparent);
+  background: color-mix(in srgb, var(--crop-set-neutral) 40%, transparent);
   color: var(--foreground);
   font-family: var(--font-mono);
   font-size: 5.5px;
   white-space: nowrap;
 }
-
-/* （这里曾有一张 data-op → deck 语义色的对照表，给每一枚算子按类型上色。已删：
-   这幅图上颜色只说一件事 ——「这一片属于哪一套专家」。算子那一套色码（norm 蓝、
-   linear 靛、comm 青、moe 橙红…）与它毫不相干，叠在同一个画面上，读的人分不清
-   哪一片绿说的是哪件事，而先被冲掉的正是专家那一套。整张面板里唯一带颜色的东西
-   因此是 Expert Compute 盒子里那几枚编号；算子之间靠文案与位置区分。
-   deck 那边照旧按 op 上色 —— 那张图上没有专家着色，两套色码不打架。） */
 
 /* 量列宽用的隐形探针：必须挂在**未缩放**的 stage 下，量到的才是 scale=1 的像素。
    两枚各量一样东西 —— 专家胶囊（.crop-expert 那套样式）与顶部量尺的列名。
@@ -1543,7 +1493,7 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
   bottom: var(--space-3);
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: 0;
   padding: var(--space-1);
   border-radius: var(--radius-md);
   /* 第 10 步的 pzoom 使用页面基底色；这里保持同一层级，不再抬成浮层卡片色。 */
@@ -1553,6 +1503,32 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
   z-index: var(--z-raised);
 }
 
+.crop-tools > [hidden] { display: none; }
+
+.crop-tool-section {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.crop-tool-section + .crop-tool-section {
+  margin-left: var(--space-3);
+}
+
+.crop-tool-section + .crop-tool-section::before {
+  content: "";
+  position: absolute;
+  left: calc(-1 * var(--space-2));
+  top: 3px;
+  bottom: 3px;
+  width: 1px;
+  background: var(--border-subtle);
+}
+
+.crop-tool-section[hidden] + .crop-tool-section::before { display: none; }
+
+.crop-zoom-controls { gap: var(--space-1); }
+
 .crop-tools__readout {
   min-width: 44px;
   text-align: center;
@@ -1561,24 +1537,23 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
   color: var(--foreground-secondary);
 }
 
-/* 粒度开关：自动 / 卡 / 整机。与缩放同处一条工具带 —— LOD 本就是缩放的一部分。
-   中间竖线把它与缩放那三枚分开：两组回答的是不同的问题（看多大 / 看多细）。 */
-/* 三档要一眼读成**一组**。原先靠一条右分隔线把它与缩放那几枚隔开 —— 分隔线只
-   说得出「这边和那边不是一回事」，说不出「这三枚是一起的」，而且它压在
-   .segmented-control 自带的那圈描边上，反而把右边那条框线换成了另一种颜色。
-   现在把那圈框线**加重**（--border-default 而不是 --border-subtle），底也压深一档：
-   工具条本身是半透明玻璃底，muted 那档几乎与它同色，框自然就看不出来了。 */
+/* 模式与视角各自使用 segmented control，缩放与适配作为第三段。 */
+.crop-canvas-modes,
 .crop-units {
-  margin-right: var(--space-2);
   border-color: var(--border-default);
   background: color-mix(in srgb, var(--foreground) 8%, transparent);
 }
 
+.crop-canvas-modes .btn,
 .crop-units .btn { min-width: 0; padding-inline: var(--space-2); }
+.crop-canvas-modes .btn.is-capacity-unavailable {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
 .crop-units .btn:disabled { opacity: 0.42; cursor: not-allowed; }
 
-/* TP 标注开关与专家着色同属画布叠加层开关，继续使用通用 btn.is-selected 状态。
-   前置的小括号直接对应画布中的标记，比再造一枚业务图标更容易辨认。 */
+/* TP 标注开关使用通用 btn.is-selected 状态。前置的小括号直接对应画布中的标记，
+   比再造一枚业务图标更容易辨认。 */
 .crop-tp-toggle::before {
   content: "[";
   margin-right: 4px;
@@ -1588,28 +1563,6 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
 
 .crop-tp-toggle.is-selected::before { color: var(--primary); }
 .crop-tp-toggle:disabled { opacity: 0.42; cursor: not-allowed; }
-
-/* 「专家着色」开关。开着时按钮上带一颗四色点，直接说明它管的是哪一层颜色。 */
-.crop-paint {
-  margin-right: var(--space-1);
-  padding-right: var(--space-1);
-  border-right: 1px solid var(--border-subtle);
-}
-
-.crop-paint::before {
-  content: "";
-  width: 10px;
-  height: 10px;
-  margin-right: 5px;
-  border-radius: 2px;
-  background: linear-gradient(135deg,
-    var(--crop-set-0) 0 25%, var(--crop-set-1) 25% 50%,
-    var(--crop-set-2) 50% 75%, var(--crop-set-3) 75% 100%);
-  opacity: 0.35;
-  transition: opacity var(--duration-fast, 120ms) var(--easing-default, ease);
-}
-
-.crop-paint.is-selected::before { opacity: 1; }
 
 /* Layer 明细 / PP Stage 聚合：与 Rank 入门第 10 步同一个开关语义。开关只属于
    配置寻优；通信与热力必须保留逐 Layer 坐标，因此另外两档不显示。 */
@@ -2210,10 +2163,6 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
    它已经并进页签那一行（.crop-heat-extra），不再占中栏第二块空间。
    （通信档的播放要用线在集群矩阵上画方向与范围，画布必须一直在。） */
 .crop-center[data-mode="comm"] > .crop-comm { display: flex; }
-
-/* 「按完整一套专家区分着色」在热力档里没有可开关的东西（那一档的颜色说的是
-   「多重」，不是「哪一套」）—— 一枚点了没反应的开关比没有更糟，整枚收起。 */
-.crop-center[data-mode="heat"] .crop-paint { display: none; }
 
 /* 运行观测与负载热力都不再保留左侧配置栏：页签行下面只呈现画布与右侧详解。
    配置栏的 is-collapsed 状态不改，切回配置寻优时仍恢复用户原来的收放选择。 */

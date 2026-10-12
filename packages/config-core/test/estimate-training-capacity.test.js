@@ -34,6 +34,17 @@ test("容量估算返回逐 Stage 六段理论值", () => {
 
   assert.equal(result.status, "estimated");
   assert.equal(result.confidence, "theoretical");
+  assert.deepEqual(result.data.thresholds, { tight: 0.80, alert: 0.88 });
+  assert.deepEqual(result.data.threshold_policy, {
+    classification: "heuristic",
+    calibration: "uncalibrated",
+    warning_headroom_ratio: 0.20,
+    sources: [
+      "PyTorch:docs/notes/cuda.html#memory-management:garbage_collection_threshold-example-0.8",
+      "DeepSpeed:docs/memory.html:additional_buffer_factor-1.5",
+    ],
+  });
+  assert.ok(result.assumptions.some((item) => item.includes("它不是框架 OOM 标准")));
   assert.equal(result.data.stages.length, 2);
   assert.equal(result.data.stages[0].micro_batch_count, input.batch.micro_batch_count);
   assert.equal(result.data.stages[0].vpp_chunks, input.parallel.vpp);

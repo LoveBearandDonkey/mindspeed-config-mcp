@@ -80,6 +80,17 @@ bf16: true
 
   const zero3 = parse('{"zero_optimization":{"stage":3}}', "json", "ds_z3.json");
 
+  const mixtral = parse(JSON.stringify({
+    model_type: "mixtral",
+    num_hidden_layers: 32,
+    hidden_size: 4096,
+    num_attention_heads: 32,
+    intermediate_size: 14336,
+    num_local_experts: 8,
+    num_experts_per_tok: 2,
+    vocab_size: 32000,
+  }), "json", "hf_mixtral_config.json");
+
   const deepseek = parse(`
 runner_config:
   batch_size: 1
@@ -138,6 +149,22 @@ model:
       "batch.micro_batch_count", "memory.compute_dtype", "memory.lora_enabled", "memory.lora_rank",
     ]),
     deepspeed_zero3: summary(zero3, ["memory.shard_mode"]),
+    mixtral_capacity_structure: {
+      expert_ffn_hidden_size: mixtral.data.normalized_config.model.expert_ffn_hidden_size,
+      first_k_dense_layers: mixtral.data.normalized_config.model.first_k_dense_layers,
+      remaining_model_gaps: mixtral.data.missing_required_fields
+        .filter((path) => path.startsWith("model.")),
+    },
+    model_structure_choice: {
+      recommended_plan: llamaFactory.data.completion.plans[0].id,
+      requires_confirmation: llamaFactory.data.completion.plans[0].confidence,
+      preset_model: llamaFactory.data.completion.plans[0].proposed_config.model.id,
+      preset_layers: llamaFactory.data.completion.plans[0].proposed_config.model.total_layers,
+      preset_hidden_size: llamaFactory.data.completion.plans[0].proposed_config.model.hidden_size,
+      preset_dp: llamaFactory.data.completion.plans[0].proposed_config.parallel.dp,
+      preset_total_ranks: llamaFactory.data.completion.plans[0].proposed_config.cluster.total_ranks,
+      preset_source: llamaFactory.data.completion.plans[0].values[0].source_ref,
+    },
     deepseek_completion: {
       computation: deepseek.data.completion.computation,
       strategy: deepseek.data.completion.strategy,

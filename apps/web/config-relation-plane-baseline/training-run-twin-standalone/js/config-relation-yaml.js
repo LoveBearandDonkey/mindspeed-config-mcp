@@ -512,6 +512,31 @@
      的行标成 ≠（配平改了数，例如 mixtral 的 EP 8 → 2）。后者必须显眼 ——
      文件里写着 8、表单上是 2，不指出来就是让人对着两个数猜哪个算数。 */
   let source = null;   // { name, label, dialect, text, marks: [{token, label, value, got}] }
+  /* 原文是否仍对应当前表单，不能用「又收到一次 cro:change」判断。
+     MCP 适配层在应用样例后还会异步发布一次 compute_rank_topology 结果；那次发布只把
+     同一份配置的拓扑补齐，并没有改任何表单值。如果逢 cro:change 就清 source，代码框
+     会在真实原文刚显示出来后立刻退回 buildYamlLines()，最终看起来就像所有样例都只是
+     在 openPangu 模板上改了几个数。
+
+     因此在挂上原文时记住完整配置快照；后续只有快照真的变化才退出原文视图。刷新、
+     重算拓扑和切换页签都保留逐字原文，用户实际拨动任一配置项仍会回到生成的 yaml。 */
+  let sourceConfigSignature = null;
+
+  function currentConfigSignature() {
+    const config = global.croObserver?.config || {};
+    return JSON.stringify(Object.keys(config).sort().map((key) => [key, config[key]]));
+  }
+
+  function useSource(next) {
+    source = next || null;
+    sourceConfigSignature = source ? currentConfigSignature() : null;
+  }
+
+  function discardSourceIfConfigChanged() {
+    if (!source || sourceConfigSignature === currentConfigSignature()) return false;
+    useSource(null);
+    return true;
+  }
 
   const highlightJson = (text) => {
     const m = String(text).match(/^(\s*)("(?:[^"\\]|\\.)*")(\s*:)(.*)$/);
@@ -705,18 +730,18 @@
       syncTabs();
     }
 
-    /* 表单一动就退回生成视图：原文是静态的，留着它跟着表单一起变才是骗人。
-       导入自己也走 cro:change（importConfig 内部 emit），所以顺序是
-       「先清掉、再由 cro:source 重新挂上」—— 两次 render 连着跑，无副作用。 */
+    /* 表单值真的变化才退回生成视图：原文是静态的，留着它跟着表单一起变才是骗人。
+       但 cro:change 也承担「同配置重新发布拓扑」的职责，尤其 MCP 在异步拓扑结果回来
+       后会 refresh 一次；那不是用户改配置，不能因此丢掉刚选中的真实样例原文。 */
     doc.addEventListener("cro:change", (event) => {
-      source = null;
+      discardSourceIfConfigChanged();
       if (mode === "yaml") render(event.detail);
     });
 
     /* 由 js/config-relation-import.js 的样例菜单在应用之后发出；detail 为空
        表示回到本页生成的 yaml（选「页面默认」那一张卡就是这条）。 */
     doc.addEventListener("cro:source", (event) => {
-      source = event.detail || null;
+      useSource(event.detail);
       if (mode === "yaml") render(global.croObserver && global.croObserver.topology);
     });
 

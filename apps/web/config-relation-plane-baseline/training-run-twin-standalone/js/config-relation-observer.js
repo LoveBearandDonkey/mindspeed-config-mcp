@@ -2127,8 +2127,18 @@
 
     return {
       config, preset, errors, warnings, valid: errors.length === 0,
-      // 卡型号：只有 hbmGB 参与计算（单卡容量框的高度），其余是说明性规格
-      card: CARD_SPECS[config.card] || CARD_SPECS[DEFAULT_CARD],
+      // 自定义值只覆盖可用于训练的单卡容量；型号、每机卡数仍来自所选硬件规格。
+      card: (() => {
+        const spec = CARD_SPECS[config.card] || CARD_SPECS[DEFAULT_CARD];
+        const custom = Number(config.customCardMemoryGB);
+        if (!(Number.isFinite(custom) && custom > 0)) return spec;
+        return {
+          ...spec,
+          hbmGB: custom,
+          hbmNote: `用户自定义可用容量 ${custom} GB；硬件型号仍按 ${spec.label}`,
+          capacitySource: "user-input",
+        };
+      })(),
       hasMoe: !preset.noMoe,
       stages, layers, epRanks,
       counts: {
@@ -7763,12 +7773,21 @@
     // Micro Batch / Seq Length：与卡型号一起决定单卡装多少，故排在下拉之后
     controller.mount(document.getElementById("croBatchSteppers"), "batch");
 
-    /* 卡型号：硬件属性，和 Total Rank / Node 同属 Cluster 区。两个选项而不是
-       stepper —— 型号是枚举不是量，±键在两项之间来回跳读不出「选了哪个」。
+    /* 卡型号：硬件属性，和 Total Rank / Node 同属 Cluster 区。三个选项而不是
+       stepper —— 型号是枚举不是量，±键在三项之间来回跳读不出「选了哪个」。
        它只影响单卡容量框的高度（CARD_SPECS[].hbmGB）与口径说明，不进 world_size。 */
     (() => {
       const select = document.getElementById("croCardSelect");
       if (!select) return;
+      const trigger = document.getElementById("croCardTrigger");
+      const triggerText = document.getElementById("croCardTriggerText");
+      const menu = document.getElementById("croCardMenu");
+      const options = document.getElementById("croCardOptions");
+      const customInput = document.getElementById("croCardMemoryInput");
+      const customDecrease = document.getElementById("croCardMemoryDecrease");
+      const customIncrease = document.getElementById("croCardMemoryIncrease");
+      if (customDecrease) customDecrease.innerHTML = MINUS;
+      if (customIncrease) customIncrease.innerHTML = PLUS;
       select.innerHTML = "";
       CARD_ORDER.forEach((id) => {
         const spec = CARD_SPECS[id];
@@ -7783,16 +7802,114 @@
           + ` · 整机 ${spec.ranksPerNode || 8} 卡（决定 Node）`;
         if (id === controller.config.card) option.selected = true;
         select.appendChild(option);
+        if (options) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "cro-card-picker__option";
+          button.dataset.card = id;
+          button.setAttribute("role", "option");
+          button.textContent = `${spec.short} · ${spec.hbmGB}G`;
+          button.addEventListener("click", () => {
+            controller.set("customCardMemoryGB", null);
+            select.value = id;
+            select.dispatchEvent(new Event("change", { bubbles: true }));
+            if (menu) menu.hidden = true;
+            trigger?.setAttribute("aria-expanded", "false");
+          });
+          options.appendChild(button);
+        }
       });
       const syncTitle = () => {
+        if (CARD_SPECS[controller.config.card] && select.value !== controller.config.card) {
+          select.value = controller.config.card;
+        }
         const spec = CARD_SPECS[select.value] || CARD_SPECS[DEFAULT_CARD];
-        select.title = `${spec.label} · ${spec.hbmGB} GB HBM（${spec.hbmNote}）`
+        const custom = Number(controller.config.customCardMemoryGB);
+        const memory = Number.isFinite(custom) && custom > 0 ? custom : spec.hbmGB;
+        const customNote = memory === spec.hbmGB ? spec.hbmNote : "用户输入的可用容量";
+        select.title = `${spec.label} · ${memory} GB（${customNote}）`
           + ` · 整机 ${spec.ranksPerNode || 8} 卡（决定 Node）`;
+        if (triggerText) {
+          triggerText.textContent = Number.isFinite(custom) && custom > 0
+            ? `自定义 · ${memory}G`
+            : `${spec.short} · ${memory}G`;
+        }
+        if (trigger) trigger.title = select.title;
+        options?.querySelectorAll("[data-card]").forEach((button) => {
+          const selected = button.dataset.card === select.value;
+          button.classList.toggle("is-selected", selected);
+          button.setAttribute("aria-selected", String(selected));
+        });
+        if (customInput && document.activeElement !== customInput) {
+          customInput.value = Number.isFinite(custom) && custom > 0 ? String(custom) : "";
+        }
       };
       syncTitle();
       select.addEventListener("change", () => {
         controller.set("card", select.value);
         syncTitle();
+      });
+      controller.onChange(syncTitle);
+      trigger?.addEventListener("click", () => {
+        const open = menu?.hidden !== false;
+        if (menu) menu.hidden = !open;
+        trigger.setAttribute("aria-expanded", String(open));
+      });
+      const commitCustomMemory = (rawValue) => {
+        if (!customInput) return false;
+        const raw = String(rawValue).trim();
+        const value = Number(raw);
+        const valid = raw === "" || (Number.isFinite(value) && value > 0);
+        customInput.setAttribute("aria-invalid", String(!valid));
+        if (!valid) return false;
+        controller.set("customCardMemoryGB", raw === "" ? null : value);
+        syncTitle();
+        return true;
+      };
+      customInput?.addEventListener("focus", () => customInput.select());
+      customInput?.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") { event.preventDefault(); customInput.blur(); }
+        else if (event.key === "Escape") {
+          event.preventDefault();
+          customInput.dataset.abort = "1";
+          customInput.blur();
+        } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+          event.preventDefault();
+          (event.key === "ArrowUp" ? customIncrease : customDecrease)?.click();
+        }
+      });
+      customInput?.addEventListener("blur", () => {
+        const abort = customInput.dataset.abort;
+        delete customInput.dataset.abort;
+        if (abort) { syncTitle(); customInput.setAttribute("aria-invalid", "false"); return; }
+        if (!commitCustomMemory(customInput.value)) {
+          customInput.setAttribute("aria-invalid", "false");
+          customInput.value = Number(controller.config.customCardMemoryGB) > 0
+            ? String(controller.config.customCardMemoryGB) : "";
+        }
+      });
+      const adjustCustomMemory = (direction) => {
+        const spec = CARD_SPECS[select.value] || CARD_SPECS[DEFAULT_CARD];
+        const typed = Number(customInput?.value);
+        const saved = Number(controller.config.customCardMemoryGB);
+        const current = Number.isFinite(typed) && typed > 0
+          ? typed : (Number.isFinite(saved) && saved > 0 ? saved : spec.hbmGB);
+        const next = Math.max(0.1, Math.round((current + direction) * 10) / 10);
+        if (customInput) customInput.value = String(next);
+        commitCustomMemory(next);
+        customInput?.focus();
+      };
+      customDecrease?.addEventListener("click", () => adjustCustomMemory(-1));
+      customIncrease?.addEventListener("click", () => adjustCustomMemory(1));
+      document.addEventListener("click", (event) => {
+        if (!menu || menu.hidden || event.target.closest?.(".cro-card-picker")) return;
+        menu.hidden = true;
+        trigger?.setAttribute("aria-expanded", "false");
+      });
+      trigger?.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape" || !menu || menu.hidden) return;
+        menu.hidden = true;
+        trigger.setAttribute("aria-expanded", "false");
       });
     })();
 

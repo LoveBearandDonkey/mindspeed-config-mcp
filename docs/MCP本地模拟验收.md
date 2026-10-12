@@ -28,7 +28,22 @@ npm run smoke:http
 
 ## 在浏览器中验收界面
 
-### 1. 启动本地服务
+### 1. 打开与 MCP Resource 同源的独立预览
+
+在项目根目录运行：
+
+```powershell
+npm run preview:adapted-ui
+```
+
+命令会先构建并验证单文件 MCP App Resource，再在 4174 端口直接服务这份生产产物。
+该预览不经过 MCP 协议，但它的 HTML 与 Inspector/客户端读取的
+`ui://mindspeed-config/result-view.html` 完全相同。只有需要调试构建期转换时才使用
+`npm run dev:adapted-ui`。
+磁盘上的实际文件位于 `apps/mcp-server/ui/dist/ui-shell-v1/training-run-twin-standalone/`，
+名称为 `config-relation-plane-mindspeed-config-mcp-YYYYMMDD-HHmmss.html`。
+
+### 2. 启动本地服务
 
 在第一个 PowerShell 窗口运行：
 
@@ -46,7 +61,7 @@ npm run start:http
 `http://127.0.0.1:3000/mcp`。上述生成方式同时兼容 Windows PowerShell 5.1 和
 PowerShell 7。
 
-### 2. 启动 MCP Inspector
+### 3. 启动 MCP Inspector
 
 打开第二个 PowerShell 窗口，先把刚才保存的 Token 填入环境变量，再运行：
 
@@ -78,6 +93,7 @@ Inspector 的 `--header` 会把静态 Bearer Token 发给本地 MCP 服务，不
 | --- | --- | --- |
 | `npm test` | 纯计算、契约、golden、stdio 与 HTTP 回归通过 | 浏览器视觉效果 |
 | `npm run smoke:http` | 未部署时，真实 HTTP、鉴权、五个计算 Tool、六个自定义界面入口和 App 资源连通 | 用户看到的排版是否合适 |
+| `npm run preview:adapted-ui` | 4174 直接服务已打包的同一份生产 HTML | MCP Host 桥接和真实 Tool 调用 |
 | Inspector Apps | App 能在沙箱中渲染，交互和排版可人工检查 | 生产域名、TLS、反向代理和服务器资源配置 |
 | 服务器部署后验收 | 真实网络、HTTPS、守护进程和目标 Host 接入 | 训练实测结果；第一版不启动训练 |
 

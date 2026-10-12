@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 
 import { createHttpApp } from "../apps/mcp-server/src/http.js";
-import { APP_RESOURCE_URI } from "../apps/mcp-server/src/server.js";
+import { APP_RESOURCE_META, APP_RESOURCE_URI, assertPackagedAppHtml } from "../apps/mcp-server/src/app-resource.js";
 import { createTrainingConfig } from "../tests/fixtures/training-config.js";
 
 const EXPECTED_TOOLS = [
@@ -94,6 +94,8 @@ try {
   const resource = await client.readResource({ uri: APP_RESOURCE_URI });
   const app = resource.contents[0];
   assert.equal(app.mimeType, "text/html;profile=mcp-app");
+  assert.deepEqual(app._meta?.ui, APP_RESOURCE_META);
+  assertPackagedAppHtml(app.text);
   assert.match(app.text, /MindSpeed Config MCP/);
   checks.push({ check: "MCP App 界面资源", result: "通过", detail: APP_RESOURCE_URI });
 

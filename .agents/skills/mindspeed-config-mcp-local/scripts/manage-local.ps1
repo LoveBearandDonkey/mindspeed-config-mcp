@@ -243,8 +243,15 @@ function Start-Preview {
     }
 
     try {
+        Push-Location $ProjectRoot
+        try {
+            & npm.cmd run build:ui
+            if ($LASTEXITCODE -ne 0) { throw "MCP App build failed with exit code $LASTEXITCODE." }
+        } finally {
+            Pop-Location
+        }
         $previewProcess = Start-Process -FilePath $viteCommand `
-            -ArgumentList @("--config", "apps/mcp-server/vite.config.js", "--host", "127.0.0.1", "--port", [string]$PreviewPort, "--strictPort") `
+            -ArgumentList @("preview", "--config", "apps/mcp-server/vite.config.js", "--host", "127.0.0.1", "--port", [string]$PreviewPort, "--strictPort") `
             -WorkingDirectory $ProjectRoot -WindowStyle Hidden -PassThru `
             -RedirectStandardOutput $previewLog -RedirectStandardError $previewErrorLog
         $previewUrl = "http://127.0.0.1:$PreviewPort/training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html?preview=1"

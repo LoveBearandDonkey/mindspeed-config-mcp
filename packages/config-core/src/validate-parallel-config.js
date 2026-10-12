@@ -53,7 +53,7 @@ export function validateParallelConfig(input) {
   if (ppLayerMode === "mindformers-offset") {
     push(errors, input.rule_profile?.framework !== "mindformers", diagnostic(
       "MINDFORMERS_OFFSET_REQUIRES_MINDFORMERS_PROFILE",
-      "MindFormers offset 分层只按 MindFormers profile 校验。",
+      "MindFormers PP 层偏置只按 MindFormers profile 校验。",
       ["rule_profile.framework", "parallel.pipeline_layer_mode", "parallel.pipeline_layer_offsets"],
       "compatibility-gap",
       MINDFORMERS_OFFSET,
@@ -61,7 +61,7 @@ export function validateParallelConfig(input) {
     ));
     push(errors, !Array.isArray(layerOffsets) || !layerOffsets.length, diagnostic(
       "MINDFORMERS_OFFSET_REQUIRES_MATRIX",
-      "选择 MindFormers offset 分层后必须提供 offset 矩阵。",
+      "选择 MindFormers PP 层偏置后必须提供 offset 矩阵。",
       ["parallel.pipeline_layer_mode", "parallel.pipeline_layer_offsets"],
       "compatibility-gap",
       MINDFORMERS_OFFSET,

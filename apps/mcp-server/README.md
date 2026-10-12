@@ -21,6 +21,10 @@ npm run start:mcp
 ```
 
 `start:mcp` 会先把界面构建为不依赖外部 CDN 的单文件 HTML，再启动 stdio Server。
+构建会拒绝多文件产物、未内联的 CSS/JS/媒体依赖或已清除模块回流。在仓库根目录运行
+`npm run preview:adapted-ui` 可在 4174 端口直接预览与 MCP Resource 相同的生产 HTML。
+真实产物名为 `config-relation-plane-mindspeed-config-mcp-YYYYMMDD-HHmmss.html`，时间戳使用
+上海时区；服务端会在产物目录中严格发现唯一文件，无需在每次打包后修改路径。
 
 stdio 模式下标准输出保留给 MCP JSON-RPC，诊断信息只能写入标准错误。协议层只负责
 Schema 校验、工具/界面资源注册和错误映射，所有业务公式仍由 `packages/config-core` 提供。

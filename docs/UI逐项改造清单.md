@@ -82,11 +82,73 @@
 | 11 | 已验收 | 无效视图与控件减法 | 删除“负载热力”整档：① `#cropModes [data-mode="heat"]`；② 六个 `.crop-heat__pill[data-metric]` 模拟度量按钮：`mem` 内存占用、`flops` 计算量、`busy` 计算时间、`idle` 空闲时间、`comm` 通信时间、`route` 专家负载；③ 色阶与说明 `.crop-heat__legend`、`.crop-heat__help`；④ 路由塌缩播放和时间滑杆 `.crop-heat__routeplay`、`.crop-heat__routeslider` 及 step 端点；⑤ 构造故障横幅 `.crop-heatbanner` 及四阶段进度；⑥ 热力格选择和右栏 `.crop-heat-detail`；同步删除专用模型、状态、监听和 CSS | 不删除 26 个训练配置字段；不删除“配置寻优”和改名后的“通信分析”；不提前删除第 12～14 项需要的 Rank、修复和容量输入 | 构建产物不再包含 heat 模式、六个模拟度量、路由塌缩时间轴、构造故障或热力详情；字段去向测试仍证明 26 个配置字段完整 |
 | 12 | 已验收 | `compute_rank_topology` | 将整网图、Layer/PP 分段、专家切片、Rank 矩阵、右侧选中详情，以及“通信分析”中的通信组成员，统一改为读取 `structuredContent.data`；删除浏览器内重复计算 Rank 坐标和通信组成员的公式。详细的页面变化见下文“第 12 项改造前后对照” | 保持现有三栏布局、Rank 平面画法、缩放与拖拽、“自适应 / Rank 视角 / 整机视角”、“专家着色 / TP 标注 / Layer 标注”、悬浮提示、点击高亮和跨区域联动；4173 基线不变 | 使用同一配置对照改造前后：总 Rank、节点、PP 分段、Layer 类型和专家范围应一致；点击 Rank 13 后，右栏内容必须能逐字段追溯到 Tool 返回的 Rank 记录和通信组，非法配置、调用失败时不得继续显示上一份拓扑 |
 | 13 | 已验收 | `suggest_config_fixes` | 把修复候选接到原页已有建议/差异区域，并保留 locked fields | 原错误定位和配置编辑体验 | 锁定不可改字段后，选择一个最小修改方案并回填，再次校验通过 |
-| 14 | 待用户验收 | `estimate_training_capacity` | 用 theoretical 结果驱动原容量与瓶颈展示 | 原显存构成图、Stage 展示和风险表达 | 查看瓶颈 Stage、权重/梯度/优化器/激活拆分，并明确“不是实测峰值” |
-| 15 | 待用户验收 | 表单减法 B：能力收口 | 保留全部 26 个配置字段及“表单视图 / 代码视图”；删除顶部整网 3D Deck 及其入口；共享专家只展示配置数量，不推测 Rank 放置；删除独立“通信分析”及浏览器模拟的事件、频次、载荷和 HCCS/RDMA 路径，把 Tool 返回的 TP/PP/DP/CP/EP/EDP 组成员并入 Rank 右栏；当前未发现重复编辑控件，不做臆断合并 | 配置原文/生成预览、已验收的 Tool 输入、Rank 平面、框架差异和容量表达不变；4173 基线不变 | 内置或上传配置仍可查看原文，修改表单后可查看生成预览；26 个字段完整；页面无整网图和独立通信分析；点击 Rank 可查看来自 `structuredContent.data.groups` 的通信组成员 |
-| 16 | 待用户验收 | MCP App 宿主交互 | 增加加载、取消、超时、鉴权失效和 Tool 错误状态 | 不改变正常成功态的已批准布局 | 断开 MCP 或 Token 失效时，在约定区域中文提示并可重试 |
-| 17 | 未开始 | 减法回归与资源收口 | 清除上述删除产生的死选择器、无引用资源、无效焦点/ARIA 关系和多余打包入口，并复核窄屏与主题布局 | `config-core`、契约与 Tool 行为不因 UI 清理发生变化 | 静态扫描、UI 合约测试、键盘操作、深浅主题和不同宿主宽度全部通过；无仅靠隐藏保留的旧模块 |
-| 18 | 未开始 | MCP 资源打包 | 将验收后的页面及依赖打包为 MCP App Resource | 4173 只作为原始基线；最终 App 只需与逐项批准后的目标区域一致 | Inspector、支持 MCP Apps 的客户端和独立预览三处结果一致，且不再打包被清除模块 |
+| 14 | 已验收 | `estimate_training_capacity` | 用 theoretical 结果驱动原容量与瓶颈展示 | 原显存构成图、Stage 展示和风险表达 | 查看瓶颈 Stage、权重/梯度/优化器/激活拆分，并明确“不是实测峰值” |
+| 15 | 已验收 | 表单减法 B：能力收口 | 保留全部 26 个配置字段及“表单视图 / 代码视图”；删除顶部整网 3D Deck 及其入口；共享专家只展示配置数量，不推测 Rank 放置；删除独立“通信分析”及浏览器模拟的事件、频次、载荷和 HCCS/RDMA 路径，把 Tool 返回的 TP/PP/DP/CP/EP/EDP 组成员并入 Rank 右栏；当前未发现重复编辑控件，不做臆断合并 | 配置原文/生成预览、已验收的 Tool 输入、Rank 平面、框架差异和容量表达不变；4173 基线不变 | 内置或上传配置仍可查看原文，修改表单后可查看生成预览；26 个字段完整；页面无整网图和独立通信分析；点击 Rank 可查看来自 `structuredContent.data.groups` 的通信组成员 |
+| 16 | 已验收 | MCP App 宿主交互 | 增加加载、取消、超时、鉴权失效和 Tool 错误状态 | 不改变正常成功态的已批准布局 | 断开 MCP 或 Token 失效时，在约定区域中文提示并可重试 |
+| 17 | 首版子集待验收 | 减法回归与资源收口 | 首个 MCP 版本只删除确认不进入当前 Vite/MCP Resource 的旧页面副本、重复样例和旧测试入口，并补页面初始化主链路回归；隐藏旧页签、旧解析辅助、热力节点、Deck/通信共用样式和布局分支延期到下一迭代 | 26 个配置字段、预置配置、表单/代码视图、Rank 平面、并行通信组、容量图、宿主状态、MindSpeed intro、`config-core`、契约、Tool 行为及 4173 基线不变 | 首版只验收旧入口不再被引用、当前构建和 98 项测试通过，以及运行时画布、预置配置、表单挂载完整；不以包体缩减作为发布门槛 |
+| 18 | 待用户验收 | MCP 资源打包 | 将验收后的页面及依赖打包为 MCP App Resource | 4173 只作为原始基线；最终 App 只需与逐项批准后的目标区域一致 | Inspector、支持 MCP Apps 的客户端和独立预览三处结果一致，且不再打包被清除模块 |
+| 19 | 参数已审视，待实施 | 腾讯云生产部署 | 按下方冻结参数补 Docker 镜像、Compose/反向代理配置和部署验收；使用 Streamable HTTP 部署当前 MCP Server 与内嵌 App Resource | 不改 `config-core`、契约、Tool 业务公式和第 0 项基线；不影响现有 8787 服务；不把 Token、上游源码或本地路径写入镜像 | 容器以非 root、只读文件系统运行；宿主机仅在 `127.0.0.1:3000` 接收容器流量，公网只开放 HTTPS 443；无 Token 的 `/mcp` 返回 401，合法客户端可调用 11 个 Tool/入口并读取 App Resource，重启后自动恢复 |
+
+### 第 19 项腾讯云生产部署参数
+
+本项依据 `docs/.部署参数.md` 中已经确认的服务器条件冻结：腾讯云上海 `ap-shanghai-2`、Ubuntu Server 24.04 LTS、x86_64、4 核 CPU、4 GB 内存、40 GB CLOUD_SSD、Docker 27.5.1。首版是纯 CPU 计算服务，**不需要 NPU、CANN、PyTorch，也不挂载 MindSpeed、Megatron-Core 或 MindSpeed-Agent 源码目录**。现有 Model Visualization MCP 的 8787 端口及容器保持不变。
+
+| 参数组 | 冻结值 | 说明 |
+|---|---|---|
+| 构建平台 | `linux/amd64` | 与服务器 x86_64 一致；从仓库根目录按 `package-lock.json` 做可复现构建 |
+| Node.js | `22` 系列 Debian slim 镜像 | 满足仓库 `node >=20.19.0` 和 Vite `^20.19.0 || >=22.12.0`；镜像实现时锁定具体 digest，避免浮动标签静默升级 |
+| 镜像/容器名 | `mindspeed-config-mcp:0.1.0` / `mindspeed-config-mcp` | UI 在镜像构建阶段执行 `npm ci`、`npm run build:ui`；运行阶段只启动已构建产物 |
+| 生产启动命令 | `node apps/mcp-server/src/http-entry.js` | 不在每次容器启动时重新构建 UI；不使用仅适合本地 stdio 的 `start:mcp` |
+| 应用监听 | `MCP_HTTP_HOST=0.0.0.0`、`MCP_HTTP_PORT=3000` | `0.0.0.0` 只表示容器内监听，不能直接发布到公网 |
+| Docker 端口 | `127.0.0.1:3000:3000` | 已知现有服务使用 8787；部署前仍须用端口占用检查确认 3000 可用。腾讯云防火墙不新增 3000/8788 公网规则 |
+| 外部端点 | `https://<待分配的 MCP 域名>/mcp` | 复用公网 443，由宿主机反向代理转发到 `http://127.0.0.1:3000/mcp`；80 只做 HTTPS 跳转，不接受明文 MCP 请求 |
+| 健康检查 | 容器内 `http://127.0.0.1:3000/health`，间隔 30 秒、超时 5 秒、连续 3 次失败判异常、启动宽限 20 秒 | `/health` 无 Token，只返回非敏感服务状态；反向代理可暴露同域 `/health` |
+| Host 白名单 | `MCP_ALLOWED_HOSTS=<待分配的 MCP 域名>,127.0.0.1,localhost` | 公网监听时是服务启动硬门槛；值中不写协议和端口。反向代理必须保留原始 `Host` |
+| Origin 白名单 | 首版不设置 `MCP_ALLOWED_ORIGINS` | 桌面/服务器 MCP 客户端及 MCP App 宿主桥接不需要浏览器跨域直连；以后确有 Web 客户端时再加入明确来源，不使用 `*` |
+| MCP 鉴权 | `MCP_BEARER_TOKEN` 为至少 32 字符的密码学随机值 | 通过服务器密钥文件或部署平台 Secret 注入，文件权限 `0600`；不得写入 Git、Dockerfile、镜像层、Compose 正文或部署日志 |
+| 反向代理 | HTTPS 443、HTTP/1.1、关闭响应缓冲、请求体上限 2 MB、读超时 300 秒 | TLS 只在反向代理终止；转发 `/mcp` 和 `/health`，并传递 `Host`、`X-Forwarded-For`、`X-Forwarded-Proto` |
+| 容器安全 | 非 root 用户、只读根文件系统、`no-new-privileges`、删除全部 Linux capabilities，仅给 `/tmp` 临时文件系统 | 服务无持久化数据和外部写入需求，不挂载 Docker socket、SSH 密钥或宿主源码目录 |
+| 资源与重启 | `1 CPU`、`1 GiB` 内存、无 swap 扩容、`restart: unless-stopped` | 为同机现有服务和系统预留资源；首版上线后根据容器 CPU、内存和请求延迟再调高，不凭理论值扩容 |
+| 日志 | Docker `json-file`，`max-size=10m`、`max-file=3` | 不记录 Bearer Token 或用户提交的完整训练配置；日志只保留启动、关闭和脱敏错误信息 |
+| 运行时环境 | `NODE_ENV=production` | `.env.example` 中三个上游源码根目录和 `TOOL_MATRIX_ROOT` 均不进入生产环境，它们不是运行时依赖 |
+
+尚需运维在实施前提供三个外部值：可用域名、该域名指向 `42.192.111.92` 的 DNS 记录、覆盖该域名的有效 TLS 证书。三者就绪前可以在服务器回环地址完成容器与协议验收，但**不得把 `http://42.192.111.92:3000/mcp` 当作生产入口，也不得为了临时访问关闭 Bearer Token 或 Host 校验**。
+
+部署验收顺序固定为：先确认 3000 未被占用且 8787 服务健康，再运行完整测试和构建；启动新容器后检查 `/health`、401 门禁和携带 Token 的 MCP 初始化；最后接入 HTTPS，验证 11 个 Tool/界面入口、`ui://mindspeed-config/result-view.html` 和容器重启恢复。任一步失败只回滚新容器和新反向代理路由，不修改现有 8787 服务。
+
+### 第 17 项首版安全子集与后续迭代
+
+为了优先发布第一个 MCP 版本，第 17 项拆成两个阶段。**首版只做可由入口依赖图证明安全的物理副本清理，不再修改当前页面的 HTML、运行时 JS 或 CSS。** 隐藏 DOM、旧解析辅助、Deck/通信残余、主题和响应式分支统一延期到下一迭代，并且必须先有真实浏览器回归，不能再根据“当前看不见”、名称或包体大小直接判断为死代码。
+
+#### 首个 MCP 版本：本次只做
+
+1. 删除不再由当前 Vite 入口、MCP Resource、服务端注册或测试运行链引用的旧 `ui/mcp-app.html`、`ui/plane-app/` 和旧 `ui/src` 页面实现。
+2. 删除旧 `plane-app/config-test/`、旧 `BASELINE.json` 与只测试旧页面实现的测试；把仍有价值的 26 字段/schema 契约检查迁到当前适配层。
+3. 更新 `upstreams.lock.json`，让上游基线只指向第 0 项保留目录。
+4. 增加页面初始化生命线断言，锁定 `sampleOf`、`#croConfigPresetSelect`、`#croHeat`、`.cro-cluster__grid`、`cropStage`、`cropWorld` 和表单三块 pane；运行时复核预置数量、画布节点和表单挂载。
+5. 首版产物允许继续携带隐藏旧页签和共用实现。它们不影响第一个 MCP 版本发布，也不在本轮半小时窗口内继续裁剪。
+
+#### 下一迭代：有浏览器回归后再做
+
+| 删除批次 | 本项具体删除 | 明确保留 / 防止误删 |
+|---|---|---|
+| 隐藏的旧全局视图切换 | **下一迭代**：删除仍靠 `.pto-ide-frame__topbar-center { display:none }` 隐藏的 `#croViewTabs`、其中“关系视图 / YAML 视图”按钮、`data-observer-view` 监听和旧视图状态；表单/代码切换不再借道这个隐藏 tablist | 保留左栏可见的 `#cropLeftTabs`、“表单视图 / 代码视图”、`#croYamlRegion`、原文与生成预览 |
+| 已不可达的整网 3D Deck 实现残余 | 第 15 项已经删除可见的整网 Deck DOM 和入口；本项只删除因 `#croDeckHost` 已不存在而不会产生界面的查询、`createDeck`/渲染与选中同步、主题/调色板同步、整网折叠与视角状态，以及 `.cro-region--net`、`.is-net-collapsed`、整网 grid 列和只服务 Deck 的 `--pto-model-deck-*`/选择器 | 正常界面应零视觉变化；保留模型选择器、Layer/Stage、结构条、MoE、Rank 平面及其实际仍引用的通用颜色。共用样式按选择器逐条裁剪，不整文件误删；若清理后任何当前可见区域变化，视为回归 |
+| 独立通信分析残余 | 删除 `data-mode="comm"`、通信旅程/阶段/播放/选中状态和已不可达模板；删除 `.crop-comm*`、`.crop-commflow*` 以及只服务模拟事件、频次、载荷、HCCS/RDMA 路径的变量、动画和响应式规则 | 保留 Rank 右栏“并行通信组”以及从 `structuredContent.data.groups` 读取的 TP/PP/DP/CP/EP/EDP 编号和成员 |
+| 前序删除批次余留 | 静态扫描并删除 Activity Rail 的 `.pto-ide-frame__activity-rail`/rail button 专用规则，运行事件 `.cro-event*`/`.cro-incident*`/`.cro-mech*`/stage zoom，文档 `.cro-doc*`/`.is-doc`，负载热力 `.crop-heat*`/route playback 等残余 CSS、JS、模板和主题分支 | `ide-frame-pattern.css` 中仍服务顶栏、主工作区和面板的通用规则继续保留；`hidden` 仅用于真实加载、折叠、弹窗和视图状态，不把它一律当死代码 |
+| 旧导入实现 | 从 `config-relation-import.js` 删除已由 `mcp-parse-adapter.js` / `mcp-shell-entry.js` 接管的本地解析、重复监听、重复状态和不可达错误分支 | 保留当前“导入”按钮、文件读取/粘贴、解析报告、缺口补值、应用到表单和清空流程 |
+| 焦点与 ARIA | 删除指向已移除节点的 `aria-controls`、`aria-labelledby`、`aria-describedby`、`aria-expanded` 更新，旧焦点恢复目标和不可见元素的 `tabindex`；移除不存在节点上的 click/key/theme listener | 保留可见 tab、折叠区、弹窗、Rank 格、重试和取消按钮的合法 ARIA、焦点环与键盘操作 |
+| 旧 MCP UI 实现与打包入口 | **首版安全子集**：删除不再由 Vite 或 MCP Resource 使用的 `ui/mcp-app.html`、`ui/plane-app/`、`ui/src/app.js`、`styles.css`、`preview-results.js`、旧 `workbench.js`/`builtin-configs.js`、`ui/src/plane/`；先把仍有价值的 schema/模型测试迁到当前适配层，再删除只测试旧实现的测试 | 保留当前入口 `vite.config.js → 基线 HTML + mcp-shell-entry.js`，保留当前五类适配器、`mcp-host-interaction.js` 和 `mcp-shell.css`；同步更新 `upstreams.lock.json` 与旧路径文档引用 |
+| 重复资源和复制规则 | **首版安全子集**：删除旧 `plane-app/config-test/` 样例副本、旧 `BASELINE.json`、旧资源复制/预览规则，以及不再可能进入当前单文件产物的 import/alias | 保留第 0 项 4173 基线目录及当前从基线 `config-test/` 打包的 YAML/JSON/Shell 样例；删除前验证每个样例仍可从配置下拉使用 |
+| 窄屏与主题死分支 | 删除只为整网列、通信视图、事件栏、文档和热力视图设置的 media query、CSS 变量、主题刷新及 resize 分支 | 保留三栏展开/收起、Rank 缩放拖拽、深浅主题和 MCP 宿主宽度适配；在 360、600、900、1280 px 宽度复核无横向空栏和控件遮挡 |
+
+首版安全子集的删除判据是“文件不在当前 Vite/MCP Resource/服务端/测试运行链中，并且删除前后单文件产物及浏览器运行时生命线不变”。下一迭代的运行时减法才使用“当前 DOM、当前 JS 创建路径和当前适配层均无引用”的判据，而且还必须通过真实浏览器对照。不能只因类名来自旧页面就删除，也不能用新增 `display:none` 代替删除。
+
+1. 首版当前 UI 依赖图只有基线 HTML、`mcp-shell-entry.js`、当前适配器和必要样式/样例；旧页面入口只允许在本清单的历史记录和“不存在性”测试中出现。
+2. 26 个配置字段、导入、预置配置、表单/代码视图、Rank 视角与标注、右栏并行通信组、理论容量、修复回填、宿主状态和 `MindSpeed intro` 的存在性测试继续通过。
+3. 浏览器运行时必须能看到预置配置选项、非空 `cropWorld`、Rank 节点、三块表单区域和已挂载的隐藏计算引擎；出现 `sampleOf` 等初始化异常立即阻止发布。
+4. `config-core`、契约、Golden 和五类 Tool 的结构化结果零变化；4173 基线文件 SHA-256 零变化。
+5. 首版不要求体积下降。隐藏页签、Deck/通信共用实现、旧导入辅助和 CSS 标记归零全部列入下一迭代，不阻塞第一个 MCP 版本。
 
 ### 第 12 项改造前后对照：`compute_rank_topology`
 
@@ -144,7 +206,7 @@
 
 ## 当前停点
 
-第 12、13 项已由用户确认验收；第 14 项已实现并进入待用户验收：
+第 12～16 项已由用户确认验收；第 17 项已收缩为首版安全子集并完成回归；第 18 项已实现并待用户验收：
 
 - MCP App 构建入口直接读取第 0 项基线 HTML，不再使用旧版 `mcp-plane-view.js` 重画页面；
 - 构建阶段按原顺序内联原版 CSS 和 JS，仅追加无视觉输出的 MCP App 握手桥；
@@ -166,10 +228,14 @@
 - 4174 独立预览直接调用同一份 `config-core` 校验函数；Inspector 中通过 MCP 协议调用 `validate_parallel_config`。两条路径共用相同的输入转换、结果文案和字段标记适配层。
 - MCP 校验横幅在 `.cro-board` 内纵向滚动时吸附在顶部，错误、警告、通过、加载和不可用状态共用相同位置与层级，避免切换状态时跳动；4173 基线不受影响。
 - 修正 PP 层数口径：不再把“总层数不能被 PP 整除”无条件判为 MindSpeed 错误。原“高级选项”增加“PP 分层”两档；“均分”按默认 MindSpeed Core / Megatron 规则要求整除，“动态”按 MindSpeed-LLM MCore 的 `num_layer_list` 规则校验。
-- 页面原有的非均匀 Stage 语义保持不变：默认 46 层、PP 4 自动形成动态 PP `12 / 12 / 11 / 11`，结论为静态校验通过；用户明确切到“均分”后，才提示 46 不能被 4 整除。
+- 页面不再按 `total_layers % pp` 在浏览器自动选择或补齐动态 PP。没有导入证据、MCP 补齐方案或用户明确选择时按“均分”原样提交；默认 46 层、PP 4 会由 Tool 报告不整除。用户只选择“动态”但没有 `num_layer_list` 时，页面也不生成 `12 / 12 / 11 / 11`，由 `validate_parallel_config` 报缺口，再由 `suggest_config_fixes` 返回可应用分层。
 - 动态 PP 同时校验三个条件：`num_layer_list` 项数等于 PP、各项之和等于总层数、VPP 必须为 1；动态 PP 与 VPP 同时启用时返回明确冲突，不再混成普通整除错误。
 - 配置解析器已识别 MindSpeed-LLM 的 `--num-layer-list 12,12,11,11`，并推导 `pipeline_layer_mode=dynamic`；应用到表单后同步更新“PP 分层”控件。
 - “PP 分层”的均分/动态选择器下方不额外显示 Stage 层数，避免与 Layer 布局重复表达；动态分层仍进入 MCP 校验输入和结论数据。
+- `suggest_config_fixes` 遇到均匀 PP 的 `total_layers % pp !== 0` 时，把“切换为动态 PP并生成 `num_layer_list`”作为可直接应用的首选候选，同时保留调整 PP/并行度的其他候选；规则来源仍锁定 MindSpeed-LLM `7826e88`。
+- 用户已选择动态 PP，但 `num_layer_list` 缺失、项数不等于 PP 或层数总和不等于总层数时，`suggest_config_fixes` 会按 `floor(total_layers / pp)` 均分，并把余数从前往后各补一层，返回可直接应用且已经 `validate_parallel_config` 复验的 Stage 层数；用户锁定 `parallel.num_layer_list` 时不会覆盖。
+- 导入配置弹窗与配置下拉面板的第三栏共用 `completion.plans`；动态 PP 候选显示为“切换到动态 PP”，标记为推荐并在首次展示时自动选中，用户仍可改选其他经过复验的方案。
+- 动态 PP 已存在但 `rule_profile.framework` 不是 `mindspeed-llm-mcore` 时，修复区与两处第三栏提供“切换到 MindSpeed-LLM MCore 规则口径”，同时更新 version/source commit，并用完整配置复验后才允许应用。
 - 配置预览横幅中的 `.cro-import__name`（`croPreviewName`）与导入弹窗 `mcpImportScore` 共用唯一评分函数；源文件总项、已覆盖必填数与固定必填总数均读取 `parse_training_config` 结果，不在页面复制统计规则。
 - 本次规则证据新增锁定 MindSpeed-LLM `7826e88`；完整自动测试 57/57 通过。
 - 第 3 项已由用户确认并进入第 4 项；详细盘点、删除批次、字段去向和存在性测试统一记录在 [`MCP UI边界清单.md`](./MCP%20UI边界清单.md)，本项没有删除、隐藏或重排任何页面元素。
@@ -195,18 +261,35 @@
 - 只有一个候选时不显示“锁定不可改字段”栏；锁定栏只用于多候选间的进一步筛选。
 - 多候选时可选择四种 MindSpeed 规则派生排序：MindSpeed 合法优先、保持资源规模、显存安全优先、流水线均衡优先；后两种明确使用 theoretical 容量口径，修改距离只作为平局规则。
 - 第 13 项验收时完整自动化测试 76/76 通过；横幅、锁定字段和候选回填体验已由用户确认进入下一项。
+- MCP 校验责任后续进一步收口：4174/Inspector 构建产物不再执行原页面的 `validate`、`warn`、`reconcile`、最近合法值/模型整除公式、结构档位过滤、动态量程或导入夹值，也不在浏览器推断和补齐动态 PP。首帧和切换模型时不再按并行乘积重算 `Total Rank/Node`；预设提供什么就提交什么。手输及导入数值原样进入统一训练配置，字段红黄状态只读取 `validate_parallel_config`，修复候选和动态 PP 分层只读取 `suggest_config_fixes`；等待或非法期间保留上一份 MCP 有效拓扑，不用浏览器公式生成替代结论。4173 基线仍保留原交互，作为迁移对照。
+- 输入适配层不再把 `Seq Length`、并行度、Total Rank、模型可调项或自定义卡容量悄悄回退到正整数默认值。例如 `Seq Length = 1` 会原样交给 Tool；是否符合 Schema 和当前 CP/框架规则由 MCP 返回。无法解析成数字的文本仍由输入控件撤销，因为它尚不能形成 Tool 的数值字段，这不作为训练配置规则结论。
+- 导入配置中的 0 或负数卡容量不再被页面丢弃或替换为当前卡型容量，而是原样交给 MCP Schema；未填写自定义容量（`null`/空值）才使用所选卡型的标准容量。页面也不再向 Tool 输入额外生成 `global_batch_size`，避免把本地批量公式冒充源配置。
 - 第 12、13 项已由用户确认验收并进入第 14 项。
 - 第 14 项保留原 `#croCapacity`、六段构成、占比、风险横幅和各 PP Stage 小柱；底部容量卡、中央“内存观测”和右侧“当前配置评估”共用同一份 `estimate_training_capacity` 结果。
 - MCP App 构建产物已整份移除原 `config-relation-capacity.js` 业务公式；`mcp-capacity-adapter.js` 只负责 GiB/byte 单位映射、绘图缩放、选中联动和状态呈现，不在浏览器复制容量公式。
 - 容量请求使用 token 防止旧响应覆盖新配置；加载、非法结果、缺字段和调用错误会清空旧容量视图，错误态提供重试，不会静默回退到原页面公式。
 - 容量结果和口径浮层固定标记 `theoretical`、静态理论容量、不是设备实测峰值且不连接远端集群；经验系数与 assumptions 直接展示 Tool 返回值。
-- 第 14 项实现后的完整自动化测试共 80/80 通过；4174 与 Inspector 的最终视觉和点击联动待用户验收。
-- 第 15 项已实现并进入待用户验收：全部 26 个配置字段以及“表单视图 / 代码视图”保留；内置与上传配置继续显示只读原文，修改表单后回到当前配置生成预览。
-- MCP App 已删除顶部整网 3D Deck、整网查询入口及 Deck CSS/JS 资源；模型选择保留并继续进入五类 Tool 的统一训练配置。
+- 第 14 项实现后的完整自动化测试共 80/80 通过；容量视觉、口径和点击联动已由用户确认验收。
+- Rank HBM 黄色警戒线读取 `estimate_training_capacity.data.thresholds.tight`，当前为带 20% 余量的 80% 未校准保守策略；画布不复制阈值。警戒线使用黄色虚线，最大 Rank 超线时在“当前范围”后显示黄色“OOM风险高”。
+- 第 15 项已由用户确认验收：全部 26 个配置字段以及“表单视图 / 代码视图”保留；内置与上传配置继续显示只读原文，修改表单后回到当前配置生成预览。
+- MCP App 已删除顶部整网 3D Deck、整网查询入口及独立 Deck CSS/JS 资源引用；模型选择保留并继续进入五类 Tool 的统一训练配置。共用脚本和内联样式里残留的 Deck 查询、渲染及选择器列入第 17 项彻底删除。
 - 共享专家区改为仅展示 `model.shared_experts` 配置数量，不再生成或暗示共享专家 Rank 放置；路由专家切片继续读取 `compute_rank_topology.data.expert_slices`。
-- 独立“通信分析”、通信旅程播放以及浏览器模拟的事件、频次、载荷和 HCCS/RDMA 路径已删除；点击 Rank 后，右栏新增“并行通信组”，TP/PP/DP/CP/EP/EDP 编号和成员只读取 `data.ranks[].group_ids` 与 `data.groups`。
-- 原页面可见的本地校验/建议结论渲染已清除；页面基础推导只负责阻止无效 DOM 刷新，可见结论继续由 `validate_parallel_config` 和 `suggest_config_fixes` 返回结果驱动。
-- 第 15 项实现后的完整自动化测试共 85/85 通过；4174 与 Inspector 的布局、代码视图、Rank 点击和窄屏体验待用户验收。
+- 独立“通信分析”的可见 DOM、通信旅程播放以及浏览器模拟的事件、频次、载荷和 HCCS/RDMA 路径已删除；点击 Rank 后，右栏新增“并行通信组”，TP/PP/DP/CP/EP/EDP 编号和成员只读取 `data.ranks[].group_ids` 与 `data.groups`。共用样式中残留的 `.crop-comm*` / `.crop-commflow*` 列入第 17 项。
+- 原页面可见的本地校验/建议结论渲染已清除；页面保留的预设、控件步进和绘图布局只承担输入与可视化，不给出配置合法性结论。可见结论由 `validate_parallel_config` 和 `suggest_config_fixes` 返回结果驱动，Rank 数值与成员关系由 `compute_rank_topology` 快照驱动。
+- 第 15 项实现后的完整自动化测试共 85/85 通过；布局、代码视图、Rank 点击和能力收口已由用户确认验收。
+- 第 16 项加载、取消、超时、鉴权失效、Tool 错误和重试状态已由用户确认验收；正常成功态布局保持不变。
+- 2026-10-10 重新审视第 17 项后，范围已从笼统“清死代码”细化为隐藏旧页签、Deck/通信残余、前序批次余留、旧导入分支、焦点/ARIA、旧 MCP UI 实现、重复资源及窄屏/主题死分支八组明确减法。
+- 首次实现错误删除了旧导入脚本中的 `sampleOf`，但配置选择器初始化仍调用该函数，导致页面启动在 `ReferenceError` 处中断；预置选项、画布内容和表单布局因此同时受损。隐藏的 `#croHeat` / `.cro-cluster__grid` 也仍被平面页用作计算与联动引擎，不能按“界面不可见”判为死节点。
+- 上述激进构建期裁剪已从当前产物撤回，拓扑状态挂载也恢复到原节点；单文件重新回到上一次提交的 1,693,040 bytes（Vite gzip 495.28 kB）。新增回归断言锁定 `sampleOf`、预置选择器、隐藏计算引擎、`cropStage` / `cropWorld` 以及三块左栏 pane 的完整性。
+- 4173 主页面基线 SHA-256 仍为 `A4A23CA0B0B124F11690B99E39BD3C33A0E9553C6727AF297E5C5D9BB5737B18`。第 17 项不再以包体下降或标记归零作为验收依据；后续减法必须先证明不改变上一次提交页面的运行时 DOM、画布内容、预置配置和表单几何。
+- 为优先发布首个 MCP 版本，第 17 项当前只保留旧 MCP 页面副本、重复样例、旧入口和旧实现测试的物理清理；非文档源码扫描只剩“不存在性”测试引用这些路径，当前 Vite/MCP Resource 不依赖它们。隐藏页签、导入辅助、热力计算引擎、Deck/通信共用脚本及 CSS 全部延期到下一迭代。
+- 首版安全子集复核：完整自动化测试 98/98 通过；4174 浏览器运行时预置配置 13 项，当前项为“128Rank-实验配置”，`cropWorld` 有 149 个子节点，页面有 272 个 Rank 数据节点，三块表单区域和 `.cro-cluster__grid` 隐藏计算引擎均已挂载。
+- 第 18 项将 `ui://mindspeed-config/result-view.html`、服务端产物路径和 CSP/权限/边框元数据集中到唯一资源定义；`resources/list` 和 `resources/read` 返回一致元数据。
+- `build:ui` 在每次构建后强制验证：产物目录只能有一个约定 HTML，CSS/JS/图像/媒体不得留下外链依赖，已验收能力必须存在，已清除的 Activity Rail、运行事件、文档视图、负载热力和整网 Deck 可见模块不得回流。
+- `preview:adapted-ui` 改为先生成生产单文件，再由 `vite preview` 直接服务该产物；开发态转换单独保留为 `dev:adapted-ui`。因此 4174、Inspector 和支持 MCP Apps 的客户端均以同一份 HTML 为验收对象。
+- 第 18 项产物名改为 `config-relation-plane-mindspeed-config-mcp-YYYYMMDD-HHmmss.html`，时间戳使用上海时区；每次构建清理旧产物并只保留当次文件。服务端按严格命名规则发现唯一 HTML，4174 固定预览 URL 也映射到该文件，无需手改路径。
+- 仓库新增 `$mindspeed-config-mcp-package` Skill，用于高频小步迭代打包；默认快速构建并返回路径/字节数/SHA-256，发布级复核可加 `-FullVerify`。
+- 时间戳改造后完整自动化测试 110/110 通过，Streamable HTTP smoke 通过；`-FullVerify` 最终产物 `config-relation-plane-mindspeed-config-mcp-20261010-165323.html` 为 1,710,521 bytes，SHA-256 为 `62F24910ADB229CE4DDE3E8CCBA0E26855FC5934ABCB41FC670E9B8F5BDD55CF`。同一内容的生产预览响应与磁盘文件字节级一致。
 
 ### 第 10、11 项验收记录
 

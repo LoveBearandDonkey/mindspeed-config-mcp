@@ -32,7 +32,7 @@ torchrun --nnodes 2 --nproc-per-node 8 pretrain_gpt.py \\
   assert.equal(result.data.normalized_config.memory.compute_dtype, "bf16");
   assert.deepEqual(result.data.unmapped_fields.map((field) => field.source_key), ["custom-switch"]);
   assert.equal(result.data.complete, false);
-  assert.equal(result.data.required_field_count, 30);
+  assert.equal(result.data.required_field_count, 33);
   assert.equal(
     result.data.filled_required_field_count + result.data.missing_required_fields.length,
     result.data.required_field_count,
@@ -189,6 +189,49 @@ bf16: true
   assert.ok(zero3.warnings.some((warning) => warning.code === "PARSE_ZERO3_APPROXIMATED_AS_FSDP2"));
 });
 
+test("已知 MoE 架构补齐容量所需的专家 FFN 与前置 Dense 层语义", () => {
+  const mixtral = parseTrainingConfig(input(JSON.stringify({
+    model_type: "mixtral",
+    num_hidden_layers: 32,
+    hidden_size: 4096,
+    num_attention_heads: 32,
+    intermediate_size: 14336,
+    num_local_experts: 8,
+    num_experts_per_tok: 2,
+    vocab_size: 32000,
+  }), "json", "hf_mixtral_config.json"));
+  assert.equal(mixtral.data.normalized_config.model.expert_ffn_hidden_size, 14336);
+  assert.equal(mixtral.data.normalized_config.model.first_k_dense_layers, 0);
+  assert.ok(!mixtral.data.missing_required_fields.includes("model.expert_ffn_hidden_size"));
+  assert.ok(!mixtral.data.missing_required_fields.includes("model.first_k_dense_layers"));
+
+  const deepseek = parseTrainingConfig(input(`
+model:
+  model_config:
+    model_type: deepseek_v3
+    num_hidden_layers: 61
+    hidden_size: 7168
+    intermediate_size: 18432
+    moe_intermediate_size: 2048
+    vocab_size: 129280
+`, "yaml", "mf_pretrain_deepseek3_671b.yaml"));
+  assert.equal(deepseek.data.normalized_config.model.first_k_dense_layers, 3);
+
+  const qwen = parseTrainingConfig(input(`
+model:
+  model_config:
+    model_type: qwen3_moe
+    num_hidden_layers: 48
+    hidden_size: 2048
+    intermediate_size: 6144
+    moe_intermediate_size: 768
+    num_experts: 128
+    num_experts_per_tok: 8
+    vocab_size: 151936
+`, "yaml", "mf_pretrain_qwen3_30b_a3b.yaml"));
+  assert.equal(qwen.data.normalized_config.model.first_k_dense_layers, 0);
+});
+
 test("DeepSeek-V3 缺口由模型证据补齐，并返回经过复验的 MindFormers 方案", () => {
   const result = parseTrainingConfig(input(`
 runner_config:
@@ -244,6 +287,11 @@ torchrun train.py \\
   assert.ok(result.data.completion.plans.every((plan) => plan.validation.status === "valid"));
   assert.equal(result.data.completion.plans[0].proposed_config.cluster.total_ranks, 128);
   assert.equal(result.data.completion.plans[0].proposed_config.memory.parameter_dtype, "bf16");
+  assert.ok(result.data.missing_required_fields.includes("model.vocab_size"));
+  assert.ok(result.data.missing_required_fields.includes("model.ffn_hidden_size"));
+  assert.ok(result.data.completion.plans[0].values.some((item) => (
+    item.path === "model.vocab_size" && item.confidence === "requires-confirmation"
+  )));
 });
 
 test("未知 MoE 命令行优先给出保留 EP 的扩容方案", () => {

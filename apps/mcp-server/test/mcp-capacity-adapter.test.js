@@ -4,8 +4,10 @@ import test from "node:test";
 import { estimateTrainingCapacity } from "@mindspeed-config/config-core";
 
 import {
+  capacitySelection,
   capacityMeasurements,
   capacityViewModel,
+  rankShownForStage,
 } from "../ui/src/mcp-capacity-adapter.js";
 import { createTrainingConfig } from "../../../tests/fixtures/training-config.js";
 
@@ -40,4 +42,26 @@ test("容量适配层拒绝非 theoretical 或缺失 Stage 的结果", () => {
   const result = estimateTrainingCapacity(createTrainingConfig());
   assert.equal(capacityViewModel({ ...result, confidence: "calibrated" }), null);
   assert.equal(capacityViewModel({ ...result, data: { ...result.data, stages: [] } }), null);
+});
+
+test("容量卡片跟随实际 Rank、Layer 和 Stage 选择，不伪造 Stage 首个 Rank", () => {
+  const topology = {
+    stageOfLayer: (layer) => layer < 4 ? 0 : 1,
+    coordsOfRank: (rank) => ({ stage: rank < 8 ? 0 : 1 }),
+  };
+
+  assert.deepEqual(capacitySelection({ kind: "rank", rank: 11, stage: 1 }, topology), {
+    stage: 1,
+    rank: 11,
+  });
+  assert.deepEqual(capacitySelection({ kind: "layer", layer: 2 }, topology), {
+    stage: 0,
+    rank: null,
+  });
+  assert.deepEqual(capacitySelection({ kind: "stage", stage: 1 }, topology), {
+    stage: 1,
+    rank: null,
+  });
+  assert.equal(rankShownForStage(11, 1, topology), 11);
+  assert.equal(rankShownForStage(11, 0, topology), null);
 });

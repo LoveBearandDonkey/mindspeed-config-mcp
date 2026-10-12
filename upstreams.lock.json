@@ -6,8 +6,8 @@
       "path": "D:\\Projects\\compute-graph-viewer-wzh",
       "commit": "485d5206ce4c0cd4719f5d28dd5cbbeb04680be1",
       "dirty": true,
-      "dirty_note": "2026-09-30 按用户确认的上游完成态抓取；config-relation-plane.html 及其依赖包含未提交修改，因此 commit 只标识仓库位置，逐文件 SHA-256 以 apps/mcp-server/ui/plane-app/BASELINE.json 为准。页面与样例已复制入本仓库；浏览器业务规则由 MCP structuredContent 替代。",
-      "vendored_baseline_manifest": "apps/mcp-server/ui/plane-app/BASELINE.json",
+      "dirty_note": "2026-09-30 按用户确认的上游完成态抓取；config-relation-plane.html 及其依赖包含未提交修改，因此 commit 只标识仓库位置。只读页面与样例基线位于 apps/web/config-relation-plane-baseline/；浏览器业务规则由 MCP structuredContent 替代。",
+      "vendored_baseline": "apps/web/config-relation-plane-baseline/",
       "relevant_paths": [
         "Profiling_Insight_and_Tool/shared/plane-rules.js",
         "Profiling_Insight_and_Tool/training-run-twin-standalone/js/config-relation-observer.js",

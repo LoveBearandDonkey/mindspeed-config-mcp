@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build:ui": "vite build --config vite.config.js",
-    "dev:ui": "vite --config vite.config.js --host 127.0.0.1"
+    "dev:ui": "vite --config vite.config.js --host 127.0.0.1",
+    "preview:ui": "vite preview --config vite.config.js --host 127.0.0.1"
   },
   "dependencies": {
     "@mindspeed-config/config-core": "0.1.0",

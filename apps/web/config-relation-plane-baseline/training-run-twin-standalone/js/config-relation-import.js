@@ -33,8 +33,8 @@
    ── 与其余模块的耦合面 ────────────────────────────────────────────────────
    只用两个已导出的全局：`croObserver.importConfig()`（本行新增的批量入口）与
    `CroTopology.MODEL_PRESETS / FIELD_SPECS / FLAG_SPECS`。解析层与 DOM 完全无关，
-   整块导出到 `global.croImport`，好让 tools/cro-selfcheck.js 拿 11 份样本直接撞它
-   —— 那 11 份配置本身就是这一批的验收标准，不该只能靠人点着页面试。
+   整块导出到 `global.croImport`，好让 tools/cro-selfcheck.js 拿测试样本直接撞它
+   —— 回归夹具本身就是这一批的验收标准，不该只能靠人点着页面试。
    ═══════════════════════════════════════════════════════════════════════════ */
 (function (global) {
   "use strict";
@@ -805,8 +805,9 @@
 
   /* ── 样例配置目录 ─────────────────────────────────────────────────────────
      除了「自己贴 / 自己传」，再给一条**一步就能试**的路：直接切 config-test/ 里
-     那 11 份公开配置。它们本来就是第六批（行 20–32）的验收材料，用户拿它们试一遍，
-     等于把这一批的结论自己复核了一遍。
+     8 份信息较完整的公开配置。它们本来就是第六批（行 20–32）的验收材料，用户拿它们试一遍，
+     等于把这一批的结论自己复核了一遍。另有 3 份 HF Trainer / DeepSpeed 稀疏片段只留作
+     解析回归夹具，不进入用户可见的预置目录。
 
      ⚠️ 每一份都必须带**来源**与**它代表什么**：一个只写文件名的下拉框是没法选的
      —— 用户凭什么知道 `mixtral_8x7b.sh` 与 `megatron_175b.sh` 该先试哪个。
@@ -823,9 +824,9 @@
         note: "中等规模 MoE（128 专家 / topk8 / 无共享专家），且是唯一 `enable_parallel_optimizer: False` 的一份 —— 权重分片会落到「关」档" },
     ] },
     { group: "Megatron 命令行（GPU 侧）", items: [
-      { file: "mixtral_8x7b.sh", label: "Mixtral 8×7B",
+      { file: "mixtral_8x7b.sh", label: "Mixtral 8×7B · Megatron 训练",
         source: "NVIDIA/Megatron-LM · examples/mixtral/",
-        note: "MoE + EP8 + PP4 + SP，也是**唯一说得出总卡数**的一类（GPUS_PER_NODE × NNODES）—— 页面的 Total Rank 只能从这里来" },
+        note: "训练与并行侧：MoE + EP8 + PP4 + SP，也是**唯一说得出总卡数**的一类（GPUS_PER_NODE × NNODES）—— 页面的 Total Rank 只能从这里来" },
       { file: "megatron_175b.sh", label: "GPT-3 175B",
         source: "NVIDIA/Megatron-LM · examples/gpt3/",
         note: "稠密大模型 TP8 × PP16、seq 2048。公开样例是**模板**（节点数留空），拿它能看到「配置自己对不上」时页面怎么报" },
@@ -837,23 +838,12 @@
       { file: "hf_deepseekv3_config.json", label: "DeepSeek-V3",
         source: "HF · deepseek-ai/DeepSeek-V3",
         note: "MLA + 256 专家 + 共享专家 + first_k_dense + MTP，与页面的 openPangu 预设同形 —— 拿它看「结构常量不覆盖」那一栏最直观" },
-      { file: "hf_mixtral_config.json", label: "Mixtral 8×7B",
+      { file: "hf_mixtral_config.json", label: "Mixtral 8×7B-v0.1 · HF 结构",
         source: "HF · mistralai/Mixtral-8x7B-v0.1",
-        note: "结构侧的 MoE 字段（num_local_experts / num_experts_per_tok）怎么被接住" },
+        note: "模型结构侧：MoE 字段（num_local_experts / num_experts_per_tok）怎么被接住" },
       { file: "hf_qwen2_7b_config.json", label: "Qwen2-7B",
         source: "HF · Qwen/Qwen2-7B",
         note: "与页面内置的 qwen2-7b 预设逐项对表 —— 体检用：结构常量该一个不差" },
-    ] },
-    { group: "HF Trainer + DeepSpeed（微调侧）", items: [
-      { file: "lf_qwen3_lora_sft.yaml", label: "Qwen3 LoRA 微调",
-        source: "hiyouga/LLaMA-Factory · examples/train_lora/",
-        note: "验 LoRA 开关与 Rank。它写的是 `lora_target: all`（会覆盖到 FFN），而页面只按注意力四件套算 —— 缺口行 32" },
-      { file: "lf_qwen3_full_sft.yaml", label: "Qwen3 全参微调",
-        source: "hiyouga/LLaMA-Factory · examples/train_full/",
-        note: "反例：微调侧口径（per_device_batch_size / 梯度累积 / 外挂 deepspeed 文件），并行度一个字都不写" },
-      { file: "ds_z3_config.json", label: "DeepSpeed ZeRO-3",
-        source: "hiyouga/LLaMA-Factory · examples/deepspeed/",
-        note: "只有一件事：`zero_optimization.stage: 3` 落到「权重分片 → FSDP2」那一档" },
     ] },
   ];
 
@@ -1096,7 +1086,7 @@
     const legacyTrigger = doc.getElementById("croYamlPickerBtn");
     /* 平面页把样例文件并入「配置」选择器；原 observer 页仍保留文件名按钮。
        原生 select 继续留作 observer 的状态接口，但前台换成同尺寸按钮：原生 option
-       弹层无法承载右侧兼容度栏，也无法稳定控制 Windows 的 hover 样式。 */
+       弹层无法承载右侧 MCP 适配度栏，也无法稳定控制 Windows 的 hover 样式。 */
     const mergedSelect = doc.querySelector(".cro-board.is-plane #croConfigPresetSelect");
     let mergedTrigger = null;
     if (mergedSelect) {
@@ -1153,15 +1143,21 @@
       mergedTrigger.title = selected ? selected.textContent : "选择配置";
     }
 
-    /* 保留 observer 写入的内置预设（含默认 cinnnnnndy 与「自定义」），只在末尾追加
-       样例 optgroup。observer 在换模型 / 进入自定义状态时会重建 select，因此本函数
-       是幂等的，并在每次 cro:change 后补挂。 */
+    /* 保留 observer 写入的内置预设，只在末尾追加样例 optgroup。「自定义」只用于
+       表示当前表单刚被手动调整：一旦已经应用了有名字的样例配置，它就不再是一份
+       可返回的配置，必须从下拉中移除。observer 在下一次真正手调时会重新生成它。 */
     function syncMergedOptions() {
       if (!mergedSelect) return;
       const current = mergedSelect.value;
       const preset = global.croObserver && global.croObserver.config.configPreset;
       const selected = activeSampleFile ? sampleValue(activeSampleFile)
         : (sampleFile(current) ? (preset || "__custom__") : current);
+      if (activeSampleFile) {
+        mergedSelect.querySelector('option[value="__custom__"]')?.remove();
+        /* observer 用签名避免无谓重建；这里移除的是它管理的临时项，所以同时失效
+           签名，确保用户随后手调字段时 observer 能把「自定义」重新建回来。 */
+        delete mergedSelect.dataset.presetSignature;
+      }
       mergedSelect.querySelectorAll('optgroup[data-cro-yaml-samples="true"]').forEach((group) => group.remove());
       SAMPLES.forEach((group) => {
         const optgroup = doc.createElement("optgroup");
@@ -1293,7 +1289,7 @@
     function fillMenu() {
       const rows = [];
       if (mergedSelect) {
-        rows.push(`<div class="cro-yaml__opt-group">当前模型预设</div>`);
+        rows.push(`<div class="cro-yaml__opt-group">已预置模型结构（openPangu 2.0 Flash）的配置</div>`);
         Array.from(mergedSelect.options)
           .filter((option) => !sampleFile(option.value))
           .map((option) => presetMeta(option.value))
@@ -1362,10 +1358,10 @@
     }
 
     /* 标题行右侧那格（#croPreviewName）不再重复配置名 —— 名字已经写在左侧选中的
-       卡片和触发框上；这里放兼容度评估：百分数 + 一句它是怎么算的。 */
+       卡片和触发框上；这里放 MCP 适配度评估：百分数 + 一句它是怎么算的。 */
     function setScore(text) { el.name.textContent = text; }
 
-    /* 样例文件的兼容度：落到表单的键 ÷ 需要页面认领的键。「读到但不建模」
+    /* 样例文件的 MCP 适配度：落到表单的键 ÷ 需要页面认领的键。「读到但不建模」
        （通信、融合、数据流程侧）是本页故意不收的，不算进分母，否则几十个
        日志 / 数据键会把一份完全能落地的配置压到一二成。 */
     function sampleScore(r) {
@@ -1480,6 +1476,17 @@
       }
       const meta = sampleOf(file);
       if (!meta) return;
+      /* 单文件宿主可以接管样例读取：样例内容已内嵌在产物中，不应在菜单重开时
+         又退回相对路径 fetch（部署目录没有 config-test/，会稳定得到 404）。
+         独立基线页无人取消该事件，仍按原路径读取同目录样例。 */
+      const previewRequest = new CustomEvent("cro:sample-preview-requested", {
+        cancelable: true,
+        detail: {
+          file,
+          card: options.querySelector(`.cro-yaml__opt[data-file="${file}"]`),
+        },
+      });
+      if (!doc.dispatchEvent(previewRequest)) return;
       const token = ++previewToken;
       pending = null;
       showPreview(meta, `<p class="cro-import__empty">正在读取 <code>config-test/${escapeHtml(file)}</code> …</p>`, false, "读取中…");

@@ -1,0 +1,4 @@
+interface:
+  display_name: "MindSpeed Config MCP 资源打包"
+  short_description: "构建并校验带时间戳的单文件 MCP App 资源"
+  default_prompt: "使用 $mindspeed-config-mcp-package 打包最新 MCP App，并返回产物路径和校验信息。"

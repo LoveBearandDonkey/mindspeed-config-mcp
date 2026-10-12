@@ -92,3 +92,42 @@ export const DYNAMIC_PP_TOPOLOGY = createTrainingConfig({
     num_layer_list: [20, 12],
   },
 });
+
+export const DYNAMIC_PP_PROFILE_MISMATCH = createTrainingConfig({
+  model: { total_layers: 31 },
+  parallel: {
+    pipeline_layer_mode: "dynamic",
+    num_layer_list: [16, 15],
+  },
+});
+
+export const DYNAMIC_PP_LAYER_LIST_GAP = createTrainingConfig({
+  rule_profile: {
+    framework: "mindspeed-llm-mcore",
+    version: "master@7826e88",
+    source_commit: "7826e883ab40f06dd54f0fa2ce6508d18036843c",
+  },
+  model: { total_layers: 46 },
+  parallel: {
+    pp: 4,
+    dp: 2,
+    pipeline_layer_mode: "dynamic",
+  },
+});
+
+export const MINDFORMERS_OFFSET_MATRIX_GAP = createTrainingConfig({
+  rule_profile: {
+    framework: "mindformers",
+    version: "page-baseline",
+    source_commit: "page-form",
+  },
+  model: { total_layers: 61 },
+  parallel: {
+    dp: 1,
+    pp: 8,
+    tp: 2,
+    ep: 1,
+    vpp: 2,
+    pipeline_layer_mode: "mindformers-offset",
+  },
+});

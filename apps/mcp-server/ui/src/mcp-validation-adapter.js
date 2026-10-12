@@ -22,17 +22,65 @@ const NON_STEPPER_FIELDS = Object.freeze({
   "parallel.pipeline_layer_offsets": "mcpPipelineLayerMode",
 });
 
-export function balancedPipelineLayers(totalLayers, pipelineParallel) {
-  const total = positiveInteger(totalLayers);
-  const pp = positiveInteger(pipelineParallel);
-  const base = Math.floor(total / pp);
-  const remainder = total % pp;
-  return Array.from({ length: pp }, (_, index) => base + (index < remainder ? 1 : 0));
+// 这是预设自身的显式输入，不是浏览器根据层数和 PP 推导出的规则。
+// 校验是否合法、以及是否需要修复，仍统一交给 validate_parallel_config。
+const BUILTIN_PRESET_PIPELINE_SETTINGS = Object.freeze({
+  cinnnnnndy: Object.freeze({
+    mode: "dynamic",
+    numLayerList: Object.freeze([12, 12, 11, 11]),
+    framework: "mindspeed-llm-mcore",
+  }),
+  "openpangu-default": Object.freeze({
+    mode: "dynamic",
+    numLayerList: Object.freeze([12, 12, 11, 11]),
+    framework: "mindspeed-llm-mcore",
+  }),
+  "qwen2-7b-default": Object.freeze({
+    mode: "uniform",
+    framework: "mindspeed-core",
+  }),
+});
+
+export function pipelineSettingsForPreset(presetId) {
+  const settings = BUILTIN_PRESET_PIPELINE_SETTINGS[presetId];
+  if (!settings) return null;
+  return {
+    ...settings,
+    numLayerList: Array.isArray(settings.numLayerList) ? [...settings.numLayerList] : null,
+  };
+}
+
+export function createPagePresetContextTracker(onPresetApplied = () => {}) {
+  let currentPresetId = null;
+
+  function presetIdOf(config) {
+    return config?.configPreset || null;
+  }
+
+  return {
+    prime(config) {
+      currentPresetId = presetIdOf(config);
+    },
+    observe(config) {
+      const nextPresetId = presetIdOf(config);
+      // 内置预设由“应用”按钮程序化落地，不保证产生 select/change；以配置身份变化为准。
+      const presetApplied = Boolean(nextPresetId && nextPresetId !== currentPresetId);
+      currentPresetId = nextPresetId;
+      if (presetApplied) onPresetApplied(nextPresetId);
+      return presetApplied;
+    },
+  };
 }
 
 function positiveInteger(value, fallback = 1) {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : fallback;
+}
+
+function configuredNumber(value, fallback) {
+  if (value === null || value === undefined || value === "") return fallback;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
 }
 
 function optionalPositiveInteger(target, key, value) {
@@ -45,6 +93,24 @@ function optionalNonNegativeInteger(target, key, value) {
   if (Number.isInteger(number) && number >= 0) target[key] = number;
 }
 
+function requiredCapacityModelPaths(input) {
+  const paths = ["model.hidden_size", "model.vocab_size"];
+  if (Number(input.model?.routed_experts) > 0) {
+    paths.push("model.expert_ffn_hidden_size", "model.first_k_dense_layers");
+    if (Number(input.model?.first_k_dense_layers) > 0) paths.push("model.ffn_hidden_size");
+  } else {
+    paths.push("model.ffn_hidden_size");
+  }
+  return paths;
+}
+
+export function capacityModelEvidenceGaps(input, evidencePaths, trustedPresetId = "") {
+  const presetId = String(trustedPresetId).toLowerCase();
+  const inputId = String(input.model?.id ?? "").toLowerCase();
+  if (presetId && inputId === presetId) return [];
+  return requiredCapacityModelPaths(input).filter((path) => !evidencePaths?.has(path));
+}
+
 export function pageConfigToTrainingConfig(config, topologyApi, pipelineSettings = {}) {
   if (!config || !topologyApi?.MODEL_PRESETS) {
     throw new Error("原页面配置尚未初始化。");
@@ -52,26 +118,19 @@ export function pageConfigToTrainingConfig(config, topologyApi, pipelineSettings
 
   const preset = topologyApi.MODEL_PRESETS[config.model];
   if (!preset) throw new Error(`找不到模型预设：${config.model ?? "未选择"}`);
-  const topology = typeof topologyApi.derive === "function" ? topologyApi.derive(config) : null;
   const fallbackCard = CARD_FALLBACKS[config.card] ?? CARD_FALLBACKS["910b-64"];
-  const card = topology?.card ?? {};
   const dense = Boolean(preset.noMoe);
-  const totalRanks = positiveInteger(config.totalRank);
-  const ranksPerNode = positiveInteger(
-    card.ranksPerNode,
-    Number.isInteger(config.node) && config.node > 0
-      ? Math.max(1, Math.ceil(totalRanks / config.node))
-      : fallbackCard.ranksPerNode,
-  );
+  const totalRanks = configuredNumber(config.totalRank, 1);
+  const ranksPerNode = fallbackCard.ranksPerNode;
 
   const model = {
     id: preset.id ?? config.model,
-    total_layers: positiveInteger(config.totalLayer),
+    total_layers: configuredNumber(config.totalLayer, 1),
     hidden_size: positiveInteger(preset.hidden),
     num_attention_heads: positiveInteger(preset.heads),
-    routed_experts: dense ? 0 : Math.max(0, Number(config.routedExpert) || 0),
-    top_k: dense ? 0 : Math.max(0, Number(config.topK) || 0),
-    shared_experts: dense ? 0 : Math.max(0, Number(config.sharedExpert) || 0),
+    routed_experts: dense ? 0 : configuredNumber(config.routedExpert, 0),
+    top_k: dense ? 0 : configuredNumber(config.topK, 0),
+    shared_experts: dense ? 0 : configuredNumber(config.sharedExpert, 0),
   };
   optionalPositiveInteger(model, "num_key_value_heads", preset.kvHeads);
   optionalPositiveInteger(model, "ffn_hidden_size", preset.denseIntermediate);
@@ -86,25 +145,26 @@ export function pageConfigToTrainingConfig(config, topologyApi, pipelineSettings
     shard_mode: config.shardMode ?? "none",
     lora_enabled: Boolean(config.lora),
   };
-  optionalNonNegativeInteger(memory, "recompute_layers", config.recomputeLayers);
-  optionalPositiveInteger(memory, "lora_rank", config.loraRank);
+  if (config.recomputeLayers !== undefined) {
+    memory.recompute_layers = configuredNumber(config.recomputeLayers, 0);
+  }
+  if (config.loraRank !== undefined) memory.lora_rank = configuredNumber(config.loraRank, 1);
 
   const epMode = ["split", "orthogonal", "mf"].includes(config.epMode)
     ? config.epMode
     : (config.moeOrthogonal ? "orthogonal" : "split");
-  const dp = positiveInteger(config.dp);
-  const microBatchSize = positiveInteger(config.microBatch);
-  const microBatchCount = positiveInteger(config.microBatchNum);
-  const pp = positiveInteger(config.pp);
+  const dp = configuredNumber(config.dp, 1);
+  const microBatchSize = configuredNumber(config.microBatch, 1);
+  const microBatchCount = configuredNumber(config.microBatchNum, 1);
+  const pp = configuredNumber(config.pp, 1);
   const requestedMode = pipelineSettings.mode;
   const pipelineLayerMode = ["uniform", "dynamic", "mindformers-offset"].includes(requestedMode)
     ? requestedMode
-    : (model.total_layers % pp === 0 ? "uniform" : "dynamic");
+    : "uniform";
   const importedLayers = pipelineSettings.numLayerList;
   const numLayerList = pipelineLayerMode === "dynamic"
-    ? (Array.isArray(importedLayers) && importedLayers.length
-      ? importedLayers.map(Number)
-      : balancedPipelineLayers(model.total_layers, pp))
+    && Array.isArray(importedLayers)
+    ? importedLayers.map(Number)
     : undefined;
   const pipelineLayerOffsets = pipelineLayerMode === "mindformers-offset"
     && Array.isArray(pipelineSettings.layerOffsets)
@@ -132,10 +192,10 @@ export function pageConfigToTrainingConfig(config, topologyApi, pipelineSettings
     parallel: {
       dp,
       pp,
-      tp: positiveInteger(config.tp),
-      cp: positiveInteger(config.cp),
-      ep: positiveInteger(config.ep),
-      vpp: positiveInteger(config.vpp),
+      tp: configuredNumber(config.tp, 1),
+      cp: configuredNumber(config.cp, 1),
+      ep: configuredNumber(config.ep, 1),
+      vpp: configuredNumber(config.vpp, 1),
       pipeline_layer_mode: pipelineLayerMode,
       ...(numLayerList ? { num_layer_list: numLayerList } : {}),
       ...(pipelineLayerOffsets ? { pipeline_layer_offsets: pipelineLayerOffsets } : {}),
@@ -148,14 +208,16 @@ export function pageConfigToTrainingConfig(config, topologyApi, pipelineSettings
     cluster: {
       total_ranks: totalRanks,
       ranks_per_node: ranksPerNode,
-      card_model: card.label ?? fallbackCard.model,
-      card_memory_gib: Number(card.hbmGB) || fallbackCard.memory,
+      card_model: fallbackCard.model,
+      card_memory_gib: configuredNumber(
+        config.customCardMemoryGB,
+        fallbackCard.memory,
+      ),
     },
     batch: {
       micro_batch_size: microBatchSize,
-      sequence_length: positiveInteger(config.seqLen),
+      sequence_length: configuredNumber(config.seqLen, 1),
       micro_batch_count: microBatchCount,
-      global_batch_size: microBatchSize * dp * microBatchCount,
     },
     memory,
   };
@@ -306,8 +368,15 @@ export function installValidationAdapter(callValidateTool) {
   let token = 0;
   let debounceTimer = 0;
   let pendingTimer = 0;
-  const pipelineSettings = { mode: null, numLayerList: null, layerOffsets: null, framework: null };
+  const pipelineSettings = {
+    mode: null,
+    numLayerList: null,
+    layerOffsets: null,
+    framework: null,
+    confirmed: false,
+  };
   let supplementOverrides = {};
+  let importedModelEvidence = null;
   const pipelinePolicy = {
     mode: null,
     prepare(normalizedConfig) {
@@ -325,8 +394,28 @@ export function installValidationAdapter(callValidateTool) {
     pipelineSettings.numLayerList = null;
     pipelineSettings.layerOffsets = null;
     pipelineSettings.framework = null;
+    pipelineSettings.confirmed = false;
     pipelinePolicy.mode = null;
+    importedModelEvidence = null;
   }
+
+  function applyPresetPipelineContext(presetId) {
+    const settings = pipelineSettingsForPreset(presetId);
+    if (!settings) return false;
+    pipelineSettings.mode = settings.mode;
+    pipelineSettings.numLayerList = settings.numLayerList;
+    pipelineSettings.layerOffsets = null;
+    pipelineSettings.framework = settings.framework;
+    pipelineSettings.confirmed = settings.mode === "dynamic" && Array.isArray(settings.numLayerList);
+    pipelinePolicy.mode = settings.mode;
+    return true;
+  }
+
+  const pagePresetContext = createPagePresetContextTracker((presetId) => {
+    resetImportedContext();
+    applyPresetPipelineContext(presetId);
+    syncPipelineControl(window.croObserver?.config);
+  });
 
   function setPath(target, path, value) {
     const keys = String(path).split(".");
@@ -343,6 +432,30 @@ export function installValidationAdapter(callValidateTool) {
     return input;
   }
 
+  function leafPaths(value, prefix = "", output = new Set()) {
+    if (Array.isArray(value) || value === null || typeof value !== "object") {
+      if (prefix) output.add(prefix);
+      return output;
+    }
+    for (const [key, child] of Object.entries(value)) {
+      leafPaths(child, prefix ? `${prefix}.${key}` : key, output);
+    }
+    return output;
+  }
+
+  function capacityConfigFor(config) {
+    const input = trainingConfigFor(config);
+    if (!importedModelEvidence) return input;
+    const preset = window.CroTopology?.MODEL_PRESETS?.[config.model];
+    const presetId = String(preset?.id ?? config.model ?? "").toLowerCase();
+    const missing = capacityModelEvidenceGaps(input, importedModelEvidence, presetId);
+    if (!missing.length) return input;
+    throw new Error(
+      `容量估算已停止：导入模型缺少 ${missing.join("、")} 的可信结构值。`
+      + "无需提供模型源码；请再导入该模型的 config.json，或在源配置中明确这些数值。",
+    );
+  }
+
   function collectImportedOverrides(value, prefix = "", output = {}) {
     if (Array.isArray(value) || value === null || typeof value !== "object") {
       if (prefix && !pageFieldForPath(prefix)) output[prefix] = structuredClone(value);
@@ -357,8 +470,8 @@ export function installValidationAdapter(callValidateTool) {
 
   function resolvedPipelineSettings(config) {
     if (!pipelineSettings.mode) {
-      pipelineSettings.mode = Number(config.totalLayer) % positiveInteger(config.pp) === 0
-        ? "uniform" : "dynamic";
+      applyPresetPipelineContext(config?.configPreset);
+      if (!pipelineSettings.mode) pipelineSettings.mode = "uniform";
     }
     if (pipelineSettings.mode === "mindformers-offset") {
       return {
@@ -371,15 +484,11 @@ export function installValidationAdapter(callValidateTool) {
       return { mode: "uniform", framework: pipelineSettings.framework };
     }
     const imported = pipelineSettings.numLayerList;
-    const matchesCurrent = Array.isArray(imported)
-      && imported.length === positiveInteger(config.pp)
-      && imported.reduce((sum, value) => sum + Number(value), 0) === positiveInteger(config.totalLayer);
     return {
       mode: "dynamic",
-      numLayerList: matchesCurrent
-        ? imported
-        : balancedPipelineLayers(config.totalLayer, config.pp),
+      numLayerList: Array.isArray(imported) ? imported : undefined,
       framework: pipelineSettings.framework,
+      confirmed: Array.isArray(imported) && pipelineSettings.confirmed,
     };
   }
 
@@ -387,11 +496,45 @@ export function installValidationAdapter(callValidateTool) {
     const root = document.getElementById("mcpPipelineLayerMode");
     if (!root || !config) return;
     const settings = resolvedPipelineSettings(config);
+    root.dataset.pipelineEvidence = settings.mode === "dynamic"
+      ? (settings.confirmed ? "mcp-confirmed" : "workbench-derived")
+      : (settings.mode === "mindformers-offset"
+        ? (Array.isArray(settings.layerOffsets) ? "mcp-confirmed" : "workbench-derived")
+        : "not-applicable");
+    const label = root.querySelector(".cro-stepper__label");
+    if (label) {
+      label.title = settings.mode === "mindformers-offset"
+        ? (Array.isArray(settings.layerOffsets)
+          ? `MindFormers PP 层偏置矩阵：${JSON.stringify(settings.layerOffsets)}`
+          : "尚未提供 MindFormers PP 层偏置矩阵；MCP 将生成尽量均衡的 VPP×PP 修复候选。")
+        : (settings.mode === "dynamic" ? (settings.confirmed
+          ? `已由导入配置或 MCP 补齐方案确认：${settings.numLayerList.join(", ")}`
+          : "尚未提供 num_layer_list；将由 MCP 校验并给出修复候选。")
+          : "当前使用标准均匀 PP。");
+    }
     root.querySelectorAll("button[data-value]").forEach((button) => {
       const selected = button.dataset.value === settings.mode;
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
+  }
+
+  function applyPipelineSettings(settings = {}) {
+    const mode = settings.mode;
+    if (!["uniform", "dynamic", "mindformers-offset"].includes(mode)) return false;
+    pipelineSettings.mode = mode;
+    pipelinePolicy.mode = mode;
+    pipelineSettings.numLayerList = Array.isArray(settings.numLayerList)
+      ? [...settings.numLayerList]
+      : null;
+    pipelineSettings.layerOffsets = Array.isArray(settings.layerOffsets)
+      ? settings.layerOffsets.map((row) => [...row])
+      : null;
+    pipelineSettings.framework = settings.framework ?? null;
+    pipelineSettings.confirmed = mode === "dynamic" && Array.isArray(settings.numLayerList);
+    syncPipelineControl(window.croObserver?.config);
+    document.dispatchEvent(new CustomEvent("mcp:pipeline-settings-change"));
+    return true;
   }
 
   function mountPipelineControl() {
@@ -409,7 +552,7 @@ export function installValidationAdapter(callValidateTool) {
     group.className = "segmented-control segmented-control-muted cro-flag-choice";
     group.setAttribute("role", "group");
     group.setAttribute("aria-label", "PP 分层模式");
-    for (const [value, text] of [["uniform", "均分"], ["dynamic", "动态"], ["mindformers-offset", "MF offset"]]) {
+    for (const [value, text] of [["uniform", "均分"], ["dynamic", "动态"], ["mindformers-offset", "MF 层偏置"]]) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "btn btn-sm";
@@ -418,15 +561,10 @@ export function installValidationAdapter(callValidateTool) {
       button.title = value === "dynamic"
         ? "MindSpeed-LLM MCore 动态 PP：使用 num_layer_list 明确每个 Stage 的层数；不能与 VPP 同时启用。"
         : (value === "mindformers-offset"
-          ? "MindFormers 非均匀流水线：使用源配置 offset 矩阵分配各虚拟 Stage 层数。"
+          ? "MindFormers 的 PP/VPP 非均匀层分配：使用源配置 offset 矩阵；只影响各虚拟 Stage 的层数，不改变 MoE 的 EP Rank 口径，与「MF EP 域」互相独立。手动选择后由 MCP 生成尽量均衡的 VPP×PP 修复候选。"
           : "标准均匀 PP：总层数必须能被 PP 整除。");
       button.addEventListener("click", () => {
-        pipelineSettings.mode = value;
-        pipelinePolicy.mode = value;
-        pipelineSettings.numLayerList = null;
-        if (value !== "mindformers-offset") pipelineSettings.layerOffsets = null;
-        syncPipelineControl(window.croObserver?.config);
-        document.dispatchEvent(new CustomEvent("mcp:pipeline-settings-change"));
+        applyPipelineSettings({ mode: value });
       });
       group.append(button);
     }
@@ -502,7 +640,10 @@ export function installValidationAdapter(callValidateTool) {
     ));
   }
 
-  document.addEventListener("cro:config-change", () => schedule(40));
+  document.addEventListener("cro:config-change", () => {
+    pagePresetContext.observe(window.croObserver?.config);
+    schedule(40);
+  });
   document.addEventListener("cro:source", () => {
     resetImportedContext();
     schedule(0);
@@ -512,6 +653,12 @@ export function installValidationAdapter(callValidateTool) {
     const normalized = event.detail?.normalizedConfig ?? {};
     pipelinePolicy.prepare(normalized);
     supplementOverrides = collectImportedOverrides(normalized);
+    const sourcePaths = leafPaths(event.detail?.sourceNormalizedConfig ?? normalized);
+    for (const path of event.detail?.userEditedPaths ?? []) sourcePaths.add(path);
+    /* 第三栏的预填结构值只有在用户完成确认后才会随 parsed-config-applied 到达这里；
+       因此 supplements 中的模型字段可作为本次容量估算的显式确认，而不是页面兜底。 */
+    for (const path of Object.keys(event.detail?.supplements ?? {})) sourcePaths.add(path);
+    importedModelEvidence = sourcePaths;
     for (const [path, value] of Object.entries(event.detail?.supplements ?? {})) {
       if (!pageFieldForPath(path)) supplementOverrides[path] = value;
     }
@@ -526,6 +673,7 @@ export function installValidationAdapter(callValidateTool) {
       pipelineSettings.layerOffsets = Array.isArray(parallel.pipeline_layer_offsets)
         ? parallel.pipeline_layer_offsets.map((row) => [...row]) : null;
       pipelineSettings.framework = normalized.rule_profile?.framework ?? null;
+      pipelineSettings.confirmed = Array.isArray(parallel.num_layer_list);
       syncPipelineControl(window.croObserver?.config);
       schedule(0);
     }
@@ -538,12 +686,12 @@ export function installValidationAdapter(callValidateTool) {
   });
   document.addEventListener("change", (event) => {
     if (!relevantControl(event)) return;
-    if (event.target.closest("#croConfigPresetSelect, #croConfigPresetMenu")) {
-      resetImportedContext();
-    }
     schedule();
   });
   const start = () => {
+    const config = window.croObserver?.config;
+    pagePresetContext.prime(config);
+    applyPresetPipelineContext(config?.configPreset);
     waitForPipelineControl();
     schedule(0);
   };
@@ -556,6 +704,8 @@ export function installValidationAdapter(callValidateTool) {
   return {
     refresh: () => schedule(0),
     trainingConfigFor,
+    capacityConfigFor,
+    applyPipelineSettings,
     reveal: () => {
       schedule(0);
       window.setTimeout(() => document.getElementById("croConfigError")?.scrollIntoView({

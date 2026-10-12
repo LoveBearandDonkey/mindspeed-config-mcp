@@ -28,7 +28,19 @@
 
 .mcp-config-import-button {
   flex: 0 0 auto;
+  gap: var(--button-gap);
   white-space: nowrap;
+}
+
+.mcp-config-import-button svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .cro-import__box.mcp-import__box {
@@ -216,6 +228,140 @@
   margin-top: 2px;
 }
 
+/* 需确认的补齐说明可能列出很多字段。复选框固定留在横幅左上角，正文最多显示
+   五行；超出的部分只在正文内部滚动，避免把第三栏的配置表单挤出视口。 */
+.mcp-completion-plan__confirmation > span {
+  min-width: 0;
+  max-height: 7em;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--warning) 42%, transparent) transparent;
+}
+
+.mcp-model-structure-source {
+  display: grid;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.mcp-model-structure-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 2px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.mcp-model-structure-tabs__tab {
+  min-width: 0;
+  height: 28px;
+  padding: 0 var(--space-2);
+  overflow: hidden;
+  border: 0;
+  border-radius: calc(var(--radius-md) - 2px);
+  background: transparent;
+  color: var(--foreground-secondary);
+  font: inherit;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.mcp-model-structure-tabs__tab:hover {
+  color: var(--foreground);
+  background: var(--state-hover);
+}
+
+.mcp-model-structure-tabs__tab.is-selected {
+  color: var(--primary-foreground);
+  background: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.mcp-model-structure-tabs__tab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.mcp-model-structure-upload {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.mcp-model-structure-upload[hidden] {
+  display: none;
+}
+
+.mcp-model-structure-upload__status {
+  margin: 0;
+  color: var(--foreground-secondary);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.mcp-model-structure-upload__status.is-loading {
+  color: var(--primary-hover, var(--primary));
+}
+
+.mcp-model-structure-upload__status.is-ready {
+  color: var(--success);
+}
+
+.mcp-model-structure-upload__status.is-invalid {
+  color: var(--danger);
+}
+
+.mcp-model-structure-import {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: stretch;
+  justify-self: stretch;
+  width: 100%;
+  min-height: 58px;
+  height: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px dashed color-mix(in srgb, var(--primary) 52%, var(--border-default)) !important;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--primary) 4%, transparent);
+  text-align: left;
+}
+
+.mcp-model-structure-import__icon {
+  display: grid;
+  place-items: center;
+  border-right: 1px dashed color-mix(in srgb, var(--primary) 36%, var(--border-default));
+  color: var(--primary);
+  font-size: 24px;
+  font-weight: var(--font-weight-light, 300);
+  line-height: 1;
+}
+
+.mcp-model-structure-import__copy {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 11px;
+  color: var(--foreground-secondary);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.mcp-model-structure-import__copy strong {
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.mcp-model-structure-import__copy code {
+  color: var(--foreground-secondary);
+  font-size: inherit;
+}
+
 .mcp-completion-status {
   margin: 0;
   padding: 7px 9px;
@@ -303,6 +449,18 @@
   font: 400 10px / 1.35 var(--font-mono);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.mcp-missing-field__kind {
+  width: max-content;
+  max-width: 100%;
+  padding: 1px 5px;
+  border: 1px solid color-mix(in srgb, var(--warning) 32%, transparent);
+  border-radius: var(--radius-sm);
+  color: var(--warning);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.35;
 }
 
 .mcp-missing-field__reason {
@@ -669,6 +827,13 @@
   top: 0;
 }
 
+/* Keep long blocking diagnostics from covering the entire configuration viewport. */
+.cro-board.is-plane .crop-left__body .crop-pane--form > .cro-config-error.is-mcp-invalid {
+  max-height: var(--mcp-config-error-max-height, 66.6667dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .cro-config-error.is-mcp-valid:not(.is-blocking, .is-guidance, .is-warning) {
   border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
   background: linear-gradient(
@@ -747,7 +912,7 @@
   min-width: 0;
 }
 
-.cro-config-error__title.is-error {
+.cro-config-error.is-mcp-invalid .cro-config-error__msg {
   padding-bottom: 8px;
 }
 
@@ -1043,13 +1208,25 @@
   top: -10px;
   width: 2px;
   height: 20px;
-  background: var(--warning);
-  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.48), 0 0 5px color-mix(in srgb, var(--warning) 48%, transparent);
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--warning) 0 3px,
+    transparent 3px 5px
+  );
+  box-shadow: none;
 }
 
 .crop-memory-legend__marker--caution .crop-memory-legend__marker-label {
   top: 13px;
   color: var(--warning);
+  pointer-events: auto;
+  cursor: help;
+}
+
+.crop-memory-legend__risk {
+  margin-left: 6px;
+  color: var(--warning);
+  font-weight: var(--font-weight-semibold);
 }
 
 .mcp-fixes__changes {

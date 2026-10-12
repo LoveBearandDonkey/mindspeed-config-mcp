@@ -3,7 +3,7 @@ import { parseDocument } from "yaml";
 import { diagnostic, toolResult } from "./result.js";
 import { planTrainingConfigCompletion } from "./plan-training-config-completion.js";
 
-const PARSER_SOURCE = "mindspeed-config-mcp:parse-training-config@0.2.1";
+const PARSER_SOURCE = "mindspeed-config-mcp:parse-training-config@0.2.2";
 const FORMAT_LABELS = Object.freeze({
   yaml: "YAML",
   json: "JSON",
@@ -43,6 +43,18 @@ const REQUIRED_PATHS = Object.freeze([
   "memory.shard_mode",
   "memory.lora_enabled"
 ]);
+
+function requiredPathsFor(normalized) {
+  const model = normalized.model ?? {};
+  const capacityPaths = ["model.vocab_size"];
+  if (Number(model.routed_experts) > 0) {
+    capacityPaths.push("model.expert_ffn_hidden_size", "model.first_k_dense_layers");
+    if (Number(model.first_k_dense_layers) > 0) capacityPaths.push("model.ffn_hidden_size");
+  } else {
+    capacityPaths.push("model.ffn_hidden_size");
+  }
+  return [...new Set([...REQUIRED_PATHS, ...capacityPaths])];
+}
 
 const integer = (value) => {
   const parsed = Number(value);
@@ -305,7 +317,8 @@ export function parseTrainingConfig(input) {
     );
   }
 
-  const missingRequiredFields = REQUIRED_PATHS.filter((path) => getPath(normalized, path) === undefined);
+  const requiredPaths = requiredPathsFor(normalized);
+  const missingRequiredFields = requiredPaths.filter((path) => getPath(normalized, path) === undefined);
   if (missingRequiredFields.length) {
     warnings.push(diagnostic(
       "PARSE_INCOMPLETE",
@@ -330,8 +343,8 @@ export function parseTrainingConfig(input) {
       source_name: input.source.name ?? null,
       complete: missingRequiredFields.length === 0,
       source_field_count: entries.length,
-      required_field_count: REQUIRED_PATHS.length,
-      filled_required_field_count: REQUIRED_PATHS.length - missingRequiredFields.length,
+      required_field_count: requiredPaths.length,
+      filled_required_field_count: requiredPaths.length - missingRequiredFields.length,
       mapped_count: mappedFields.length,
       explicit_mapped_count: mappedFields.filter((field) => field.mapping_kind === "explicit").length,
       derived_count: mappedFields.filter((field) => field.mapping_kind === "derived").length,
@@ -453,6 +466,44 @@ function applySourceDerivations({ detectedFormat, entries, sourceName, normalize
     add("model.routed_experts", 0, "未声明 MoE 专家字段", "default");
     add("model.top_k", 0, "Dense 模型省略态", "default");
     add("model.shared_experts", 0, "Dense 模型省略态", "default");
+  }
+
+  /* 容量估算不能把 MoE 的专家 MLP 当成 Dense MLP。以下只处理结构语义已知的
+     架构：Mixtral 的 intermediate_size 就是每个专家的 FFN 宽度，且全部层为
+     MoE；DeepSeek-V3 前 3 层为 Dense；当前登记的 Qwen3-MoE 配置全部层为 MoE。 */
+  const modelId = String(getPath(normalized, "model.id") ?? "").toLowerCase();
+  if (/mixtral/.test(modelId) && Number(getPath(normalized, "model.routed_experts")) > 0) {
+    const intermediate = getPath(normalized, "model.ffn_hidden_size");
+    if (Number.isInteger(intermediate) && intermediate > 0) {
+      add(
+        "model.expert_ffn_hidden_size",
+        intermediate,
+        "Mixtral model_type + intermediate_size（hf_mixtral_config.json）",
+        "derived",
+      );
+    }
+    add(
+      "model.first_k_dense_layers",
+      0,
+      "Mixtral 架构全部 Transformer 层使用 MoE（hf_mixtral_config.json）",
+      "derived",
+    );
+  }
+  if (/deepseek[\s_/-]*v?3/.test(modelId)) {
+    add(
+      "model.first_k_dense_layers",
+      3,
+      "DeepSeek-V3 已登记结构（hf_deepseekv3_config.json）",
+      "derived",
+    );
+  }
+  if (/qwen3[\s_/-]*moe/.test(modelId)) {
+    add(
+      "model.first_k_dense_layers",
+      0,
+      "Qwen3-MoE 已登记结构（mf_pretrain_qwen3_30b_a3b.yaml）",
+      "derived",
+    );
   }
 
   const dp = getPath(normalized, "parallel.dp");

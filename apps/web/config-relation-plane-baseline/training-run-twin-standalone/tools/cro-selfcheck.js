@@ -341,8 +341,8 @@ function checkWalk(steps) {
   Object.keys(bad).forEach((k) => ok(bad[k] === 0, "随机游走 " + k, bad[k]));
 }
 
-/* ── 6. 导入通路（行 20）：拿 config-test/ 那 11 份真配置逐份撞 ──────────────
-   这一批（行 20–32）的验收标准本来就是这 11 份文件，不该只能靠人点着页面试。
+/* ── 6. 导入通路（行 20）：拿 config-test/ 的真配置逐份撞 ─────────────────
+   这一批（行 20–32）的验收标准本来就是这些文件，不该只能靠人点着页面试。
    逐份断言四件事：
      · 解析不抛、认对方言；
      · **要紧的键有落点**（每份至少接住几项并行度 / 批次）；
@@ -356,12 +356,12 @@ function checkImport(fs2, path2) {
   const files = fs2.readdirSync(dir).filter((f) => /\.(ya?ml|sh|json)$/.test(f));
   ok(files.length >= 11, "样本数 ≥ 11", files.length);
 
-  /* 面板那个下拉框的目录与磁盘上的文件必须对得上：改名一个文件，下拉里就多出
-     一项点了报 404 的死链 —— 而那是用户最先碰到的入口。两个方向都查。 */
+  /* 面板目录中的每个文件都必须真实存在，否则用户会先碰到 404。磁盘允许额外保留
+     不进入预置目录的稀疏解析夹具，供下面的逐份回归检查使用。 */
   if (I.SAMPLES) {
     const listed = I.SAMPLES.reduce((all, g) => all.concat(g.items.map((i) => i.file)), []);
     listed.forEach((f) => ok(files.indexOf(f) >= 0, `下拉目录里的 ${f} 在 config-test/ 里存在`));
-    files.forEach((f) => ok(listed.indexOf(f) >= 0, `config-test/${f} 已进下拉目录`));
+    ok(listed.length === 8, "用户可见样本数 = 8", listed.length);
     I.SAMPLES.forEach((g) => g.items.forEach((i) => {
       ok(!!i.source && !!i.note, `${i.file} 带来源与代表性说明`);
       ok(!!i.label, `${i.file} 有名字`);

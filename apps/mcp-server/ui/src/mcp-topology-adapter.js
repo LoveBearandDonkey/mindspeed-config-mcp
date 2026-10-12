@@ -227,7 +227,7 @@ export function installTopologyAdapter(callTopologyTool, trainingConfigFor) {
 
   function resolve(pageTopology) {
     lastPageTopology = pageTopology;
-    if (!pageTopology?.valid) return null;
+    if (!pageTopology) return null;
     let input;
     try {
       input = trainingConfigFor(pageTopology.config);
@@ -242,7 +242,7 @@ export function installTopologyAdapter(callTopologyTool, trainingConfigFor) {
   }
 
   function peek(pageTopology) {
-    if (!pageTopology?.valid || !cached) return null;
+    if (!pageTopology || !cached) return null;
     try {
       return cached.key === topologyInputKey(trainingConfigFor(pageTopology.config))
         ? cached.topology : null;
@@ -266,8 +266,8 @@ export function installTopologyAdapter(callTopologyTool, trainingConfigFor) {
     lastPageTopology = pageTopology;
     setStatus(
       "invalid",
-      "Rank 拓扑等待合法配置",
-      "当前表单未通过页面基础约束；旧矩阵已标记为失效，不会作为当前配置结果。",
+      "Rank 拓扑等待 MCP 校验",
+      "旧矩阵已标记为失效；是否可生成新拓扑只以 compute_rank_topology 返回为准。",
     );
   }
 

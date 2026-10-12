@@ -1,12 +1,20 @@
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
+import { validateParallelConfig } from "@mindspeed-config/config-core";
 import { validateTrainingConfig } from "@mindspeed-config/contracts";
 
 import { createTrainingConfig } from "../../../tests/fixtures/training-config.js";
+import {
+  APP_HTML_FILENAME_PATTERN,
+  APP_RESOURCE_META,
+  assertPackagedAppHtml,
+  findPackagedAppHtmlUrl,
+} from "../src/app-resource.js";
 import { APP_RESOURCE_URI, createMcpServer } from "../src/server.js";
 import {
   diffApplied,
@@ -16,11 +24,13 @@ import {
   toPagePartial,
 } from "../ui/src/mcp-parse-adapter.js";
 import {
-  balancedPipelineLayers,
+  capacityModelEvidenceGaps,
   clearValidationMarks,
   clearValidationPresentation,
+  createPagePresetContextTracker,
   isDismissibleValidationState,
   pageConfigToTrainingConfig,
+  pipelineSettingsForPreset,
   renderValidationConclusion,
   validationMarks,
 } from "../ui/src/mcp-validation-adapter.js";
@@ -99,6 +109,35 @@ test("五个分析 Tool 都返回文本解释和结构化结果", async () => {
   });
 });
 
+test("suggest_config_fixes 为缺少 num_layer_list 的动态 PP 返回可应用分层", async () => {
+  await withClient(async (client) => {
+    const input = createTrainingConfig({
+      rule_profile: {
+        framework: "mindspeed-llm-mcore",
+        version: "master@7826e88",
+        source_commit: "7826e883ab40f06dd54f0fa2ce6508d18036843c",
+      },
+      model: { total_layers: 46 },
+      parallel: {
+        pp: 4,
+        dp: 2,
+        pipeline_layer_mode: "dynamic",
+      },
+    });
+    const response = await client.callTool({
+      name: "suggest_config_fixes",
+      arguments: input,
+    });
+
+    assert.notEqual(response.isError, true);
+    assert.equal(response.structuredContent.data.solved, true);
+    assert.deepEqual(
+      response.structuredContent.data.suggestions[0].proposed_config.parallel.num_layer_list,
+      [12, 12, 11, 11],
+    );
+  });
+});
+
 test("中文配置工作台无需输入 JSON 即可打开", async () => {
   await withClient(async (client) => {
     const response = await client.callTool({ name: "open_config_workbench", arguments: {} });
@@ -123,11 +162,19 @@ test("五个分析页面入口无需宿主表单并指向对应 Schema Tool", as
 test("MCP App 资源可读取且为单文件 HTML", async () => {
   await withClient(async (client) => {
     const listed = await client.listResources();
-    assert.ok(listed.resources.some((resource) => resource.uri === APP_RESOURCE_URI));
+    const listedApp = listed.resources.find((resource) => resource.uri === APP_RESOURCE_URI);
+    assert.ok(listedApp);
+    assert.deepEqual(listedApp._meta?.ui, APP_RESOURCE_META);
 
     const response = await client.readResource({ uri: APP_RESOURCE_URI });
     assert.equal(response.contents.length, 1);
     assert.equal(response.contents[0].mimeType, "text/html;profile=mcp-app");
+    assert.deepEqual(response.contents[0]._meta?.ui, APP_RESOURCE_META);
+    const packagedUrl = await findPackagedAppHtmlUrl();
+    assert.match(fileURLToPath(packagedUrl).split(/[\\/]/u).at(-1), APP_HTML_FILENAME_PATTERN);
+    const packagedHtml = await fs.readFile(packagedUrl, "utf8");
+    assert.equal(response.contents[0].text, packagedHtml);
+    assert.equal(assertPackagedAppHtml(response.contents[0].text), packagedHtml);
     assert.match(response.contents[0].text, /MindSpeed Config MCP/);
     assert.match(response.contents[0].text, /Config &amp; Relation Observer/);
     assert.match(response.contents[0].text, /导入配置/);
@@ -169,6 +216,48 @@ test("MCP App 资源可读取且为单文件 HTML", async () => {
     assert.doesNotMatch(response.contents[0].text, /<link rel="stylesheet" href=/);
     assert.doesNotMatch(response.contents[0].text, /<script src=/);
   });
+});
+
+test("4174 独立预览先构建并直接服务与 MCP Resource 相同的生产产物", async () => {
+  const rootPackage = JSON.parse(await fs.readFile(new URL("../../../package.json", import.meta.url), "utf8"));
+  const previewScript = rootPackage.scripts["preview:adapted-ui"];
+  assert.match(previewScript, /^npm run build:ui && vite preview /);
+  assert.match(
+    previewScript,
+    /\/training-run-twin-standalone\/config-relation-plane-mindspeed-config-mcp\.html\?preview=1/,
+  );
+  assert.match(rootPackage.scripts["dev:adapted-ui"], /^vite --config /);
+});
+
+test("导入配置后重新应用页面预设会清理导入配置留下的 PP 上下文", () => {
+  const applied = [];
+  const tracker = createPagePresetContextTracker((presetId) => applied.push(presetId));
+
+  tracker.prime({ configPreset: "cinnnnnndy" });
+  assert.equal(tracker.observe({ configPreset: null }), false);
+  assert.equal(tracker.observe({ configPreset: null }), false);
+  assert.equal(tracker.observe({ configPreset: "cinnnnnndy" }), true);
+  assert.deepEqual(applied, ["cinnnnnndy"]);
+  assert.equal(tracker.observe({ configPreset: "cinnnnnndy" }), false);
+});
+
+test("内置页面预设显式携带 PP 分层输入，不在浏览器中临时推导", () => {
+  assert.deepEqual(pipelineSettingsForPreset("cinnnnnndy"), {
+    mode: "dynamic",
+    numLayerList: [12, 12, 11, 11],
+    framework: "mindspeed-llm-mcore",
+  });
+  assert.deepEqual(pipelineSettingsForPreset("openpangu-default"), {
+    mode: "dynamic",
+    numLayerList: [12, 12, 11, 11],
+    framework: "mindspeed-llm-mcore",
+  });
+  assert.deepEqual(pipelineSettingsForPreset("qwen2-7b-default"), {
+    mode: "uniform",
+    numLayerList: null,
+    framework: "mindspeed-core",
+  });
+  assert.equal(pipelineSettingsForPreset("unknown"), null);
 });
 
 test("原页面表单可转换为校验 Tool 输入，结论包含公式并定位原字段", () => {
@@ -223,7 +312,34 @@ test("原页面表单可转换为校验 Tool 输入，结论包含公式并定�
   assert.equal(input.model.top_k, 0);
   assert.equal(input.parallel.tp, 1);
   assert.equal(input.cluster.ranks_per_node, 8);
-  assert.equal(input.batch.global_batch_size, 32);
+  assert.equal(input.batch.global_batch_size, undefined,
+    "页面不应在 MCP 输入中额外生成本地批量公式结果");
+
+  const customMemory = pageConfigToTrainingConfig(
+    { ...pageConfig, customCardMemoryGB: 56.5 },
+    topologyApi,
+  );
+  assert.equal(customMemory.cluster.card_memory_gib, 56.5);
+
+  const standardMemory = pageConfigToTrainingConfig(
+    { ...pageConfig, customCardMemoryGB: null },
+    topologyApi,
+  );
+  assert.equal(standardMemory.cluster.card_memory_gib, 64,
+    "未填写自定义容量时应继续使用所选卡型的标准容量");
+
+  const directUserValues = pageConfigToTrainingConfig(
+    { ...pageConfig, seqLen: 1, totalRank: 3, customCardMemoryGB: -1 },
+    topologyApi,
+  );
+  assert.equal(directUserValues.batch.sequence_length, 1,
+    "页面不得把用户输入的 Seq Length 静默恢复为预设值");
+  assert.equal(directUserValues.cluster.total_ranks, 3,
+    "页面不得在 MCP 校验前自动配平 Total Rank");
+  assert.equal(directUserValues.cluster.card_memory_gib, -1,
+    "非法卡容量也必须原样交给 MCP Schema 判定");
+  assert.equal(validateTrainingConfig(directUserValues).valid, false,
+    "不符合契约的原始输入应由统一契约拒绝，而不是页面先行改写");
 
   const dynamic = pageConfigToTrainingConfig(
     { ...pageConfig, totalLayer: 46, pp: 4, dp: 2 },
@@ -232,7 +348,38 @@ test("原页面表单可转换为校验 Tool 输入，结论包含公式并定�
   );
   assert.equal(dynamic.rule_profile.framework, "mindspeed-llm-mcore");
   assert.deepEqual(dynamic.parallel.num_layer_list, [12, 12, 11, 11]);
-  assert.deepEqual(balancedPipelineLayers(46, 4), [12, 12, 11, 11]);
+
+  const unfilledDynamic = pageConfigToTrainingConfig(
+    { ...pageConfig, totalLayer: 46, pp: 4, dp: 2 },
+    topologyApi,
+    { mode: "dynamic" },
+  );
+  assert.equal(unfilledDynamic.parallel.num_layer_list, undefined,
+    "页面不得在 MCP 校验前自行生成动态 PP 分层");
+  assert.equal(validateParallelConfig(unfilledDynamic).status, "invalid");
+
+  const implicitPipelineMode = pageConfigToTrainingConfig(
+    { ...pageConfig, totalLayer: 46, pp: 4, dp: 2 },
+    topologyApi,
+  );
+  assert.equal(implicitPipelineMode.parallel.pipeline_layer_mode, "uniform",
+    "没有来源或用户选择时不得按整除结果在页面自动切换动态 PP");
+  assert.equal(implicitPipelineMode.parallel.num_layer_list, undefined);
+  assert.equal(validateParallelConfig(implicitPipelineMode).status, "invalid");
+
+  const unknownDenseModel = {
+    ...input,
+    model: { ...input.model, id: "imported-dense-model" },
+  };
+  assert.deepEqual(
+    capacityModelEvidenceGaps(
+      unknownDenseModel,
+      new Set(["model.hidden_size"]),
+      "qwen2-7b",
+    ),
+    ["model.vocab_size", "model.ffn_hidden_size"],
+  );
+  assert.deepEqual(capacityModelEvidenceGaps(input, new Set(), "qwen2-7b"), []);
 
   const result = {
     status: "invalid",

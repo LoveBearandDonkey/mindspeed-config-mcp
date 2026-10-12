@@ -120,7 +120,20 @@
 
 ### 批次 F（第 17 项）：死代码与资源收口
 
-清除前述删除产生的不可见死代码、无引用 CSS 选择器、JS 导入、内联模板、资源复制规则和悬空 ARIA 关系；以构建、UI 合约、键盘操作、深浅主题及不同宿主宽度回归作为验收门槛。
+第 14～16 项验收后重新扫描当前构建产物。为优先发布首个 MCP 版本，批次 F 分两阶段：首版只删除不进入当前 Vite/MCP Resource 的旧页面副本、重复样例和旧测试入口；以下涉及当前 HTML、运行时 JS、隐藏计算引擎和 CSS 的减法延期到下一迭代，并以真实浏览器回归为前置条件：
+
+1. **隐藏旧页签**：删除仍靠 `.pto-ide-frame__topbar-center { display:none }` 隐藏的 `#croViewTabs`、关系/YAML 两个旧 tab、`data-observer-view` 监听和状态；保留可见的 `#cropLeftTabs` 与 `#croYamlRegion`。
+2. **已不可达的整网 Deck 实现残余**：第 15 项已经删除可见的整网 Deck DOM 和入口；本项只删除因 `#croDeckHost` 已不存在而不会产生界面的查询、`createDeck`、Deck 渲染/选中/主题/调色板同步、整网折叠与视角状态，以及 `.cro-region--net`、`.is-net-collapsed`、整网 grid 列和只服务 Deck 的选择器/变量。正常界面应零视觉变化；模型选择、Layer/Stage、结构条、MoE 和 Rank 平面必须保留，若任何当前可见区域变化则视为回归。
+3. **独立通信分析残余**：删除 `data-mode="comm"`、通信旅程/播放/阶段/选择状态、`.crop-comm*`、`.crop-commflow*` 和模拟事件、频次、载荷、HCCS/RDMA 路径的专用动画/响应式规则；保留 Rank 右栏读取 `data.groups` 的“并行通信组”。
+4. **前序删除批次余留**：删除 Activity Rail、运行事件、文档和负载热力的残余 CSS、JS、模板、主题及 resize 分支；共享的 IDE 顶栏、主面板、Rank pan/zoom 和真实 `hidden` 状态逐条证明后保留。
+5. **旧导入分支**：删除 `config-relation-import.js` 中已由 `mcp-parse-adapter.js` / `mcp-shell-entry.js` 接管的本地解析、重复监听和不可达状态；保留当前文件读取、粘贴、报告、缺口补值、应用和清空流程。
+6. **悬空交互关系**：删除指向已移除节点的 ARIA 引用、旧焦点恢复目标、不可见 `tabindex` 和空 click/key/theme listener；保留可见页签、折叠区、弹窗、Rank 格及宿主状态操作的键盘和读屏语义。
+7. **旧 MCP UI 实现**：删除不再进入当前 Vite/MCP Resource 的 `ui/mcp-app.html`、`ui/plane-app/`、`ui/src/app.js`、`styles.css`、`preview-results.js`、旧 `workbench.js`/`builtin-configs.js` 和 `ui/src/plane/`；先迁移仍有价值的 schema/模型测试，并同步更新 `upstreams.lock.json` 和文档引用。
+8. **重复资源与布局分支**：删除旧 `plane-app/config-test/`、旧 `BASELINE.json`、旧复制/预览规则，以及只服务已删模块的 media query、CSS 变量、主题和 resize 分支；保留第 0 项基线及当前从其 `config-test/` 打包的样例。
+
+实施状态：首版安全子集待验收。首次按静态标记裁剪时误删仍参与初始化的 `sampleOf` 和仍作为平面页计算/联动引擎的 `#croHeat` / `.cro-cluster__grid`，造成预置配置消失、画布未渲染和表单半初始化错位。相关构建期裁剪已撤回，当前单文件恢复为上一次提交的 1,693,040 bytes（Vite gzip 495.28 kB）。首版只保留旧页面副本、重复样例、旧入口及其测试的物理清理；其余八组运行时减法全部延期。静态“无可见 DOM”或包体下降不再作为充分证据。
+
+删除判据是“当前 DOM、当前 JS 创建路径和当前适配层均无引用”，不得只因类名陈旧就删除，也不得新增 `display:none` 掩盖旧模块。验收必须证明：构建产物无上述标记；旧入口无源码/测试/文档引用；26 字段及全部保留交互通过；`config-core`、契约、Golden、Tool 结果和 4173 SHA-256 不变；360/600/900/1280 px、深浅主题、键盘和读屏回归通过；记录单文件清理前后字节数。
 
 ## 表单字段到稳定契约的去向
 
@@ -161,10 +174,10 @@
 |---|---|---|
 | `#croModelSelect` / `model` | `model.id`、`model.hidden_size`、`model.num_attention_heads`、`model.num_key_value_heads`、`model.ffn_hidden_size`、`model.expert_ffn_hidden_size`、`model.vocab_size`、`model.first_k_dense_layers` | 保留；模型预设是这些结构常量的当前输入来源 |
 | `#croConfigPresetSelect` | 一次设置多项训练配置字段 | 保留；不是独立契约字段 |
-| `#croEpMode` / `epMode` | `parallel.ep_mode` | 保留 |
-| `#mcpPipelineLayerMode` | `parallel.pipeline_layer_mode`、`parallel.num_layer_list`、`parallel.pipeline_layer_offsets` | 保留；支持均分、MCore 动态 PP 与 MindFormers offset 三种显式口径 |
+| `#croEpMode` / `epMode` | `parallel.ep_mode` | 保留；“MF EP 域”只决定 MoE 专家组从哪个 Rank 域切分，不参与 PP/VPP 层分配 |
+| `#mcpPipelineLayerMode` | `parallel.pipeline_layer_mode`、`parallel.num_layer_list`、`parallel.pipeline_layer_offsets` | 保留；支持均分、MCore 动态 PP 与 MindFormers PP 层偏置三种显式口径；“MF 层偏置”只分配 PP/VPP 各虚拟 Stage 的层数，与“MF EP 域”互相独立；手动选择但没有导入矩阵时，由 `suggest_config_fixes` 返回近均衡 `VPP×PP` 矩阵供用户显式应用 |
 | `#croCardSelect` / `card` | `cluster.ranks_per_node`、`cluster.card_model`、`cluster.card_memory_gib` | 保留 |
-| `globalBatch` | `batch.global_batch_size` | 保留只读结果；由 MBS × DP × micro-batch count 生成请求 |
+| `globalBatch` | 不进入 Tool 输入；Tool 使用 `batch.micro_batch_size` 与 `batch.micro_batch_count` | 仅保留表单侧只读换算，帮助理解批量关系；不参与合法性判断、修复、拓扑或容量结论，也不作为源配置值发送 |
 | `hiddenDim` | `model.hidden_size` | 保留只读结果；来自模型预设 |
 | 导入源选择与文本 | `parse_training_config.source` | 保留 |
 | `policy.locked_fields` | 已接入第 13 项修复建议区 | 仅允许用户显式锁定；单候选时隐藏，多候选时默认折叠 |
@@ -175,7 +188,7 @@
 
 | 文件 | 当前责任 | 后续去向 |
 |---|---|---|
-| `config-relation-observer.js` | 表单、topology、关系联动；4173 基线仍混有事件数据与渲染 | 第 6～7 项已在 MCP 构建期拆除事件责任；纯计算逐步由 Tool 替代 |
+| `config-relation-observer.js` | 表单、topology、关系联动；4173 基线仍混有本地校验、配平、事件数据与渲染 | MCP 构建期移除本地 `validate/warn/reconcile`、最近合法值/模型整除公式、结构档位过滤、动态量程、导入夹值和本地字段标红；表单数值原样进入 Tool，4173 基线保持不变 |
 | `config-relation-plane.js` | 三栏布局、Rank 画布、通信、热力、右栏 | 保留 Rank 基础；第 11 项删除无 Tool 热力，第 12 项接 MCP topology |
 | `config-relation-capacity.js` | 4173 基线仍保留浏览器容量公式与图形 | MCP App 构建时整份移除脚本，由 `mcp-capacity-adapter.js` 把 `structuredContent` 映射回原 DOM，不复制业务公式 |
 | `config-relation-yaml.js` | 表单/代码视图、内置/上传原文与当前配置生成预览 | 第 15 项确认保留；原文和生成预览明确区分来源 |

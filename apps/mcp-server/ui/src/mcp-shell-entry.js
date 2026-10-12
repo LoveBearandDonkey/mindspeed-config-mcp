@@ -28,6 +28,35 @@ const previewMode = new URLSearchParams(window.location.search).has("preview");
 const BUILTIN_SOURCES = __MCP_BUILTIN_SOURCES__;
 const FILL_COVERAGE_HINT = "文件总项按源配置统计；总适配度按 MCP 后续工具所需的固定必填字段集合统计。";
 
+function installConfigErrorViewportLimit() {
+  function mount() {
+    const scrollHost = document.querySelector(".cro-board.is-plane .crop-left__body");
+    if (!scrollHost) return;
+
+    const syncLimit = () => {
+      const height = scrollHost.clientHeight;
+      if (height > 0) {
+        scrollHost.style.setProperty("--mcp-config-error-max-height", `${height * 2 / 3}px`);
+      }
+    };
+
+    syncLimit();
+    if (typeof ResizeObserver === "function") {
+      new ResizeObserver(syncLimit).observe(scrollHost);
+    } else {
+      window.addEventListener("resize", syncLimit);
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", mount, { once: true });
+  } else {
+    mount();
+  }
+}
+
+installConfigErrorViewportLimit();
+
 function parseInput(source) {
   return {
     schema_version: "1.0",
@@ -47,9 +76,11 @@ if (previewMode) {
     async (input) => validateParallelConfig(input),
   );
   const validationAdapter = installValidationAdapter(async (input) => validateParallelConfig(input));
+  // Preview must use the same pipeline/profile write-back path as the MCP host.
   installFixesAdapter(
     async (input) => suggestConfigFixes(input),
     (config) => validationAdapter.trainingConfigFor(config),
+    (settings) => validationAdapter.applyPipelineSettings(settings),
   );
   installTopologyAdapter(
     async (input) => computeRankTopology(input),
@@ -57,7 +88,7 @@ if (previewMode) {
   );
   installCapacityAdapter(
     async (input) => estimateTrainingCapacity(input),
-    (config) => validationAdapter.trainingConfigFor(config),
+    (config) => validationAdapter.capacityConfigFor(config),
   );
 } else {
   const app = new App({ name: "MindSpeed Config Plane", version: "0.1.0" });
@@ -110,6 +141,7 @@ if (previewMode) {
   fixesAdapter = installFixesAdapter(
     async (input) => callServerTool("suggest_config_fixes", input),
     (config) => validationAdapter.trainingConfigFor(config),
+    (settings) => validationAdapter.applyPipelineSettings(settings),
   );
   topologyAdapter = installTopologyAdapter(
     async (input) => callServerTool("compute_rank_topology", input),
@@ -117,7 +149,7 @@ if (previewMode) {
   );
   capacityAdapter = installCapacityAdapter(
     async (input) => callServerTool("estimate_training_capacity", input),
-    (config) => validationAdapter.trainingConfigFor(config),
+    (config) => validationAdapter.capacityConfigFor(config),
   );
   function connectHost() {
     if (connectionInFlight) return connectionInFlight;
@@ -156,8 +188,9 @@ function installParseAdapter(callParseTool, callValidateTool) {
     "memory.lora_enabled",
   ]);
   const ENUM_OPTIONS = Object.freeze({
-    "parallel.pipeline_layer_mode": [["uniform", "均匀 PP"], ["dynamic", "动态 PP"], ["mindformers-offset", "MindFormers offset"]],
-    "parallel.ep_mode": [["split", "切分域"], ["orthogonal", "正交域"], ["mf", "MindFormers 口径"]],
+    "rule_profile.framework": [["mindspeed-core", "MindSpeed Core"], ["mindspeed-llm-mcore", "MindSpeed-LLM MCore"], ["mindformers", "MindFormers"]],
+    "parallel.pipeline_layer_mode": [["uniform", "均匀 PP"], ["dynamic", "动态 PP"], ["mindformers-offset", "MindFormers PP 层偏置"]],
+    "parallel.ep_mode": [["split", "切分域"], ["orthogonal", "正交域"], ["mf", "MindFormers EP 域"]],
     "parallel.cp_mode": [["ulysses", "Ulysses"], ["ring", "Ring"]],
     "memory.compute_dtype": [["bf16", "BF16"], ["fp16", "FP16"], ["fp8", "FP8"]],
     "memory.parameter_dtype": [["bf16", "BF16"], ["fp32", "FP32"]],
@@ -165,9 +198,9 @@ function installParseAdapter(callParseTool, callValidateTool) {
     "memory.shard_mode": [["none", "不分片"], ["zero1", "ZeRO-1"], ["fsdp2", "FSDP2"]],
   });
   const CARD_OPTIONS = Object.freeze([
-    { value: "昇腾 910", label: "910 · 32G", memory: 32, ranksPerNode: 8 },
-    { value: "昇腾 910B", label: "910B · 64G", memory: 64, ranksPerNode: 8 },
-    { value: "昇腾 950PR", label: "950PR · 128G", memory: 128, ranksPerNode: 8 },
+    { id: "910b-32", value: "昇腾 910", label: "910 · 32G", memory: 32, ranksPerNode: 8 },
+    { id: "910b-64", value: "昇腾 910B", label: "910B · 64G", memory: 64, ranksPerNode: 8 },
+    { id: "950", value: "昇腾 950PR", label: "950PR · 128G", memory: 128, ranksPerNode: 8 },
   ]);
   const MINUS_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5.5 12h13"></path></svg>';
   const PLUS_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5.5v13"></path><path d="M5.5 12h13"></path></svg>';
@@ -288,6 +321,8 @@ function installParseAdapter(callParseTool, callValidateTool) {
     const trigger = document.getElementById("croConfigPresetTrigger");
     const configStepper = document.getElementById("croConfigPresetSelect")?.closest(".cro-stepper");
     if (!openButton || !trigger || !configStepper) return false;
+    const configLabel = configStepper.querySelector(".cro-stepper__label");
+    if (configLabel) configLabel.textContent = "训练配置";
     const label = openButton.querySelector("span");
     if (label) label.textContent = "导入";
     openButton.classList.remove("cro-export-btn");
@@ -424,18 +459,19 @@ function installParseAdapter(callParseTool, callValidateTool) {
     const config = window.croObserver?.config ?? {};
     const topologyApi = window.CroTopology;
     const preset = topologyApi?.MODEL_PRESETS?.[config.model] ?? {};
-    let topology = null;
-    try { topology = topologyApi?.derive?.(config) ?? null; } catch { topology = null; }
-    const card = topology?.card ?? {};
-    const ranksPerNode = Number(card.ranksPerNode)
-      || (Number(config.node) > 0 ? Math.ceil(Number(config.totalRank) / Number(config.node)) : 8);
+    const card = CARD_OPTIONS.find((option) => option.id === config.card) ?? CARD_OPTIONS[1];
+    const customMemory = config.customCardMemoryGB;
+    const cardMemory = customMemory !== null && customMemory !== undefined
+      && Number.isFinite(Number(customMemory))
+      ? Number(customMemory)
+      : card.memory;
     return {
       "model.id": preset.id ?? config.model,
       "model.hidden_size": preset.hidden,
       "model.num_attention_heads": preset.heads,
-      "cluster.ranks_per_node": ranksPerNode,
-      "cluster.card_model": card.label,
-      "cluster.card_memory_gib": card.hbmGB,
+      "cluster.ranks_per_node": card.ranksPerNode,
+      "cluster.card_model": card.value,
+      "cluster.card_memory_gib": cardMemory,
       ...Object.fromEntries(Object.keys(FALLBACK_VALUES).flatMap((path) => {
         const field = pageFieldForPath(path);
         return field && config[field] !== undefined ? [[path, config[field]]] : [];
@@ -469,14 +505,23 @@ function installParseAdapter(callParseTool, callValidateTool) {
     return control.value;
   }
 
+  function renderParseReportWithoutLede(report, result, options) {
+    report.innerHTML = renderParseReport(result, options);
+    report.querySelector(":scope > .cro-import__lede")?.remove();
+  }
+
   function syncApplyState(state, button) {
     if (!button) return;
     const selected = selectedCompletionPlan(state.current);
     const requiresConfirmation = selected?.confidence === "requires-confirmation";
+    const awaitingModelStructureUpload = state.current?.modelStructureMode === "upload"
+      && (state.current?.modelStructurePaths?.length ?? 0) > 0
+      && state.current?.modelStructureUploadStatus !== "ready";
     const valid = Boolean(state.current)
       && state.current?.result?.status !== "error"
       && state.current?.supplementsValid !== false
-      && state.current?.completionValidation === "valid";
+      && state.current?.completionValidation === "valid"
+      && !awaitingModelStructureUpload;
     const normalized = state.current ? materializedConfig(state.current) : null;
     const canApply = valid && Object.keys(toPagePartial(normalized ?? {})).length > 0;
     button.disabled = !canApply || (requiresConfirmation && state.current?.planConfirmed !== true);
@@ -523,6 +568,257 @@ function installParseAdapter(callParseTool, callValidateTool) {
     return String(plan?.label ?? "MCP 处理方案")
       .replace(/\s*[（(](?:推荐|需确认)[）)]\s*/g, "")
       .trim();
+  }
+
+  function isModelStructurePath(path) {
+    return String(path).startsWith("model.");
+  }
+
+  function fieldList(paths) {
+    return paths.map((path) => `${labelForPath(path)}（${path}）`).join("、");
+  }
+
+  function inlineValue(value) {
+    if (Array.isArray(value) || (value && typeof value === "object")) {
+      return JSON.stringify(value);
+    }
+    return String(value);
+  }
+
+  function sameValue(left, right) {
+    return JSON.stringify(left) === JSON.stringify(right);
+  }
+
+  function confirmationCopy(preferred, missingModelPaths, adjustedPaths, {
+    modelStructureMode = "prefill",
+    uploadedName = "",
+  } = {}) {
+    const parts = [];
+
+    if (missingModelPaths.length) {
+      const missingCopy = `源文件缺少模型结构参数：${fieldList(missingModelPaths)}。`;
+      if (modelStructureMode === "upload") {
+        parts.push(missingCopy + (uploadedName
+          ? `已从 ${uploadedName} 读取这些模型结构字段。`
+          : "请在“上传模型结构”页签上传包含这些字段的配置文件。"));
+      } else {
+        parts.push(missingCopy
+          + (preferred?.id === "openpangu-flash-structure"
+            ? "第三栏已按 openPangu 2.0 Flash 结构提供可编辑预填；这些值不是从源文件还原的。"
+            : "第三栏已为这些缺失项提供可编辑预填。"));
+      }
+    }
+    if (adjustedPaths.length) {
+      parts.push(`以下候选值已与源文件显式值或初始推导值不同，需要额外确认：${fieldList(adjustedPaths)}。`);
+    }
+    if (!missingModelPaths.length && !adjustedPaths.length) {
+      parts.push("此方案包含需要人工确认的预填或修复值，具体字段和原因已列在第三栏。");
+    }
+    parts.push("确认并应用后，第三栏当前值会补入配置。");
+    return parts.join("");
+  }
+
+  function applyModelStructureValues(current, paths, values) {
+    for (const path of paths) {
+      if (values?.has(path)) current.supplements.set(path, values.get(path));
+    }
+  }
+
+  async function uploadModelStructure(file, state, pane, applyButton, missingModelPaths) {
+    const current = state.current;
+    if (!current || !file) return;
+    const token = (current.modelStructureUploadToken ?? 0) + 1;
+    current.modelStructureUploadToken = token;
+    current.modelStructureUploadStatus = "loading";
+    current.modelStructureUploadedName = "";
+    const uploadStatus = pane.querySelector(".mcp-model-structure-upload__status");
+    if (uploadStatus) {
+      uploadStatus.className = "mcp-model-structure-upload__status is-loading";
+      uploadStatus.textContent = `正在解析 ${file.name}…`;
+    }
+    syncApplyState(state, applyButton);
+
+    try {
+      const content = await file.text();
+      const result = await callParseTool({ name: file.name, content });
+      if (state.current !== current || current.modelStructureUploadToken !== token) return;
+      if (result?.status === "error") throw new Error("文件未能解析为有效配置");
+      const normalized = result?.data?.normalized_config ?? {};
+      const uploadedValues = new Map();
+      const stillMissing = [];
+      for (const path of missingModelPaths) {
+        const value = getPath(normalized, path);
+        if (value === undefined || value === null || value === "") stillMissing.push(path);
+        else uploadedValues.set(path, value);
+      }
+      if (stillMissing.length) {
+        throw new Error(`文件仍缺少：${fieldList(stillMissing)}`);
+      }
+      current.modelStructureUploadedValues = uploadedValues;
+      current.modelStructureUploadedName = file.name;
+      current.modelStructureUploadStatus = "ready";
+      applyModelStructureValues(current, missingModelPaths, uploadedValues);
+      missingModelPaths.forEach((path) => current.userEditedPaths.add(path));
+      if (uploadStatus) {
+        uploadStatus.className = "mcp-model-structure-upload__status is-ready";
+        uploadStatus.textContent = `已读取 ${file.name}，${missingModelPaths.length} 个模型结构字段已就绪。`;
+      }
+      const confirmationText = pane.querySelector(".mcp-completion-plan__confirmation > span");
+      if (confirmationText) {
+        confirmationText.textContent = confirmationCopy(
+          selectedCompletionPlan(current),
+          missingModelPaths,
+          current.adjustedCandidatePaths ?? [],
+          { modelStructureMode: "upload", uploadedName: file.name },
+        );
+      }
+      await validateCompletion(state, pane, applyButton);
+    } catch (error) {
+      if (state.current !== current || current.modelStructureUploadToken !== token) return;
+      current.modelStructureUploadStatus = "invalid";
+      current.modelStructureUploadedName = "";
+      current.modelStructureUploadedValues = null;
+      if (uploadStatus) {
+        uploadStatus.className = "mcp-model-structure-upload__status is-invalid";
+        uploadStatus.textContent = `无法使用该文件：${error instanceof Error ? error.message : String(error)}`;
+      }
+      syncApplyState(state, applyButton);
+    }
+  }
+
+  function renderModelStructureChooser(
+    state,
+    pane,
+    applyButton,
+    preferred,
+    missingModelPaths,
+    adjustedCandidatePaths,
+  ) {
+    const current = state.current;
+    if (!current || !missingModelPaths.length) return;
+    const fields = pane.querySelector(".mcp-missing-pane__fields");
+    if (!fields) return;
+
+    const chooser = document.createElement("section");
+    chooser.className = "mcp-model-structure-source";
+    chooser.setAttribute("aria-label", "模型结构来源");
+    const tabs = document.createElement("div");
+    tabs.className = "mcp-model-structure-tabs";
+    tabs.setAttribute("role", "tablist");
+    tabs.setAttribute("aria-label", "模型结构补齐方式");
+    const prefillTab = document.createElement("button");
+    prefillTab.type = "button";
+    prefillTab.className = "mcp-model-structure-tabs__tab";
+    prefillTab.dataset.modelStructureMode = "prefill";
+    prefillTab.setAttribute("role", "tab");
+    prefillTab.textContent = "预填模型结构";
+    const uploadTab = document.createElement("button");
+    uploadTab.type = "button";
+    uploadTab.className = "mcp-model-structure-tabs__tab";
+    uploadTab.dataset.modelStructureMode = "upload";
+    uploadTab.setAttribute("role", "tab");
+    uploadTab.textContent = "上传模型结构";
+    tabs.append(prefillTab, uploadTab);
+
+    const uploadPanel = document.createElement("div");
+    uploadPanel.className = "mcp-model-structure-upload";
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.className = "mcp-model-structure-upload__input";
+    fileInput.accept = ".json,.yaml,.yml,.sh,application/json,text/yaml,text/x-shellscript";
+    fileInput.hidden = true;
+    const uploadButton = document.createElement("button");
+    uploadButton.type = "button";
+    uploadButton.className = "btn btn-sm btn-ghost mcp-model-structure-import";
+    uploadButton.title = "上传包含模型结构字段的 config.json、YAML 或 Shell 配置";
+    const uploadIcon = document.createElement("span");
+    uploadIcon.className = "mcp-model-structure-import__icon";
+    uploadIcon.setAttribute("aria-hidden", "true");
+    uploadIcon.textContent = "+";
+    const uploadCopy = document.createElement("span");
+    uploadCopy.className = "mcp-model-structure-import__copy";
+    const uploadTitle = document.createElement("strong");
+    uploadTitle.textContent = "上传模型结构文件";
+    const uploadFormats = document.createElement("span");
+    uploadFormats.append("支持 ");
+    const uploadCode = document.createElement("code");
+    uploadCode.textContent = "config.json / YAML / Shell";
+    uploadFormats.append(uploadCode);
+    uploadCopy.append(uploadTitle, uploadFormats);
+    uploadButton.append(uploadIcon, uploadCopy);
+    const uploadStatus = document.createElement("p");
+    uploadStatus.className = "mcp-model-structure-upload__status";
+    uploadPanel.append(fileInput, uploadButton, uploadStatus);
+    chooser.append(tabs, uploadPanel);
+    fields.prepend(chooser);
+
+    const syncPresentation = ({ validate = false } = {}) => {
+      const mode = current.modelStructureMode === "upload" ? "upload" : "prefill";
+      for (const tab of [prefillTab, uploadTab]) {
+        const selected = tab.dataset.modelStructureMode === mode;
+        tab.classList.toggle("is-selected", selected);
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+      }
+      uploadPanel.hidden = mode !== "upload";
+      pane.querySelectorAll(".mcp-missing-field.is-model-structure").forEach((row) => {
+        row.hidden = mode === "upload";
+      });
+      const values = mode === "upload"
+        ? current.modelStructureUploadedValues
+        : current.modelStructurePrefillValues;
+      applyModelStructureValues(current, missingModelPaths, values);
+      uploadStatus.className = "mcp-model-structure-upload__status";
+      if (mode === "upload") {
+        if (current.modelStructureUploadStatus === "ready") {
+          uploadStatus.classList.add("is-ready");
+          uploadStatus.textContent = `已读取 ${current.modelStructureUploadedName}，${missingModelPaths.length} 个模型结构字段已就绪。`;
+        } else if (current.modelStructureUploadStatus === "invalid") {
+          uploadStatus.classList.add("is-invalid");
+          uploadStatus.textContent = "上次上传未提供完整模型结构，请重新上传；完成前不能应用。";
+        } else {
+          uploadStatus.textContent = "请上传包含全部缺失模型结构字段的配置文件；完成前不能应用。";
+        }
+      }
+      const confirmationText = pane.querySelector(".mcp-completion-plan__confirmation > span");
+      if (confirmationText) {
+        confirmationText.textContent = confirmationCopy(
+          preferred,
+          missingModelPaths,
+          adjustedCandidatePaths,
+          {
+            modelStructureMode: mode,
+            uploadedName: mode === "upload" && current.modelStructureUploadStatus === "ready"
+              ? current.modelStructureUploadedName : "",
+          },
+        );
+      }
+      if (validate && (mode === "prefill" || current.modelStructureUploadStatus === "ready")) {
+        validateCompletion(state, pane, applyButton);
+      } else {
+        syncApplyState(state, applyButton);
+      }
+    };
+
+    for (const tab of [prefillTab, uploadTab]) {
+      tab.addEventListener("click", () => {
+        const nextMode = tab.dataset.modelStructureMode;
+        if (current.modelStructureMode === nextMode) return;
+        if (nextMode === "prefill" && current.modelStructureUploadStatus === "loading") {
+          current.modelStructureUploadToken = (current.modelStructureUploadToken ?? 0) + 1;
+          current.modelStructureUploadStatus = "idle";
+        }
+        current.modelStructureMode = nextMode;
+        syncPresentation({ validate: true });
+      });
+    }
+    uploadButton.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files?.[0];
+      if (file) uploadModelStructure(file, state, pane, applyButton, missingModelPaths);
+      fileInput.value = "";
+    });
+    syncPresentation();
   }
 
   async function validateCompletion(state, pane, applyButton) {
@@ -573,7 +869,19 @@ function installParseAdapter(callParseTool, callValidateTool) {
         ?? plans.find((plan) => plan.recommended)
         ?? plans[0])
       : null;
+    const missingModelPaths = missingPaths.filter(isModelStructurePath);
+    const missingModelPathSet = new Set(missingModelPaths);
+    const sourceValueByPath = new Map((result?.data?.mapped_fields ?? [])
+      .filter((item) => ["explicit", "derived"].includes(item.mapping_kind))
+      .map((item) => [item.target_path, item.value]));
+    const adjustedCandidatePaths = [...new Set((preferred?.values ?? [])
+      .filter((item) => item.confidence === "requires-confirmation"
+        && sourceValueByPath.has(item.path)
+        && !sameValue(sourceValueByPath.get(item.path), item.value))
+      .map((item) => item.path))];
+    const adjustedCandidatePathSet = new Set(adjustedCandidatePaths);
     const paths = [...new Set([
+      ...missingModelPaths,
       ...missingPaths,
       ...(preferred?.values ?? []).map((item) => item.path),
     ])];
@@ -591,6 +899,10 @@ function installParseAdapter(callParseTool, callValidateTool) {
       return;
     }
     state.current.selectedPlanId = preferred?.id ?? null;
+    state.current.userEditedPaths ??= new Set();
+    state.current.modelStructureMode ??= "prefill";
+    state.current.modelStructurePaths = [...missingModelPaths];
+    state.current.adjustedCandidatePaths = [...adjustedCandidatePaths];
     const requiresConfirmation = preferred?.confidence === "requires-confirmation";
     if (state.current.confirmedPlanId !== preferred?.id) {
       state.current.planConfirmed = !requiresConfirmation;
@@ -643,6 +955,10 @@ function installParseAdapter(callParseTool, callValidateTool) {
           event.stopPropagation();
           state.current.selectedPlanId = plan.id;
           state.current.confirmedPlanId = null;
+          state.current.modelStructureMode = "prefill";
+          state.current.modelStructureUploadStatus = "idle";
+          state.current.modelStructureUploadedName = "";
+          state.current.modelStructureUploadedValues = null;
           renderMissingInputs(result, state, pane, applyButton);
         });
         cards.append(card);
@@ -657,7 +973,11 @@ function installParseAdapter(callParseTool, callValidateTool) {
       checkbox.type = "checkbox";
       checkbox.checked = state.current.planConfirmed === true;
       const text = document.createElement("span");
-      text.textContent = "我已核对源文件未提供的模型结构占位值";
+      text.textContent = confirmationCopy(preferred, missingModelPaths, adjustedCandidatePaths, {
+        modelStructureMode: state.current.modelStructureMode,
+        uploadedName: state.current.modelStructureUploadStatus === "ready"
+          ? state.current.modelStructureUploadedName : "",
+      });
       checkbox.addEventListener("change", () => {
         state.current.planConfirmed = checkbox.checked;
         state.current.confirmedPlanId = checkbox.checked ? preferred.id : null;
@@ -668,18 +988,33 @@ function installParseAdapter(callParseTool, callValidateTool) {
     }
     state.current.supplements = new Map();
     state.current.supplementsValid = true;
+    const prefillModelValues = new Map();
     for (const path of paths) {
       const value = getPath(preferred?.proposed_config, path) ?? defaultValueFor(path);
       state.current.supplements.set(path, value);
+      if (missingModelPathSet.has(path)) prefillModelValues.set(path, value);
       const row = document.createElement("div");
-      row.className = "cro-stepper mcp-missing-field";
+      const missingModelStructure = missingModelPathSet.has(path);
+      const adjustedCandidate = adjustedCandidatePathSet.has(path);
+      row.className = "cro-stepper mcp-missing-field"
+        + (missingModelStructure ? " is-model-structure" : "")
+        + (adjustedCandidate ? " is-adjusted-candidate" : "");
+      row.dataset.missingKind = missingModelStructure
+        ? "model-structure" : (adjustedCandidate ? "candidate-change" : "config");
       const name = document.createElement("label");
       name.className = "cro-stepper__label mcp-missing-field__label";
       const evidence = preferred?.values?.find((item) => item.path === path);
+      const reasonParts = [];
+      if (adjustedCandidate) {
+        reasonParts.push(`原值：${inlineValue(sourceValueByPath.get(path))}`);
+      }
+      if (evidence) reasonParts.push(`${evidence.reason} · ${evidence.confidence}`);
       name.innerHTML = `<span class="cro-stepper__label-text"><b>${escapeHtml(labelForPath(path))}</b>`
         + `<code>${escapeHtml(path)}</code>`
-        + (evidence ? `<small class="mcp-missing-field__reason">${escapeHtml(evidence.reason)}`
-          + ` · ${escapeHtml(evidence.confidence)}</small>` : "")
+        + (adjustedCandidate
+          ? `<small class="mcp-missing-field__kind">候选值已调整 · 需确认</small>` : "")
+        + (reasonParts.length
+          ? `<small class="mcp-missing-field__reason">${escapeHtml(reasonParts.join("；"))}</small>` : "")
         + `</span>`;
       const choices = optionsFor(path, value);
       let control;
@@ -710,7 +1045,13 @@ function installParseAdapter(callParseTool, callValidateTool) {
         const invalid = next === undefined || (control.type === "number" && !Number.isFinite(next));
         control.setAttribute("aria-invalid", String(invalid));
         if (invalid) state.current.supplements.delete(path);
-        else state.current.supplements.set(path, next);
+        else {
+          state.current.supplements.set(path, next);
+          state.current.userEditedPaths.add(path);
+          if (missingModelStructure && state.current.modelStructureMode === "prefill") {
+            state.current.modelStructurePrefillValues?.set(path, next);
+          }
+        }
         state.current.supplementsValid = !pane.querySelector('[aria-invalid="true"]');
         validateCompletion(state, pane, applyButton);
       });
@@ -756,13 +1097,31 @@ function installParseAdapter(callParseTool, callValidateTool) {
       row.append(name, controlHost);
       fields.append(row);
     }
+    state.current.modelStructurePrefillValues = prefillModelValues;
+    if (state.current.modelStructureMode === "upload") {
+      applyModelStructureValues(
+        state.current,
+        missingModelPaths,
+        state.current.modelStructureUploadedValues,
+      );
+    }
+    renderModelStructureChooser(
+      state,
+      pane,
+      applyButton,
+      preferred,
+      missingModelPaths,
+      adjustedCandidatePaths,
+    );
     state.current.completionValidation = preferred?.validation?.status === "valid" ? "valid" : "invalid";
     const status = pane.querySelector(".mcp-completion-status");
     if (status) {
       status.className = `mcp-completion-status is-${state.current.completionValidation === "valid" ? "valid" : "review"}`;
       status.textContent = state.current.completionValidation === "valid"
         ? (requiresConfirmation
-          ? "MCP 静态复验已通过；真实模型结构无法从源代码恢复，请核对占位值后确认。"
+          ? (missingModelPaths.length
+            ? `MCP 静态复验已通过；第三栏已列出 ${missingModelPaths.length} 个缺失的模型结构参数，请核对预填值，或切换到“上传模型结构”。`
+            : "MCP 静态复验已通过；第三栏已列出需要确认的配置修复项，请核对修复值及原因。")
           : "MCP 已对完整候选执行静态复验；修改任一补齐值后会重新复验。")
         : "MCP 已把缺失项和冲突项列在下方；请调整后重新复验。";
     }
@@ -830,7 +1189,7 @@ function installParseAdapter(callParseTool, callValidateTool) {
       const partial = toPagePartial(result.data?.normalized_config);
       imported.current = { source, result, partial };
       ui.score.textContent = formatFillCoverageScore(result);
-      ui.report.innerHTML = renderParseReport(result);
+      renderParseReportWithoutLede(ui.report, result);
       renderMissingInputs(result, imported, document.getElementById("mcpImportMissingPane"), ui.apply);
       ui.report.scrollTop = 0;
     } catch (error) {
@@ -883,8 +1242,7 @@ function installParseAdapter(callParseTool, callValidateTool) {
         ? "— · 解析失败"
         : formatFillCoverageScore(result);
       score.title = FILL_COVERAGE_HINT;
-      report.innerHTML = renderParseReport(result);
-      report.querySelector(":scope > .cro-import__lede")?.remove();
+      renderParseReportWithoutLede(report, result);
       renderMissingInputs(result, sample, document.getElementById("mcpPreviewMissingPane"), apply);
       report.scrollTop = 0;
     } catch (error) {
@@ -900,9 +1258,23 @@ function installParseAdapter(callParseTool, callValidateTool) {
     const normalizedConfig = materializedConfig(current);
     const partial = toPagePartial(normalizedConfig);
     window.__mcpPipelinePolicy?.prepare?.(normalizedConfig);
+    const modelId = normalizedConfig.model?.id;
+    if (modelId && window.CroTopology?.MODEL_PRESETS?.[modelId]
+      && window.croObserver.config?.model !== modelId) {
+      window.croObserver.setModel(modelId);
+    }
     const applied = window.croObserver.importConfig(partial);
+    const importedCard = CARD_OPTIONS.find(({ value }) => value === normalizedConfig.cluster?.card_model);
+    if (importedCard) window.croObserver.set("card", importedCard.id);
+    const importedMemory = Number(normalizedConfig.cluster?.card_memory_gib);
+    if (Number.isFinite(importedMemory)) {
+      window.croObserver.set(
+        "customCardMemoryGB",
+        importedCard && importedMemory === importedCard.memory ? null : importedMemory,
+      );
+    }
     const adjusted = diffApplied(partial, applied.after);
-    report.innerHTML = renderParseReport(current.result, { adjusted });
+    renderParseReportWithoutLede(report, current.result, { adjusted });
     report.scrollTop = 0;
     document.dispatchEvent(new CustomEvent("cro:source", { detail: {
       name: current.source?.name ?? `config-test/${current.file}`,
@@ -915,6 +1287,8 @@ function installParseAdapter(callParseTool, callValidateTool) {
     document.dispatchEvent(new CustomEvent("mcp:parsed-config-applied", { detail: {
       normalizedConfig,
       supplements: Object.fromEntries(current.supplements ?? []),
+      sourceNormalizedConfig: current.result?.data?.normalized_config ?? {},
+      userEditedPaths: [...(current.userEditedPaths ?? [])],
     } }));
     return adjusted;
   }
@@ -982,6 +1356,15 @@ function installParseAdapter(callParseTool, callValidateTool) {
 
   document.addEventListener("cro:config-preview-change", () => {
     resetSampleCompletion();
+  });
+
+  /* 应用样例后再次打开配置菜单时，基线选择器会自动预览当前项。单文件 App
+     必须继续使用构建时内嵌的文本，不能回退到不存在的 ./config-test/ URL。 */
+  document.addEventListener("cro:sample-preview-requested", (event) => {
+    const file = event.detail?.file;
+    if (!file) return;
+    event.preventDefault();
+    parseSample(file, event.detail?.card ?? null);
   });
 
   document.addEventListener("input", (event) => {

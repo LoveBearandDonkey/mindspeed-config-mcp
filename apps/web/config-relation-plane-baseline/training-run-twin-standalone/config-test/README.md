@@ -3,6 +3,8 @@
 用途：拿业界公开的训练配置去撞 `config-relation-observer.html` 的四域表单，
 检验「配置里的每个属性能不能在页面上找到落点」。全部于 2026-08-26 从公开仓下载。
 
+其中 HF Trainer / DeepSpeed 的 3 份稀疏片段只用于解析器回归，不进入页面的预置配置目录。
+
 | 文件 | 来源 | 方言 | 适合验什么 |
 |---|---|---|---|
 | `mf_pretrain_deepseek3_671b.yaml` | mindspore-ai/mindformers `configs/deepseek3/` | MindFormers YAML | **最贴页面口径**：dp/mp/pp/ep + recompute_config + parallel_optimizer；MoE 大模型 |

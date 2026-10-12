@@ -1,6 +1,6 @@
 # Golden 输出
 
-`a01-a15.golden.json` 保存验收矩阵 A01～A15 及动态 PP Stage 边界的稳定摘要。`parser-dialects.golden.json`
+`a01-a15.golden.json` 保存验收矩阵 A01～A15、动态 PP Stage 边界、均匀 PP 整除失败时的动态分层修复候选、已选择动态 PP 但缺少 `num_layer_list` 时的均衡分层修复候选、动态 PP 规则 profile 修复候选，以及缺少 MindFormers `offset` 矩阵时的均衡矩阵修复候选稳定摘要。`parser-dialects.golden.json`
 保存 MindFormers、Megatron Shell、LLaMA-Factory 和 DeepSpeed 的字段映射、保守默认值、
 同文件推导值与剩余缺口。Golden 只记录确定性字段，不记录 DOM 标识或时间戳。
 

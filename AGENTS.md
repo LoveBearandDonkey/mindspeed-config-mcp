@@ -23,3 +23,7 @@
 - 任何会启动训练、连接远端或写入外部系统的能力必须与纯计算工具隔离；
 - HTTP 模式不得在缺少 `MCP_BEARER_TOKEN` 时降级为匿名访问；
 - 中文正文统一使用“昇腾”“NPU”“CANN”“MindSpeed”。
+
+## 本地页面预览
+
+- 每次完成页面或页面样式相关修改后，在最终答复前自动使用 `mindspeed-config-mcp-local` skill 执行 `Preview`，重新构建并刷新 `http://127.0.0.1:4174/training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html?preview=1`；用户明确要求不刷新时除外。只有用户明确要求完整 MCP 服务或 Inspector 时才改用 `Refresh`。

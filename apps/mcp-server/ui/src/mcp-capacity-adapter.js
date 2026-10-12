@@ -264,6 +264,24 @@ function stageRank(stage) {
   return ranks[0] ?? topology?.rankOf?.(stage, 0, 0, 0) ?? null;
 }
 
+export function capacitySelection(primary, topology) {
+  if (!primary) return null;
+  if (primary.kind === "rank" && Number.isInteger(primary.stage)) {
+    return { stage: primary.stage, rank: Number.isInteger(primary.rank) ? primary.rank : null };
+  }
+  if (primary.kind === "layer" && Number.isInteger(primary.layer)) {
+    const stage = topology?.stageOfLayer?.(primary.layer);
+    return Number.isInteger(stage) ? { stage, rank: null } : null;
+  }
+  return Number.isInteger(primary.stage) ? { stage: primary.stage, rank: null } : null;
+}
+
+export function rankShownForStage(rank, stage, topology) {
+  if (!Number.isInteger(rank)) return null;
+  const coords = topology?.coordsOfRank?.(rank);
+  return coords?.stage === stage ? rank : null;
+}
+
 function selectStage(stage) {
   const rank = stageRank(stage);
   const topology = window.croObserver?.topology;
@@ -370,14 +388,14 @@ function renderBasis(ui, model) {
   }
 }
 
-function renderModel(ui, model, onStageChange) {
+function renderModel(ui, model, selectedRank, onStageChange) {
   const stage = model.shown;
   ui.root.dataset.mcpCapacityState = "valid";
   ui.root.setAttribute("aria-busy", "false");
   ui.empty.hidden = true;
   ui.body.hidden = false;
   ui.title.textContent = "单卡容量";
-  const rank = stageRank(stage.stage);
+  const rank = rankShownForStage(selectedRank, stage.stage, window.croObserver?.topology);
   ui.scope.textContent = `theoretical · 非实测峰值 · ${Number.isInteger(rank) ? `rank ${rank} · ` : ""}Stage${stage.stage}`
     + (stage.stage === model.bottleneckStage ? " · 理论瓶颈" : "");
   ui.scope.title = "数据来自 estimate_training_capacity；同一 Stage 的并行副本按当前理论口径等值。";
@@ -463,11 +481,19 @@ export function installCapacityAdapter(callCapacityTool, trainingConfigFor) {
   let lastKey = null;
   let lastResult = null;
   let selectedStage = null;
+  let selectedRank = null;
   let ready = false;
-  const thresholds = { tight: 0.70, alert: 0.88 };
+  // 首次 Tool 结果到达前不声明页面兜底阈值；画布与容量卡只接受 structuredContent。
+  const thresholds = { tight: Number.NaN, alert: Number.NaN };
 
-  const notifyCapacityConsumers = () => {
-    document.dispatchEvent(new CustomEvent("mcp:capacity-result"));
+  const notifyCapacityConsumers = (state, reason = "") => {
+    document.dispatchEvent(new CustomEvent("mcp:capacity-result", {
+      detail: {
+        state,
+        available: state === "ready",
+        reason,
+      },
+    }));
   };
 
   window.croCapacityModel = {
@@ -499,8 +525,10 @@ export function installCapacityAdapter(callCapacityTool, trainingConfigFor) {
       return;
     }
     selectedStage = model.shown.stage;
-    renderModel(elements, model, (stage) => {
+    selectedRank = rankShownForStage(selectedRank, selectedStage, window.croObserver?.topology);
+    renderModel(elements, model, selectedRank, (stage) => {
       selectedStage = stage;
+      selectedRank = null;
       paintResult();
     });
   };
@@ -513,17 +541,26 @@ export function installCapacityAdapter(callCapacityTool, trainingConfigFor) {
     try {
       input = trainingConfigFor(config);
     } catch (error) {
-      renderEmpty(elements, "error", error instanceof Error ? error.message : String(error), refresh);
+      // 输入证据不足时必须同时失效上一份成功结果；否则随后点击 Rank/Stage 会由
+      // cro:select 再次 paintResult()，把旧模型的容量数字覆盖到当前错误状态上。
+      token += 1;
+      lastKey = null;
+      lastResult = null;
+      ready = false;
+      const reason = error instanceof Error ? error.message : String(error);
+      renderEmpty(elements, "error", reason, refresh);
+      notifyCapacityConsumers("unavailable", reason);
       return;
     }
     const key = topologyInputKey(input);
     if (!force && key === lastKey && lastResult) {
       ready = true;
+      notifyCapacityConsumers("ready");
       return;
     }
     const currentToken = ++token;
     ready = false;
-    notifyCapacityConsumers();
+    notifyCapacityConsumers("pending");
     renderEmpty(elements, "pending", "正在调用 estimate_training_capacity 计算理论容量…", refresh);
     try {
       const result = await callCapacityTool(input);
@@ -532,8 +569,9 @@ export function installCapacityAdapter(callCapacityTool, trainingConfigFor) {
       if (result.status !== "estimated" || !result.data?.valid) {
         lastResult = null;
         ready = false;
-        renderEmpty(elements, "invalid", diagnosticText(result), refresh);
-        notifyCapacityConsumers();
+        const reason = diagnosticText(result);
+        renderEmpty(elements, "invalid", reason, refresh);
+        notifyCapacityConsumers("invalid", reason);
         return;
       }
       lastResult = result;
@@ -541,15 +579,19 @@ export function installCapacityAdapter(callCapacityTool, trainingConfigFor) {
       if (finite(result.data.thresholds?.tight)) thresholds.tight = Number(result.data.thresholds.tight);
       if (finite(result.data.thresholds?.alert)) thresholds.alert = Number(result.data.thresholds.alert);
       const stageIds = new Set(result.data.stages.map(({ stage }) => stage));
-      if (!stageIds.has(selectedStage)) selectedStage = result.data.bottleneck_stage;
+      if (!stageIds.has(selectedStage)) {
+        selectedStage = result.data.bottleneck_stage;
+        selectedRank = null;
+      }
       paintResult();
-      notifyCapacityConsumers();
+      notifyCapacityConsumers("ready");
     } catch (error) {
       if (currentToken !== token) return;
       lastResult = null;
       ready = false;
-      renderEmpty(elements, "error", `理论容量调用失败：${error instanceof Error ? error.message : String(error)}`, refresh);
-      notifyCapacityConsumers();
+      const reason = `理论容量调用失败：${error instanceof Error ? error.message : String(error)}`;
+      renderEmpty(elements, "error", reason, refresh);
+      notifyCapacityConsumers("error", reason);
     }
   }
 
@@ -572,10 +614,10 @@ export function installCapacityAdapter(callCapacityTool, trainingConfigFor) {
   });
   document.addEventListener("cro:select", (event) => {
     const primary = event.detail?.primary;
-    if (primary?.kind === "rank" && Number.isInteger(primary.stage)) selectedStage = primary.stage;
-    else if (primary?.kind === "layer" && Number.isInteger(primary.layer)) {
-      selectedStage = window.croObserver?.topology?.stageOfLayer?.(primary.layer) ?? selectedStage;
-    } else return;
+    const selection = capacitySelection(primary, window.croObserver?.topology);
+    if (!selection) return;
+    selectedStage = selection.stage;
+    selectedRank = selection.rank;
     paintResult();
   });
   for (const eventName of ["input", "change"]) {

@@ -14,15 +14,17 @@
     },
     "coverage": {
       "source_fields": 15,
-      "filled_required": 25,
-      "required_fields": 30
+      "filled_required": 26,
+      "required_fields": 33
     },
     "missing": [
       "cluster.ranks_per_node",
       "cluster.card_model",
       "cluster.card_memory_gib",
       "batch.micro_batch_size",
-      "batch.sequence_length"
+      "batch.sequence_length",
+      "model.vocab_size",
+      "model.expert_ffn_hidden_size"
     ],
     "warnings": ["PARSE_INCOMPLETE"]
   },
@@ -43,13 +45,15 @@
     "coverage": {
       "source_fields": 14,
       "filled_required": 26,
-      "required_fields": 30
+      "required_fields": 32
     },
     "missing": [
       "cluster.card_model",
       "cluster.card_memory_gib",
       "batch.sequence_length",
-      "memory.parameter_dtype"
+      "memory.parameter_dtype",
+      "model.vocab_size",
+      "model.ffn_hidden_size"
     ],
     "warnings": ["PARSE_INCOMPLETE"]
   },
@@ -66,7 +70,7 @@
     "coverage": {
       "source_fields": 7,
       "filled_required": 6,
-      "required_fields": 30
+      "required_fields": 32
     },
     "missing": [
       "model.total_layers",
@@ -92,7 +96,9 @@
       "cluster.card_memory_gib",
       "memory.parameter_dtype",
       "memory.recompute_mode",
-      "memory.shard_mode"
+      "memory.shard_mode",
+      "model.vocab_size",
+      "model.ffn_hidden_size"
     ],
     "warnings": ["PARSE_INCOMPLETE"]
   },
@@ -103,7 +109,7 @@
     "coverage": {
       "source_fields": 1,
       "filled_required": 1,
-      "required_fields": 30
+      "required_fields": 32
     },
     "missing": [
       "model.id",
@@ -134,9 +140,26 @@
       "memory.compute_dtype",
       "memory.parameter_dtype",
       "memory.recompute_mode",
-      "memory.lora_enabled"
+      "memory.lora_enabled",
+      "model.vocab_size",
+      "model.ffn_hidden_size"
     ],
     "warnings": ["PARSE_ZERO3_APPROXIMATED_AS_FSDP2", "PARSE_INCOMPLETE"]
+  },
+  "mixtral_capacity_structure": {
+    "expert_ffn_hidden_size": 14336,
+    "first_k_dense_layers": 0,
+    "remaining_model_gaps": []
+  },
+  "model_structure_choice": {
+    "recommended_plan": "openpangu-flash-structure",
+    "requires_confirmation": "requires-confirmation",
+    "preset_model": "openpangu-flash",
+    "preset_layers": 46,
+    "preset_hidden_size": 2560,
+    "preset_dp": 8,
+    "preset_total_ranks": 8,
+    "preset_source": "apps/web/config-relation-plane-baseline/training-run-twin-standalone/openPangu-2.0-Flash架构参考.md#4-关键参数全部-source-verified"
   },
   "deepseek_completion": {
     "computation": "runtime-per-parse",
@@ -160,6 +183,9 @@
       "batch.micro_batch_count",
       "memory.compute_dtype",
       "memory.parameter_dtype",
+      "model.vocab_size",
+      "model.expert_ffn_hidden_size",
+      "model.first_k_dense_layers",
       "model.top_k",
       "parallel.pp",
       "parallel.tp",
@@ -184,6 +210,6 @@
     "status": "error",
     "code": "PARSE_SYNTAX_ERROR",
     "message_prefix": "输入格式不合法，无法按 YAML 解析",
-    "source_ref": "mindspeed-config-mcp:parse-training-config@0.2.1"
+    "source_ref": "mindspeed-config-mcp:parse-training-config@0.2.2"
   }
 }

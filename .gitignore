@@ -7,4 +7,5 @@ coverage/
 !.env.example
 .tmp/
 *.log
+docs/.部署参数.md
 

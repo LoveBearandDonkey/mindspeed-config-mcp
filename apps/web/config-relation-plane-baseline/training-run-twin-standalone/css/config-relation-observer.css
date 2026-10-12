@@ -2212,6 +2212,107 @@
   min-width: 84px;
 }
 
+/* 卡型号在 MCP 平面页使用自绘菜单：原生 <select> 的弹层不能容纳分割线和数值输入，
+   因此保留它作为兼容的数据控件，真正可见的触发器和菜单复用同一组表单 token。 */
+.cro-card-picker {
+  position: relative;
+}
+
+.cro-card-picker__native {
+  position: absolute;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cro-card-picker__trigger {
+  display: flex;
+  align-items: center;
+  min-width: 100%;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.cro-card-picker__trigger > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cro-card-picker__menu {
+  position: absolute;
+  z-index: 120;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  min-width: 176px;
+  padding: var(--space-1);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--background-elevated);
+  color: var(--foreground);
+  box-shadow: var(--shadow-lg);
+}
+
+.cro-card-picker__options {
+  display: grid;
+  gap: 2px;
+}
+
+.cro-card-picker__option {
+  width: 100%;
+  min-height: 28px;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cro-card-picker__option:hover,
+.cro-card-picker__option:focus-visible {
+  outline: none;
+  background: var(--state-hover);
+}
+
+.cro-card-picker__option.is-selected {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.cro-card-picker__divider {
+  height: 1px;
+  margin: var(--space-1) 0 var(--space-2);
+  background: var(--border-default);
+}
+
+.cro-card-picker__custom-label {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--foreground-muted);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-semibold);
+}
+
+.cro-card-picker__custom-control {
+  width: 100%;
+  min-width: 0;
+}
+
+.cro-card-picker__custom-control .cro-card-picker__custom-input {
+  flex: 1 1 auto;
+  width: 0;
+  min-width: 44px;
+}
+
+.cro-card-picker__custom-input[aria-invalid="true"] {
+  color: var(--danger);
+  box-shadow: inset 0 -1px var(--danger);
+}
+
 .cro-cluster__form .cro-select {
   height: 30px;
   padding-left: var(--space-2);

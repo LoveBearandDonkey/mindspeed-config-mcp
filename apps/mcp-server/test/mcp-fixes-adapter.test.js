@@ -9,6 +9,7 @@ import {
   fixesResultAlreadyValid,
   hasSuggestionScore,
   suggestionPagePartial,
+  suggestionPipelineSettings,
   withLockedFields,
 } from "../ui/src/mcp-fixes-adapter.js";
 import { createTrainingConfig } from "../../../tests/fixtures/training-config.js";
@@ -51,6 +52,89 @@ test("Tool 候选映射回原表单后仍是最小差异且不修改锁定字段
 test("适配层会拒绝任何意外触碰锁定字段的候选", () => {
   const suggestion = { changes: [{ path: "parallel.ep", old_value: 8, new_value: 4 }] };
   assert.deepEqual(changesLockedBySuggestion(suggestion, ["parallel.ep"]), suggestion.changes);
+});
+
+test("动态 PP 修复从普通表单回填中分离并保留完整分层设置", () => {
+  const result = suggestConfigFixes(createTrainingConfig({ model: { total_layers: 31 } }));
+  const suggestion = result.data.suggestions.find((item) => item.changes.some(
+    (change) => change.path === "parallel.pipeline_layer_mode",
+  ));
+
+  assert.ok(suggestion);
+  assert.deepEqual(suggestionPagePartial(suggestion), {});
+  assert.deepEqual(suggestionPipelineSettings(suggestion), {
+    mode: "dynamic",
+    numLayerList: [16, 15],
+    layerOffsets: undefined,
+    framework: "mindspeed-llm-mcore",
+  });
+});
+
+test("规则 profile 修复通过 PP 分层设置应用，而不是写入普通表单", () => {
+  const result = suggestConfigFixes(createTrainingConfig({
+    model: { total_layers: 31 },
+    parallel: {
+      pipeline_layer_mode: "dynamic",
+      num_layer_list: [16, 15],
+    },
+  }));
+  const suggestion = result.data.suggestions[0];
+
+  assert.deepEqual(suggestionPagePartial(suggestion), {});
+  assert.deepEqual(suggestionPipelineSettings(suggestion), {
+    mode: "dynamic",
+    numLayerList: [16, 15],
+    layerOffsets: undefined,
+    framework: "mindspeed-llm-mcore",
+  });
+});
+
+test("缺失 num_layer_list 的动态 PP 建议可通过 PP 分层设置回填", () => {
+  const result = suggestConfigFixes(createTrainingConfig({
+    rule_profile: { framework: "mindspeed-llm-mcore" },
+    model: { total_layers: 46 },
+    parallel: {
+      pp: 4,
+      dp: 2,
+      pipeline_layer_mode: "dynamic",
+    },
+  }));
+  const suggestion = result.data.suggestions[0];
+
+  assert.deepEqual(suggestionPagePartial(suggestion), {});
+  assert.deepEqual(suggestionPipelineSettings(suggestion), {
+    mode: "dynamic",
+    numLayerList: [12, 12, 11, 11],
+    layerOffsets: undefined,
+    framework: "mindspeed-llm-mcore",
+  });
+});
+
+test("缺失 MindFormers offset 矩阵的建议可通过 PP 分层设置回填", () => {
+  const result = suggestConfigFixes(createTrainingConfig({
+    rule_profile: { framework: "mindformers" },
+    model: { total_layers: 61 },
+    parallel: {
+      dp: 1,
+      pp: 8,
+      tp: 2,
+      ep: 1,
+      vpp: 2,
+      pipeline_layer_mode: "mindformers-offset",
+    },
+  }));
+  const suggestion = result.data.suggestions[0];
+
+  assert.deepEqual(suggestionPagePartial(suggestion), {});
+  assert.deepEqual(suggestionPipelineSettings(suggestion), {
+    mode: "mindformers-offset",
+    numLayerList: undefined,
+    layerOffsets: [
+      [1, 1, 1, 1, 1, 1, 1, 1],
+      [1, 1, 1, 1, 1, 0, 0, 0],
+    ],
+    framework: "mindformers",
+  });
 });
 
 test("只有当前候选会修改的字段可新增锁定，已锁字段仍可取消", () => {

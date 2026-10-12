@@ -2,8 +2,22 @@ import { suggestConfigFixes } from "./suggest-config-fixes.js";
 import { validateParallelConfig } from "./validate-parallel-config.js";
 import { parallelWorld } from "./page-rules.js";
 
-const COMPLETION_SOURCE = "mindspeed-config-mcp:plan-training-config-completion@0.2.0";
+const COMPLETION_SOURCE = "mindspeed-config-mcp:plan-training-config-completion@0.2.2";
 const DEEPSEEK_SOURCE = "compute-graph-viewer-wzh:config-test/hf_deepseekv3_config.json";
+const OPENPANGU_SOURCE = "apps/web/config-relation-plane-baseline/training-run-twin-standalone/openPangu-2.0-Flash架构参考.md#4-关键参数全部-source-verified";
+const OPENPANGU_STRUCTURE = Object.freeze({
+  "model.id": "openpangu-flash",
+  "model.total_layers": 46,
+  "model.hidden_size": 2560,
+  "model.num_attention_heads": 48,
+  "model.ffn_hidden_size": 9216,
+  "model.expert_ffn_hidden_size": 1024,
+  "model.vocab_size": 151552,
+  "model.first_k_dense_layers": 2,
+  "model.routed_experts": 256,
+  "model.top_k": 8,
+  "model.shared_experts": 1,
+});
 const REVIEWABLE_REPAIR_PATHS = Object.freeze([
   "model.total_layers",
   "model.hidden_size",
@@ -18,6 +32,7 @@ const REVIEWABLE_REPAIR_PATHS = Object.freeze([
   "parallel.ep",
   "parallel.vpp",
   "parallel.pipeline_layer_mode",
+  "rule_profile.framework",
   "cluster.total_ranks",
   "cluster.ranks_per_node",
   "cluster.card_memory_gib",
@@ -189,12 +204,19 @@ function runtimeDefault(path, config, context) {
   const routed = Number(config.model?.routed_experts);
   const microBatch = Number(config.batch?.micro_batch_size) || 1;
   const globalBatch = Number(config.batch?.global_batch_size);
-  const dp = Number(config.parallel?.dp) || (Number.isInteger(inferredDp) ? inferredDp : 1);
+  const hidden = Number(config.model?.hidden_size) || 1;
+  const defaultDp = context.sourceHadParallelTopology ? 1 : 8;
+  const dp = Number(config.parallel?.dp)
+    || (Number.isInteger(inferredDp) && inferredDp >= 1 ? inferredDp : defaultDp);
   const inferredMicroBatchCount = globalBatch / (microBatch * dp);
   const defaults = {
     "model.id": String(context.sourceName ?? "imported-model").replace(/\.[^.]+$/, ""),
     "model.total_layers": 1,
     "model.hidden_size": 1,
+    "model.ffn_hidden_size": hidden * 4,
+    "model.expert_ffn_hidden_size": Number(config.model?.ffn_hidden_size) || hidden * 4,
+    "model.vocab_size": 32000,
+    "model.first_k_dense_layers": 0,
     "cluster.ranks_per_node": 8,
     "cluster.card_model": "昇腾 910B",
     "cluster.card_memory_gib": 64,
@@ -206,7 +228,7 @@ function runtimeDefault(path, config, context) {
     "model.routed_experts": ep > 1 ? ep : 0,
     "model.top_k": (Number.isFinite(routed) ? routed : (ep > 1 ? ep : 0)) > 0 ? 1 : 0,
     "model.shared_experts": 0,
-    "parallel.dp": Number.isInteger(inferredDp) && inferredDp >= 1 ? inferredDp : 1,
+    "parallel.dp": Number.isInteger(inferredDp) && inferredDp >= 1 ? inferredDp : defaultDp,
     "parallel.pp": 1,
     "parallel.tp": 1,
     "parallel.cp": 1,
@@ -249,7 +271,7 @@ function gcd(left, right) {
   return a || 1;
 }
 
-function completionReason(path, config) {
+function completionReason(path, config, context) {
   if (path === "cluster.total_ranks") {
     return "由本次候选的 DP、PP、TP、CP、EP 口径即时计算 world size。";
   }
@@ -265,10 +287,13 @@ function completionReason(path, config) {
   if (path === "parallel.dp" && config.cluster?.total_ranks) {
     return "由 total_ranks ÷ 其余并行维度即时推导，并在完整候选中复验。";
   }
+  if (path === "parallel.dp" && !context.sourceHadParallelTopology) {
+    return "源文件未声明并行拓扑；采用可编辑的昇腾单机 8 Rank 起点，并在完整候选中复验。";
+  }
   if (path === "memory.parameter_dtype") {
     return "源文件只声明计算精度；采用 BF16 参数存储假设，可在应用前修改。";
   }
-  if (["model.id", "model.total_layers", "model.hidden_size"].includes(path)) {
+  if (path.startsWith("model.")) {
     return "源文件没有足够模型结构证据；填入最小可校验占位，应用前必须由用户确认。";
   }
   return "由本次解析得到的字段和约束即时推导；不是预置配置答案。";
@@ -295,6 +320,63 @@ function plan(id, label, summary, config, values, recommended = false) {
   };
 }
 
+function isDynamicPipelineSuggestion(suggestion) {
+  return suggestion.changes.some((change) => (
+    change.path === "parallel.pipeline_layer_mode" && change.new_value === "dynamic"
+  ));
+}
+
+function isDynamicProfileSuggestion(suggestion) {
+  return suggestion.changes.some((change) => (
+    change.path === "rule_profile.framework" && change.new_value === "mindspeed-llm-mcore"
+  ));
+}
+
+function suggestionPlanCopy(suggestion) {
+  if (isDynamicProfileSuggestion(suggestion)) {
+    return {
+      label: "切换到 MindSpeed-LLM MCore 规则口径",
+      summary: "保留当前动态 PP 与逐 Stage 层数，修正规则 profile、版本和来源 Commit。",
+    };
+  }
+  if (!isDynamicPipelineSuggestion(suggestion)) {
+    return {
+      label: `静态约束修复方案 ${suggestion.rank}`,
+      summary: suggestion.changes
+        .map((change) => `${change.path}: ${change.old_value} → ${change.new_value}`)
+        .join("；"),
+    };
+  }
+  const { pp, num_layer_list: stageLayers } = suggestion.proposed_config.parallel;
+  return {
+    label: "切换到动态 PP",
+    summary: `保持 PP=${pp}，改用 MindSpeed-LLM MCore 动态分层：${stageLayers.join(" / ")}。`,
+  };
+}
+
+function openPanguStructurePlan(base, recommended = true) {
+  const candidate = structuredClone(base);
+  const values = [];
+  for (const [path, value] of Object.entries(OPENPANGU_STRUCTURE)) {
+    setPath(candidate, path, value);
+    values.push(completion(
+      path,
+      value,
+      "采用工作台已登记的 openPangu 2.0 Flash 模型结构；这是用户可确认的结构选择，不是从当前训练配置推断出的值。",
+      "requires-confirmation",
+      OPENPANGU_SOURCE,
+    ));
+  }
+  return plan(
+    "openpangu-flash-structure",
+    "采用预置 openPangu 2.0 Flash 模型结构（需确认）",
+    "当前训练配置没有给全模型结构；复用工作台已登记的 openPangu 2.0 Flash 结构后，可继续并行校验与理论容量估算。",
+    candidate,
+    values,
+    recommended,
+  );
+}
+
 /**
  * 为 parse_training_config 的缺口生成完整候选，并用同一核心校验器逐个复验。
  * 页面只展示这里返回的 structuredContent，不自行复制补齐或修复公式。
@@ -303,6 +385,11 @@ export function planTrainingConfigCompletion(normalizedConfig, missingRequiredFi
   const base = structuredClone(normalizedConfig);
   const values = [];
   const profile = MODEL_PROFILES.find((item) => item.matches(String(base.model?.id ?? "")));
+  const completionContext = {
+    ...context,
+    sourceHadParallelTopology: ["dp", "pp", "tp", "cp", "ep"]
+      .some((key) => normalizedConfig.parallel?.[key] !== undefined),
+  };
 
   for (const path of missingRequiredFields) {
     let value = profile?.values[path];
@@ -310,10 +397,10 @@ export function planTrainingConfigCompletion(normalizedConfig, missingRequiredFi
     let sourceRef = profile?.source_ref;
     let confidence = "model-informed";
     if (value === undefined) {
-      value = runtimeDefault(path, base, context);
-      reason = completionReason(path, base);
+      value = runtimeDefault(path, base, completionContext);
+      reason = completionReason(path, base, completionContext);
       sourceRef = COMPLETION_SOURCE;
-      confidence = ["model.id", "model.total_layers", "model.hidden_size"].includes(path)
+      confidence = path.startsWith("model.")
         ? "requires-confirmation"
         : (path.startsWith("cluster.") ? "model-informed" : "deterministic");
     }
@@ -346,6 +433,13 @@ export function planTrainingConfigCompletion(normalizedConfig, missingRequiredFi
   }
 
   const plans = [];
+  const lacksEssentialModelStructure = missingRequiredFields.includes("model.total_layers")
+    || missingRequiredFields.includes("model.hidden_size");
+  const lacksAnyModelStructure = missingRequiredFields.some((path) => path.startsWith("model."));
+  if (lacksEssentialModelStructure) {
+    const presetPlan = openPanguStructurePlan(base, true);
+    if (presetPlan.validation.status === "valid") plans.push(presetPlan);
+  }
   const needsConfirmation = values.some((item) => item.confidence === "requires-confirmation");
   const sourcePlan = plan(
     "source-faithful",
@@ -353,13 +447,17 @@ export function planTrainingConfigCompletion(normalizedConfig, missingRequiredFi
     needsConfirmation
       ? "源代码不足以恢复真实模型结构；MCP 已即时生成静态合法的最小起点，结构占位必须由用户确认。"
       : (base.parallel.pipeline_layer_mode === "mindformers-offset"
-      ? "保留 MindFormers offset 与 VPP，并按源文件的非均匀流水线分层复验。"
+      ? "保留 MindFormers PP 层偏置与 VPP，并按源文件的非均匀流水线分层复验。"
       : "保留源文件已声明的并行配置，仅补齐缺失字段。"),
     base,
     values,
-    true,
+    !lacksEssentialModelStructure,
   );
   if (sourcePlan.validation.status === "valid") plans.push(sourcePlan);
+  if (lacksAnyModelStructure && !lacksEssentialModelStructure) {
+    const presetPlan = openPanguStructurePlan(base, false);
+    if (presetPlan.validation.status === "valid") plans.push(presetPlan);
+  }
 
   const errorCodes = new Set(sourcePlan.validation.errors.map((item) => item.code));
   if (!plans.length && errorCodes.has("PAGE_EP_DOMAIN_DIVISIBLE_BY_EP")) {
@@ -402,10 +500,11 @@ export function planTrainingConfigCompletion(normalizedConfig, missingRequiredFi
   if (!plans.length) {
     const fixes = suggestConfigFixes(base);
     for (const suggestion of fixes.data?.suggestions ?? []) {
+      const copy = suggestionPlanCopy(suggestion);
       plans.push(plan(
         `validated-fix-${suggestion.rank}`,
-        `静态约束修复方案 ${suggestion.rank}`,
-        suggestion.changes.map((change) => `${change.path}: ${change.old_value} → ${change.new_value}`).join("；"),
+        copy.label,
+        copy.summary,
         suggestion.proposed_config,
         completionValuesForCandidate(values, base, suggestion.proposed_config, sourcePlan.validation.errors),
         suggestion.rank === 1,

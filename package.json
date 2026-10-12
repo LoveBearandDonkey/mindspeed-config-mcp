@@ -9,7 +9,8 @@
   ],
   "scripts": {
     "build:ui": "npm run build:ui --workspace @mindspeed-config/mcp-server",
-    "preview:adapted-ui": "vite --config apps/mcp-server/vite.config.js --host 127.0.0.1 --port 4174 --strictPort --open /training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html?preview=1",
+    "preview:adapted-ui": "npm run build:ui && vite preview --config apps/mcp-server/vite.config.js --host 127.0.0.1 --port 4174 --strictPort --open /training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html?preview=1",
+    "dev:adapted-ui": "vite --config apps/mcp-server/vite.config.js --host 127.0.0.1 --port 4174 --strictPort --open /training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html?preview=1",
     "preview:baseline-ui": "vite apps/web/config-relation-plane-baseline --host 127.0.0.1 --port 4173 --strictPort --open /training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html",
     "test": "npm run build:ui && node --test",
     "test:contracts": "node --test packages/contracts/test/contracts.test.js",

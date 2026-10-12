@@ -6,7 +6,10 @@ import {
 } from "../../packages/config-core/src/index.js";
 import {
   ACCEPTANCE_SCENARIOS,
+  DYNAMIC_PP_LAYER_LIST_GAP,
+  DYNAMIC_PP_PROFILE_MISMATCH,
   DYNAMIC_PP_TOPOLOGY,
+  MINDFORMERS_OFFSET_MATRIX_GAP,
   createDenseTrainingConfig,
 } from "../fixtures/acceptance-scenarios.js";
 
@@ -30,6 +33,7 @@ export function projectAcceptanceScenarios() {
   const a01Topology = computeRankTopology(ACCEPTANCE_SCENARIOS.A01);
   const a02 = validateParallelConfig(ACCEPTANCE_SCENARIOS.A02);
   const a03 = validateParallelConfig(ACCEPTANCE_SCENARIOS.A03);
+  const dynamicPpFix = suggestConfigFixes(ACCEPTANCE_SCENARIOS.A03);
   const a04 = validateParallelConfig(ACCEPTANCE_SCENARIOS.A04);
   const a05Validation = validateParallelConfig(ACCEPTANCE_SCENARIOS.A05);
   const a05Topology = computeRankTopology(ACCEPTANCE_SCENARIOS.A05);
@@ -51,6 +55,9 @@ export function projectAcceptanceScenarios() {
   }));
   const a15 = estimateTrainingCapacity(ACCEPTANCE_SCENARIOS.A15);
   const dynamicPpTopology = computeRankTopology(DYNAMIC_PP_TOPOLOGY);
+  const dynamicPpLayerListFix = suggestConfigFixes(DYNAMIC_PP_LAYER_LIST_GAP);
+  const dynamicPpProfileFix = suggestConfigFixes(DYNAMIC_PP_PROFILE_MISMATCH);
+  const mindFormersOffsetFix = suggestConfigFixes(MINDFORMERS_OFFSET_MATRIX_GAP);
 
   return {
     A01: {
@@ -94,6 +101,12 @@ export function projectAcceptanceScenarios() {
     A12: {
       confidence: a12.confidence,
       bottleneck_level: a12.data.bottleneck_level,
+      thresholds: a12.data.thresholds,
+      threshold_policy: {
+        classification: a12.data.threshold_policy.classification,
+        calibration: a12.data.threshold_policy.calibration,
+        warning_headroom_ratio: a12.data.threshold_policy.warning_headroom_ratio,
+      },
       stages: capacitySummary(a12),
     },
     A13: {
@@ -115,6 +128,43 @@ export function projectAcceptanceScenarios() {
       status: dynamicPpTopology.status,
       stage_layer_counts: dynamicPpTopology.data.stages.map((stage) => stage.layer_count),
       stage_layer_ranges: dynamicPpTopology.data.stages.map((stage) => [stage.layer_start, stage.layer_end]),
+    },
+    dynamic_pp_fix: {
+      rank: dynamicPpFix.data.suggestions[0]?.rank ?? null,
+      changes: dynamicPpFix.data.suggestions[0]?.changes.map(({ path, new_value }) => ({
+        path, new_value,
+      })) ?? [],
+      profile: dynamicPpFix.data.suggestions[0]?.proposed_config.rule_profile.framework ?? null,
+      validation_status: dynamicPpFix.data.suggestions[0]
+        ? validateParallelConfig(dynamicPpFix.data.suggestions[0].proposed_config).status
+        : null,
+    },
+    dynamic_pp_layer_list_fix: {
+      solved: dynamicPpLayerListFix.data.solved,
+      changes: dynamicPpLayerListFix.data.suggestions[0]?.changes.map(({ path, new_value }) => ({
+        path, new_value,
+      })) ?? [],
+      validation_status: dynamicPpLayerListFix.data.suggestions[0]
+        ? validateParallelConfig(dynamicPpLayerListFix.data.suggestions[0].proposed_config).status
+        : null,
+    },
+    dynamic_pp_profile_fix: {
+      solved: dynamicPpProfileFix.data.solved,
+      changes: dynamicPpProfileFix.data.suggestions[0]?.changes.map(({ path, new_value }) => ({
+        path, new_value,
+      })) ?? [],
+      validation_status: dynamicPpProfileFix.data.suggestions[0]
+        ? validateParallelConfig(dynamicPpProfileFix.data.suggestions[0].proposed_config).status
+        : null,
+    },
+    mindformers_offset_matrix_fix: {
+      solved: mindFormersOffsetFix.data.solved,
+      changes: mindFormersOffsetFix.data.suggestions[0]?.changes.map(({ path, new_value }) => ({
+        path, new_value,
+      })) ?? [],
+      validation_status: mindFormersOffsetFix.data.suggestions[0]
+        ? validateParallelConfig(mindFormersOffsetFix.data.suggestions[0].proposed_config).status
+        : null,
     },
   };
 }

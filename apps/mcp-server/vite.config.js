@@ -5,6 +5,13 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
 
+import {
+  APP_HTML_DIRECTORY_URL,
+  assertPackagedAppHtml,
+  isPackagedAppHtmlFilename,
+  packagedAppHtmlFilename,
+} from "./src/app-resource.js";
+
 const baselineRoot = fileURLToPath(new URL("../web/config-relation-plane-baseline/", import.meta.url));
 const baselinePage = fileURLToPath(new URL(
   "../web/config-relation-plane-baseline/training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html",
@@ -14,6 +21,24 @@ const bridgeFile = fileURLToPath(new URL("./ui/src/mcp-shell-entry.js", import.m
 const bridgeDirectory = path.dirname(bridgeFile);
 const sampleDirectory = path.join(path.dirname(baselinePage), "config-test");
 const outputDirectory = fileURLToPath(new URL("./ui/dist/ui-shell-v1/", import.meta.url));
+const outputHtmlDirectory = fileURLToPath(APP_HTML_DIRECTORY_URL);
+const viteHtmlFilename = path.basename(baselinePage);
+
+function buildTimestamp(date = new Date()) {
+  const values = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date).map(({ type, value }) => [type, value]));
+  return `${values.year}${values.month}${values.day}-${values.hour}${values.minute}${values.second}`;
+}
+
+const timestampedHtmlFilename = packagedAppHtmlFilename(buildTimestamp());
 
 function resolveLocalAsset(htmlFile, reference) {
   const cleanReference = reference.split(/[?#]/, 1)[0];
@@ -66,11 +91,7 @@ function connectMcpTopology(source, assetFile) {
     let transformed = replaceRequired(
       source,
       /if \(!topology\.valid\) return;\r?\n\s*lastValidConfig = \{ \.\.\.config \};\r?\n\s*lastValidTopology = topology;\r?\n\s*listeners\.forEach\(\(fn\) => fn\(topology\)\);\r?\n\s*document\.dispatchEvent\(new CustomEvent\("cro:change", \{ detail: topology \}\)\);/,
-      `if (!topology.valid) {
-        global.__mcpTopologyAdapter?.invalidate(topology);
-        return;
-      }
-      const mcpTopology = global.__mcpTopologyAdapter?.resolve(topology);
+      `const mcpTopology = global.__mcpTopologyAdapter?.resolve(topology);
       if (global.__mcpTopologyAdapter && !mcpTopology) return;
       const publishedTopology = mcpTopology || topology;
       lastValidConfig = { ...config };
@@ -83,11 +104,13 @@ function connectMcpTopology(source, assetFile) {
       transformed,
       /get topology\(\) \{\r?\n\s*const current = derive\(config\);\r?\n\s*return current\.valid \|\| !lastValidTopology \? current : lastValidTopology;\r?\n\s*\}/,
       `get topology() {
-        const current = derive(config);
+        const current = lastValidTopology
+          ? { ...lastValidTopology, config: { ...config }, valid: true, errors: [], warnings: [] }
+          : derive(config);
         const mcpTopology = global.__mcpTopologyAdapter?.peek(current);
         if (mcpTopology) return mcpTopology;
         if (global.__mcpTopologyAdapter && lastValidTopology) return lastValidTopology;
-        return current.valid || !lastValidTopology ? current : lastValidTopology;
+        return current;
       }`,
       "the MCP topology getter",
     );
@@ -188,22 +211,297 @@ function connectMcpFixes(source, assetFile) {
   return transformed;
 }
 
+function connectMcpValidationOwnership(source, assetFile) {
+  if (path.basename(assetFile) !== "config-relation-observer.js") return source;
+  let transformed = source;
+
+  transformed = replaceRequired(
+    transformed,
+    'overrides: { epMode: "split", dp: 16, pp: 4, tp: 2, cp: 1, ep: 8 },',
+    'overrides: { epMode: "split", dp: 16, pp: 4, tp: 2, cp: 1, ep: 8, totalRank: 128, node: 16 },',
+    "the self-contained 128-rank MCP preset",
+  );
+
+  transformed = replaceRangeRequired(
+    transformed,
+    "  /* 一共有几张卡在分这批注意力头：",
+    "  /* 重计算的档位",
+    "",
+    "the browser-local structural step eligibility formulas",
+  );
+  transformed = replaceRangeRequired(
+    transformed,
+    "  const gcd = PR.gcd;",
+    "  function presetOf(config) {",
+    "",
+    "the unused browser-local nearest-valid-value formulas",
+  );
+  transformed = replaceRangeRequired(
+    transformed,
+    "  function tpShardBasis(config) {",
+    "  function cpIsUlysses(config) {",
+    "",
+    "the unused browser-local model-divisibility formulas",
+  );
+  transformed = replaceRangeRequired(
+    transformed,
+    "  function ulyssesCpBasis(config) {",
+    "  function recomputeModeOf(config) {",
+    "",
+    "the unused browser-local CP-divisibility formulas",
+  );
+  transformed = replaceRangeRequired(
+    transformed,
+    "      maxOf: (config) => maxStageLayers(config),",
+    "      title:",
+    "",
+    "the browser-local recompute-layer dynamic maximum and explanation",
+  );
+  transformed = replaceRangeRequired(
+    transformed,
+    "  function maxStageLayers(config) {",
+    "  function readoutSize(field, text) {",
+    "",
+    "the unused browser-local recompute-layer maximum formula",
+  );
+  transformed = replaceRangeRequired(
+    transformed,
+    "  /* ── 校验：返回 [] 表示配置自洽",
+    "  /* ── 自动配平：",
+    `  /* MCP App 的合法性、警告与字段定位只消费 validate_parallel_config。 */
+  function validate() { return []; }
+  function warn() { return []; }
+
+`,
+    "the browser-local validation and warning formulas",
+  );
+  transformed = replaceRangeRequired(
+    transformed,
+    "  /* ── 自动配平：",
+    "  /* ── 派生：把配置展开成四个视图共用的实体表",
+    `  /* MCP App 不在浏览器自动配平；并行乘积仅供首帧预设布局使用。 */
+  function parallelWorld(config) {
+    return PR.parallelWorld(prCfg(config));
+  }
+  function reconcile(config) { return config; }
+
+`,
+    "the browser-local reconciliation formulas",
+  );
+  transformed = replaceRangeRequired(
+    transformed,
+    "  function stepValue(field, value, direction, config) {",
+    "  /* 加减键走不动时，悬浮要答出",
+    `  function stepValue(field, value, direction, config) {
+    const spec = FIELD_SPECS[field];
+    return rawStep(spec, value, direction, specMax(field, config));
+  }
+
+`,
+    "the browser-local structural step filtering",
+  );
+  transformed = replaceRangeRequired(
+    transformed,
+    "  /* 加减键走不动时，悬浮要答出",
+    "  /* ── EP 口径",
+    `  function stepBlockReason(field, direction, config) {
+    const spec = FIELD_SPECS[field];
+    const max = specMax(field, config);
+    return direction > 0
+      ? \`\${spec.label} 已到输入控件上界 \${max}\`
+      : \`\${spec.label} 已到输入控件下界 \${spec.min}\`;
+  }
+
+`,
+    "the browser-local structural step-block explanations",
+  );
+  transformed = replaceRangeRequired(
+    transformed,
+    "    function apply(field, direction) {",
+    "    /* 手输提交。",
+    `    function apply(field, direction) {
+      const next = stepValue(field, config[field], direction, config);
+      if (next === config[field]) return;
+      config.configPreset = null;
+      config[field] = next;
+      invalidTyped = null;
+      rangeHint = null;
+      emit();
+    }
+
+`,
+    "the browser-local step reconciliation",
+  );
+  transformed = replaceRangeRequired(
+    transformed,
+    "    function commitTyped(field, raw) {",
+    "    function set(field, value) {",
+    `    function commitTyped(field, raw) {
+      if (raw === null) { emit(); return; }
+      const parsed = Number(String(raw).trim());
+      if (!Number.isFinite(parsed)) { emit(); return; }
+      config.configPreset = null;
+      config[field] = parsed;
+      invalidTyped = null;
+      rangeHint = null;
+      emit();
+    }
+
+`,
+    "the browser-local typed-value rejection",
+  );
+  transformed = replaceRangeRequired(
+    transformed,
+    "    function set(field, value) {",
+    "    /* 整网切换模型：",
+    `    function set(field, value) {
+      invalidTyped = null;
+      rangeHint = null;
+      if (Object.is(config[field], value)) return;
+      config.configPreset = null;
+      config[field] = value;
+      emit();
+    }
+
+`,
+    "the browser-local programmatic reconciliation",
+  );
+  transformed = replaceRangeRequired(
+    transformed,
+    "    function setModel(modelId) {",
+    "    /* EP 口径切换：",
+    `    function setModel(modelId) {
+      const preset = MODEL_PRESETS[modelId];
+      if (!preset || config.model === modelId) return;
+      rangeHint = null;
+      invalidTyped = null;
+      config.model = modelId;
+      const presetId = defaultConfigPresetId(modelId);
+      Object.assign(config, configSeed(modelId, presetId));
+      config.configPreset = presetId;
+      emit();
+    }
+
+`,
+    "the browser-local model-switch reconciliation",
+  );
+  transformed = replaceRangeRequired(
+    transformed,
+    "    function setEpMode(mode) {",
+    "    /* 换一整份配置预设",
+    `    function setEpMode(mode) {
+      const next = typeof mode === "boolean"
+        ? (mode ? "orthogonal" : "split")
+        : (EP_MODES.indexOf(mode) >= 0 ? mode : "split");
+      if (epModeOf(config) === next) return;
+      config.configPreset = null;
+      config.epMode = next;
+      config.moeOrthogonal = next === "orthogonal";
+      invalidTyped = null;
+      rangeHint = null;
+      emit();
+    }
+
+`,
+    "the browser-local EP-mode reconciliation",
+  );
+  transformed = replaceRangeRequired(
+    transformed,
+    "    function importConfig(partial) {",
+    "    return {\r\n      config,",
+    `    function importConfig(partial) {
+      const before = { ...config };
+      config.configPreset = null;
+      const known = Object.keys(partial).filter((field) => (
+        FIELD_SPECS[field] || FLAG_SPECS[field] || field === "epMode"
+      ));
+      for (const field of known) {
+        const value = partial[field];
+        if (FIELD_SPECS[field]) {
+          const numeric = Number(value);
+          if (Number.isFinite(numeric)) config[field] = numeric;
+        } else if (field === "epMode") {
+          if (EP_MODES.includes(value)) {
+            config.epMode = value;
+            config.moeOrthogonal = value === "orthogonal";
+          }
+        } else if (FLAG_SPECS[field].options) {
+          if (FLAG_SPECS[field].options.some((option) => option.value === value)) config[field] = value;
+        } else {
+          config[field] = Boolean(value);
+        }
+      }
+      invalidTyped = null;
+      rangeHint = null;
+      emit();
+      return { before, after: { ...config }, known };
+    }
+
+`,
+    "the browser-local import clamping and reconciliation",
+  );
+  transformed = replaceRequired(
+    transformed,
+    /    config\.totalRank = parallelWorld\(config\);\s*\r?\n\s*config\.node = nodeLayout\(config\)\.node;\s*\r?\n/,
+    "",
+    "the browser-local initial Total Rank and Node reconciliation",
+  );
+  transformed = replaceRequired(
+    transformed,
+    /    function emit\(\) \{\r?\n      const topology = derive\(config\);/,
+    `    function emit() {
+      const topology = lastValidTopology
+        ? { ...lastValidTopology, config: { ...config }, valid: true, errors: [], warnings: [] }
+        : derive(config);`,
+    "the browser-local validation gate before MCP",
+  );
+  transformed = replaceRangeRequired(
+    transformed,
+    "      // 配置校验异常统一标红；",
+    "      renderConfigError(topology);",
+    `      /* 字段红黄状态只由 MCP validationMarks 写入 is-mcp-invalid/is-mcp-warning。 */
+      wraps.forEach((element) => element.classList.remove("is-invalid"));
+      renderConfigError(topology);`,
+    "the browser-local invalid-field marks",
+  );
+  transformed = transformed.replaceAll(
+    "const usable = !spec.enabledWhen || spec.enabledWhen(config);",
+    "const usable = true;",
+  );
+  transformed = replaceRequired(
+    transformed,
+    "if (!(Number.isFinite(custom) && custom > 0)) return spec;",
+    "if (!(config.customCardMemoryGB != null && Number.isFinite(custom))) return spec;",
+    "the topology custom-capacity presence check",
+  );
+  transformed = transformed
+    .replaceAll(
+      "Number.isFinite(custom) && custom > 0",
+      "controller.config.customCardMemoryGB != null && Number.isFinite(custom)",
+    )
+    .replace(
+      'const valid = raw === "" || (Number.isFinite(value) && value > 0);',
+      'const valid = raw === "" || Number.isFinite(value);',
+    );
+  return transformed;
+}
+
 function connectMcpCapacity(source, assetFile) {
   const basename = path.basename(assetFile);
   if (basename === "config-relation-capacity.js") {
     return `/* 容量计算已迁移到 estimate_training_capacity；第 14 项适配层只渲染 structuredContent。 */`;
   }
   if (basename !== "config-relation-plane.js") return source;
-  let transformed = replaceRequired(
-    source,
-    "  applyTransform();",
-    `  document.addEventListener("mcp:capacity-result", () => {
-    scheduleRender();
-    if (!relation) renderDetail();
-  });
-
-  applyTransform();`,
-    "the MCP capacity result repaint hook",
+  let transformed = source;
+  transformed = replaceRequired(
+    transformed,
+    `  const memoryLegendCaption = el("div", "crop-memory-legend__caption", "Rank HBM 占用");`,
+    `  const memoryLegendCaption = el("div", "crop-memory-legend__caption");
+  const memoryLegendCaptionText = el("span", "crop-memory-legend__caption-text", "Rank HBM 占用");
+  const memoryLegendRisk = el("span", "crop-memory-legend__risk", "OOM风险高");
+  memoryLegendRisk.hidden = true;
+  memoryLegendCaption.append(memoryLegendCaptionText, memoryLegendRisk);`,
+    "the Rank HBM range risk label",
   );
   transformed = replaceRequired(
     transformed,
@@ -237,12 +535,33 @@ function connectMcpCapacity(source, assetFile) {
     if (cautionRatio !== null) {
       placeMemoryLegendMarker(memoryLegendCaution, cautionRatio,
         \`警戒 \${Math.round(cautionRatio * 100)}%\`);
+      const cautionLabel = memoryLegendCaution.querySelector(".crop-memory-legend__marker-label");
+      if (cautionLabel) {
+        const cautionPercent = Math.round(cautionRatio * 100);
+        cautionLabel.dataset.hint = \`\${cautionPercent}% 是参考警戒线：当前内存占用估算已包含运行时预留，同时参考 PyTorch 0.8 的分配器压力点，再保留 \${100 - cautionPercent}% 作为警戒余量。\`;
+        cautionLabel.tabIndex = 0;
+        cautionLabel.setAttribute("aria-label", \`\${cautionPercent}% 警戒线说明\`);
+      }
     }
     const cautionNote = cautionRatio === null
-      ? "" : \`；页面 theoretical 警戒线 \${Math.round(cautionRatio * 100)}%\`;
+      ? "" : \`；MCP Tool theoretical 经验警戒线 \${Math.round(cautionRatio * 100)}%（未校准）\`;
 
     const valid =`,
     "the Rank HBM caution threshold from config-core",
+  );
+  transformed = replaceRequired(
+    transformed,
+    `      memoryLegendCaption.textContent = \`R\${selectedRank} · HBM 占用\`;`,
+    `      memoryLegendCaptionText.textContent = \`R\${selectedRank} · HBM 占用\`;
+      memoryLegendRisk.hidden = true;`,
+    "the selected Rank HBM caption",
+  );
+  transformed = replaceRequired(
+    transformed,
+    `    memoryLegendCaption.textContent = "Rank HBM 占用 · 当前范围";`,
+    `    memoryLegendCaptionText.textContent = "Rank HBM 占用 · 当前范围";
+    memoryLegendRisk.hidden = cautionRatio === null || hiRatio <= cautionRatio;`,
+    "the Rank HBM range risk state",
   );
   transformed = replaceRequired(
     transformed,
@@ -256,7 +575,8 @@ function connectMcpCapacity(source, assetFile) {
     `    memoryLegend.title = \`当前 Rank HBM 占用范围 \${Math.round(loRatio * 100)}%–\${Math.round(hiRatio * 100)}%\`
       + "；冷蓝 = 占用低，火红 = 占用高";`,
     `    memoryLegend.title = \`当前 Rank HBM 占用范围 \${Math.round(loRatio * 100)}%–\${Math.round(hiRatio * 100)}%\`
-      + "；冷蓝 = 占用低，火红 = 占用高" + cautionNote;`,
+      + "；冷蓝 = 占用低，火红 = 占用高" + cautionNote
+      + (cautionRatio !== null && hiRatio > cautionRatio ? "；OOM风险高" : "");`,
     "the Rank HBM range caution description",
   );
   return transformed;
@@ -607,15 +927,29 @@ function subtractCapabilityClosureScript(source, assetFile) {
     }
 
     if (!p) {
-      rightTitle.textContent = "未选中";
-      rightFacts.appendChild(el("p", "crop-empty",
-        "点画布上的 rank 行、layer 列、PP Stage 条或格子里的专家，这里显示它的详情；"
-        + "与它交叉的行、列、格会在画布上同时亮起来。"));
+      right.classList.add("is-collapsed");
+      syncPanelButtons();
       return;
     }
 
 `,
     "the idle right-panel assessment branch",
+  );
+  transformed = replaceRequired(
+    transformed,
+    /    rb\.addEventListener\("click", \(\) => \{\r?\n      right\.classList\.toggle\("is-collapsed"\);\r?\n      rightPinnedClosed = right\.classList\.contains\("is-collapsed"\);\r?\n      sync\(\); scheduleRender\(\);\r?\n    \}\);/,
+    `    rb.addEventListener("click", () => {
+      if (!relation?.primary) {
+        right.classList.add("is-collapsed");
+        rightPinnedClosed = false;
+        sync(); scheduleRender();
+        return;
+      }
+      right.classList.toggle("is-collapsed");
+      rightPinnedClosed = right.classList.contains("is-collapsed");
+      sync(); scheduleRender();
+    });`,
+    "the empty MCP detail-panel toggle",
   );
   transformed = replaceRequired(
     transformed,
@@ -785,8 +1119,15 @@ function subtractIncidentObserverCode(source, assetFile) {
 
 function subtractIncidentCrossFileHooks(source, assetFile) {
   if (path.basename(assetFile) !== "config-relation-yaml.js") return source;
-  let transformed = replaceRequired(
+  let transformed = replaceRangeRequired(
     source,
+    "选中运行事件时主脚本会把",
+    "表单值真的变化",
+    "",
+    "the incident-view tab observer",
+  );
+  transformed = replaceRequired(
+    transformed,
     /^\s*const incidentView = doc\.getElementById\("croIncidentView"\);\r?\n/m,
     "",
     "the YAML-view incident reference",
@@ -802,12 +1143,6 @@ function subtractIncidentCrossFileHooks(source, assetFile) {
     /\s*\/\* 运行事件栏在文档档整条不显示[\s\S]*?^\s*\?\.classList\.toggle\("is-doc-view", mode === "doc"\);\r?\n/m,
     "",
     "the document-view incident rail state",
-  );
-  transformed = replaceRequired(
-    transformed,
-    /\s*\/\* 选中运行事件时主脚本会把[\s\S]*?^\s*}\r?\n(?=\s*\/\* 表单一动)/m,
-    "\n",
-    "the incident-view tab observer",
   );
   try {
     new Function(transformed);
@@ -877,7 +1212,7 @@ function subtractSyntheticHeatView(source, assetFile) {
     source,
     "  /* ══ 负载热力：度量口径、色阶与成本模型",
     "  let pickedLayer = null;",
-    `  /* 内存观测与通信微观图继续共用纯视觉冷暖色阶；模拟负载模型已删除。 */\n  const HEAT_RAMP_CSS = PR.heatRampCss(PR.HEAT_RAMP);\n  const heatColor = PR.heatColor;\n  const HEAT_GIB = 1024 * 1024 * 1024;\n\n`,
+    `  /* 内存预估与通信微观图继续共用纯视觉冷暖色阶；模拟负载模型已删除。 */\n  const HEAT_RAMP_CSS = PR.heatRampCss(PR.HEAT_RAMP);\n  const heatColor = PR.heatColor;\n  const HEAT_GIB = 1024 * 1024 * 1024;\n\n`,
     "the synthetic heat metrics and model",
   );
   transformed = replaceRequired(
@@ -990,12 +1325,6 @@ function subtractSyntheticHeatView(source, assetFile) {
   );
   transformed = replaceRequired(
     transformed,
-    "          const paint = paintExperts && moe && !heatOn;",
-    "          const paint = paintExperts && moe;",
-    "the heat-only expert-paint suppression",
-  );
-  transformed = replaceRequired(
-    transformed,
     /\s*if \(heatOn && heatPick && heatPick\.rank === rank[\s\S]*?cell\.classList\.add\("is-heat-selected"\);\r?\n\s*}/,
     "",
     "the synthetic heat selected-cell state",
@@ -1044,7 +1373,7 @@ function subtractSyntheticHeatView(source, assetFile) {
     transformed,
     "  /* ── 三档切换",
     '  modeTabs.addEventListener("click", (event) => {',
-    `  /* ── 配置寻优 / 通信分析切换 ───────────────────────────────────────── */\n  function setMode(mode) {\n    const nextMode = mode === "comm" ? "comm" : "config";\n    const hadLayerColumns = layerColumnsVisible();\n    if (nextMode !== "config" && memoryObservation) {\n      memoryObservation = false;\n      if (memoryPrefs) {\n        tpGroupsVisible = memoryPrefs.tp;\n        layerDetailVisible = memoryPrefs.layer;\n        unitMode = memoryPrefs.unit;\n      }\n      memoryPrefs = null;\n    }\n    center.dataset.mode = nextMode;\n    board.dataset.mode = nextMode;\n    syncMemoryControls();\n    const hasLayerColumns = layerColumnsVisible();\n    if (topology && hadLayerColumns !== hasLayerColumns) {\n      layout = buildLayout(topology);\n      pickedLayer = null;\n      pickedStage = null;\n      pickedEdp = null;\n      fit();\n    }\n    modeTabs.querySelectorAll("[data-mode]").forEach((btn) => {\n      const on = btn.dataset.mode === nextMode;\n      btn.classList.toggle("is-selected", on);\n      btn.setAttribute("aria-selected", String(on));\n    });\n    if (nextMode !== "comm") {\n      commDetail.hidden = true;\n      setPlaying(false);\n      flowClear();\n      flowSweepReset();\n      flowStopRaf();\n      commFlow.classList.remove("is-on");\n    }\n    if (nextMode === "comm") {\n      unitMode = "rank";\n      if (!flowBeat) flowBeat = flowDefaultBeat();\n      renderComm();\n      rightTitle.textContent = "通信详情";\n      if (!rightPinnedClosed) right.classList.remove("is-collapsed");\n    } else {\n      if (relation) emit(null);\n      if (!rightPinnedClosed) right.classList.remove("is-collapsed");\n    }\n    syncPanelButtons();\n    global.requestAnimationFrame(() => { clampView(); applyTransform(); scheduleRender(); });\n  }\n\n`,
+    `  /* ── 配置寻优 / 通信分析切换 ───────────────────────────────────────── */\n  function setMode(mode) {\n    const nextMode = mode === "comm" ? "comm" : "config";\n    const hadLayerColumns = layerColumnsVisible();\n    if (nextMode !== "config" && memoryObservation) {\n      memoryObservation = false;\n      tpGroupsVisible = true;\n      layerDetailVisible = true;\n      if (memoryPrefs) unitMode = memoryPrefs.unit;\n      memoryPrefs = null;\n    }\n    center.dataset.mode = nextMode;\n    board.dataset.mode = nextMode;\n    syncMemoryControls();\n    const hasLayerColumns = layerColumnsVisible();\n    if (topology && hadLayerColumns !== hasLayerColumns) {\n      layout = buildLayout(topology);\n      pickedLayer = null;\n      pickedStage = null;\n      pickedEdp = null;\n      fit();\n    }\n    modeTabs.querySelectorAll("[data-mode]").forEach((btn) => {\n      const on = btn.dataset.mode === nextMode;\n      btn.classList.toggle("is-selected", on);\n      btn.setAttribute("aria-selected", String(on));\n    });\n    if (nextMode !== "comm") {\n      commDetail.hidden = true;\n      setPlaying(false);\n      flowClear();\n      flowSweepReset();\n      flowStopRaf();\n      commFlow.classList.remove("is-on");\n    }\n    if (nextMode === "comm") {\n      unitMode = "rank";\n      if (!flowBeat) flowBeat = flowDefaultBeat();\n      renderComm();\n      rightTitle.textContent = "通信详情";\n      if (!rightPinnedClosed) right.classList.remove("is-collapsed");\n    } else {\n      if (relation) emit(null);\n      right.classList.add("is-collapsed");\n    }\n    syncPanelButtons();\n    global.requestAnimationFrame(() => { clampView(); applyTransform(); scheduleRender(); });\n  }\n\n`,
     "the synthetic heat mode switching and playback",
   );
   transformed = replaceRequired(
@@ -1151,12 +1480,6 @@ function subtractSyntheticHeatStyles(source, assetFile) {
   );
   transformed = replaceRequired(
     transformed,
-    /\s*\/\* 「按完整一套专家区分着色」[\s\S]*?\.crop-center\[data-mode="heat"\] \.crop-paint \{ display: none; \}\r?\n/,
-    "\n",
-    "the synthetic heat expert-paint visibility",
-  );
-  transformed = replaceRequired(
-    transformed,
     /\.cro-board\.is-plane\[data-mode="comm"\] \.crop-left,\r?\n\.cro-board\.is-plane\[data-mode="heat"\] \.crop-left \{ display: none; \}/,
     '.cro-board.is-plane[data-mode="comm"] .crop-left { display: none; }',
     "the synthetic heat left-panel visibility",
@@ -1218,6 +1541,7 @@ function inlineBaselineAssets() {
             source = connectMcpTopology(source, assetFile);
             source = subtractCapabilityClosureScript(source, assetFile);
             source = connectMcpFixes(source, assetFile);
+            source = connectMcpValidationOwnership(source, assetFile);
             source = connectMcpCapacity(source, assetFile);
             return `<script>${escapeClosingScript(source)}</script>`;
           },
@@ -1237,13 +1561,71 @@ function inlineBaselineAssets() {
   };
 }
 
+function verifyMcpAppResource() {
+  return {
+    name: "verify-mcp-app-resource",
+    apply: "build",
+    closeBundle() {
+      const viteHtmlFile = path.join(outputHtmlDirectory, viteHtmlFilename);
+      const appFile = path.join(outputHtmlDirectory, timestampedHtmlFilename);
+      fs.renameSync(viteHtmlFile, appFile);
+      const files = [];
+      const visit = (directory) => {
+        for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+          const target = path.join(directory, entry.name);
+          if (entry.isDirectory()) visit(target);
+          else files.push(target);
+        }
+      };
+      visit(outputDirectory);
+      if (files.length !== 1 || path.resolve(files[0]) !== path.resolve(appFile)) {
+        throw new Error(`MCP App Resource 必须只生成约定的单文件 HTML，实际产物：${files.join(", ")}`);
+      }
+      const html = fs.readFileSync(appFile, "utf8");
+      assertPackagedAppHtml(html);
+      const kib = (Buffer.byteLength(html) / 1024).toFixed(1);
+      console.log(`MCP App Resource verified: ${appFile} (${kib} KiB, single-file, self-contained)`);
+    },
+  };
+}
+
+function serveLatestMcpAppPreview() {
+  const stablePath = `/training-run-twin-standalone/${viteHtmlFilename}`;
+  return {
+    name: "serve-latest-mcp-app-preview",
+    configurePreviewServer(server) {
+      server.middlewares.use((request, response, next) => {
+        const pathname = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
+        if (pathname !== stablePath) return next();
+        const matches = fs.readdirSync(outputHtmlDirectory, { withFileTypes: true })
+          .filter((entry) => entry.isFile() && isPackagedAppHtmlFilename(entry.name));
+        if (matches.length !== 1) {
+          response.statusCode = 500;
+          response.end("Expected exactly one timestamped MCP App Resource.");
+          return;
+        }
+        const html = fs.readFileSync(path.join(outputHtmlDirectory, matches[0].name));
+        response.statusCode = 200;
+        response.setHeader("Content-Type", "text/html; charset=utf-8");
+        response.setHeader("Content-Length", String(html.length));
+        response.end(html);
+      });
+    },
+  };
+}
+
 export default defineConfig({
   root: baselineRoot,
   cacheDir: fileURLToPath(new URL("../../node_modules/.vite/mcp-server-ui", import.meta.url)),
   resolve: {
     alias: { "@mcp-bridge": bridgeDirectory },
   },
-  plugins: [inlineBaselineAssets(), viteSingleFile()],
+  plugins: [
+    inlineBaselineAssets(),
+    viteSingleFile(),
+    verifyMcpAppResource(),
+    serveLatestMcpAppPreview(),
+  ],
   build: {
     outDir: outputDirectory,
     emptyOutDir: true,

@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 
+import { APP_RESOURCE_META } from "../src/app-resource.js";
 import { createHttpApp, loadHttpConfig } from "../src/http.js";
 
 const TOKEN = "test-token-with-at-least-thirty-two-characters";
@@ -124,6 +125,7 @@ test("携带 Bearer Token 的 Streamable HTTP 客户端可调用 Tool 并读取�
 
     const resource = await client.readResource({ uri: "ui://mindspeed-config/result-view.html" });
     assert.equal(resource.contents[0].mimeType, "text/html;profile=mcp-app");
+    assert.deepEqual(resource.contents[0]._meta?.ui, APP_RESOURCE_META);
   } finally {
     await client.close();
     await close(server);
