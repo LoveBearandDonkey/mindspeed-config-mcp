@@ -7971,10 +7971,10 @@
            同一处，于是内置预设与外部配置都能显示“原名（已手动调整）”。 */
         if (currentPreset) select.dataset.sourceConfigName = currentPreset.label;
         const sourceName = String(select.dataset.sourceConfigName || "").trim();
-        const customLabel = `${sourceName || "自定义"}（已手动调整）`;
+        const customLabel = (sourceName || "自定义") + "（已手动调整）";
         // 选项集没变就别重建 DOM：重建会打断原生下拉的展开态与键盘焦点
         const signature = list.map((preset) => preset.id).join("|")
-          + (custom ? `|+custom:${customLabel}` : "");
+          + (custom ? "|+custom:" + customLabel : "");
         if (select.dataset.presetSignature !== signature) {
           select.textContent = "";
           list.forEach((preset) => {

@@ -586,7 +586,7 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
   const observerSource = read(observerFile);
   assert.match(
     observerSource,
-    /sourceConfigName[\s\S]*?customLabel = `\$\{sourceName \|\| "自定义"\}（已手动调整）`[\s\S]*?option\.textContent = customLabel/,
+    /sourceConfigName[\s\S]*?customLabel = \(sourceName \|\| "自定义"\) \+ "（已手动调整）"[\s\S]*?option\.textContent = customLabel/,
     "手动调整配置后，下拉没有保留原配置名",
   );
   assert.match(
