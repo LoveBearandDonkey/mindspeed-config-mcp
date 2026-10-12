@@ -18,7 +18,10 @@ COPY apps/web/config-relation-plane-baseline ./apps/web/config-relation-plane-ba
 COPY packages/config-core ./packages/config-core
 COPY packages/contracts ./packages/contracts
 
-RUN npm run build:ui \
+# Vite 8's HTML transform drops the generated entry when this large classic script is LF-only.
+# Normalize the builder copy to the same CRLF form used by the verified Windows package flow.
+RUN node -e "const fs=require('node:fs');const p='apps/web/config-relation-plane-baseline/training-run-twin-standalone/js/config-relation-observer.js';const s=fs.readFileSync(p,'utf8').replace(/\r?\n/g,'\r\n');fs.writeFileSync(p,s)" \
+    && npm run build:ui \
     && npm prune --omit=dev
 
 FROM ${NODE_IMAGE} AS runtime
