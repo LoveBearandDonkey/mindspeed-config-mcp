@@ -19,6 +19,7 @@ const baselineHtmlFile = path.join(
 );
 const observerFile = path.join(baselineDirectory, "js/config-relation-observer.js");
 const importFile = path.join(baselineDirectory, "js/config-relation-import.js");
+const yamlFile = path.join(baselineDirectory, "js/config-relation-yaml.js");
 const planeFile = path.join(baselineDirectory, "js/config-relation-plane.js");
 const capacityFile = path.join(baselineDirectory, "js/config-relation-capacity.js");
 const boundaryDocument = path.join(repositoryRoot, "docs/MCP UI边界清单.md");
@@ -27,6 +28,11 @@ const mcpShellEntryFile = path.join(repositoryRoot, "apps/mcp-server/ui/src/mcp-
 const mcpFixesAdapterFile = path.join(repositoryRoot, "apps/mcp-server/ui/src/mcp-fixes-adapter.js");
 const mcpValidationAdapterFile = path.join(repositoryRoot, "apps/mcp-server/ui/src/mcp-validation-adapter.js");
 const viteConfigFile = path.join(repositoryRoot, "apps/mcp-server/vite.config.js");
+const serverPackage = JSON.parse(fs.readFileSync(
+  path.join(repositoryRoot, "apps/mcp-server/package.json"),
+  "utf8",
+));
+assert.match(serverPackage.productVersion, /^\d+\.\d+\.\d+$/, "产品版本必须是数字语义版本");
 const builtShellDirectory = path.join(repositoryRoot, "apps/mcp-server/ui/dist/ui-shell-v1/training-run-twin-standalone");
 const builtShellFiles = fs.readdirSync(builtShellDirectory, { withFileTypes: true })
   .filter((entry) => entry.isFile() && isPackagedAppHtmlFilename(entry.name));
@@ -309,6 +315,7 @@ test("第 8 项删除旧顶栏入口但按验收要求保留 MindSpeed intro", (
   const baseline = read(baselineHtmlFile);
   const builtShell = read(builtShellFile);
   const removed = [
+    'class="pto-ide-frame__host-chip"',
     'class="pto-ide-frame__workspace"',
     'id="croRankIntro"',
     'id="croExportConfig"',
@@ -320,6 +327,14 @@ test("第 8 项删除旧顶栏入口但按验收要求保留 MindSpeed intro", (
   }
   for (const preserved of ['id="croMindSpeedIntro"', 'id="croImportConfig"', 'id="themeToggle"']) {
     assert.ok(builtShell.includes(preserved), `MCP App 误删保留入口：${preserved}`);
+  }
+  for (const identity of [
+    '<h1 class="mcp-product-title">配置校验与可视化</h1>',
+    '<span class="mcp-product-tag">Powered by MindSpeed Agent</span>',
+    `<span class="mcp-product-tag mcp-product-version" data-product-version="${serverPackage.productVersion}">v${serverPackage.productVersion}</span>`,
+    '<div class="mcp-compute-boundary" role="note">纯静态文件校验</div>',
+  ]) {
+    assert.ok(builtShell.includes(identity), `MCP App 缺少产品标识：${identity}`);
   }
 });
 
@@ -387,7 +402,7 @@ test("第 10 项收敛可见与无障碍文案并声明纯计算边界", () => {
     "配置与关系分析",
     "通信分析",
     "查看内置或上传配置，并预览当前表单生成的训练启动配置",
-    "纯计算 · 不启动训练 · 不采集实时指标",
+    "纯静态文件校验",
   ]) {
     assert.ok(builtShell.includes(marker), `MCP App 缺少第 10 项目标文案：${marker}`);
   }
@@ -497,6 +512,41 @@ test("第 15 项保留配置输入与代码视图，并收口整网、共享专�
   }
 });
 
+test("代码视图用用户提供的模型结构替代生成启动命令", () => {
+  const yamlSource = read(yamlFile);
+  const shellSource = read(mcpShellEntryFile);
+  const validationSource = read(mcpValidationAdapterFile);
+  const builtShell = read(builtShellFile);
+
+  assert.doesNotMatch(yamlSource, /GENERATED_LAUNCH_PRESET_IDS|function buildLaunchLines/);
+  assert.match(yamlSource, /paintPlainSource\(doc\.getElementById\("croLaunchCode"\), modelSource\)/);
+  assert.match(yamlSource, /modelSource = next\?\.modelSource \|\| null/);
+  assert.match(shellSource, /current\.source\?\.modelSource[\s\S]*?current\.modelStructureUploadedSource/);
+  assert.match(shellSource, /manuallyEnteredModel\[path\.slice\("model\."\.length\)\] = value/);
+  assert.match(shellSource, /marks: sourceMarks\(current\.result, adjusted\),[\s\S]*?modelSource/);
+
+  assert.match(
+    shellSource,
+    /missingRequiredFields = useCompletion\s*\? \[\][\s\S]*?incompleteImport: !useCompletion/,
+    "应用第三栏补齐方案后仍被误判为缺少 Tool 输入",
+  );
+  assert.match(
+    validationSource,
+    /for \(const path of Object\.keys\(event\.detail\?\.supplements \?\? \{\}\)\) sourcePaths\.add\(path\)/,
+    "用户确认的第三栏补值没有进入内存估算证据",
+  );
+  assert.doesNotMatch(shellSource, /strictSourceEvidence/);
+
+  assert.ok(builtShell.includes('id="croYamlRegion" aria-label="训练配置"'));
+  assert.ok(builtShell.includes('<h2 class="cro-region__title cro-yaml__title">训练配置</h2>'));
+  assert.ok(builtShell.includes('aria-label="训练配置选项"'));
+  assert.ok(builtShell.includes('<span class="cro-yaml__launch-title">模型结构</span>'));
+  assert.ok(builtShell.includes('<span class="cro-yaml__launch-note">导入提供时显示</span>'));
+  assert.ok(builtShell.includes('aria-label="复制模型结构"'));
+  assert.ok(!builtShell.includes('<span class="cro-yaml__launch-title">启动命令</span>'));
+  assert.ok(!builtShell.includes('<h2 class="cro-region__title cro-yaml__title">配置文件</h2>'));
+});
+
 test("配置下拉与导入弹窗共用单行配置解析横幅", () => {
   const builtShell = read(builtShellFile);
   for (const marker of [
@@ -586,13 +636,23 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
   const observerSource = read(observerFile);
   assert.match(
     observerSource,
-    /sourceConfigName[\s\S]*?customLabel = \(sourceName \|\| "自定义"\) \+ "（已手动调整）"[\s\S]*?option\.textContent = customLabel/,
+    /sourceConfigName[\s\S]*?customLabel = \(sourceName \|\| "自定义"\) \+ "已经过调整"[\s\S]*?option\.textContent = customLabel/,
     "手动调整配置后，下拉没有保留原配置名",
   );
   assert.match(
     importSource,
-    /function setSourceConfigName\(name\)[\s\S]*?dataset\.sourceConfigName = sourceName[\s\S]*?customOption\.textContent = `\$\{sourceName\}（已手动调整）`[\s\S]*?addEventListener\("cro:source"/,
+    /function setSourceConfigName\(name\)[\s\S]*?dataset\.sourceConfigName = sourceName[\s\S]*?customOption\.textContent = `\$\{sourceName\}已经过调整`[\s\S]*?addEventListener\("cro:source"/,
     "导入配置名没有同步给下拉与选项卡片",
+  );
+  assert.match(
+    importSource,
+    /function configLabelHtml\(value\)[\s\S]*?cro-config-adjusted-tag[\s\S]*?mergedTrigger\.innerHTML = configLabelHtml\(label\)[\s\S]*?configLabelHtml\(meta\.label\)/,
+    "配置触发框与临时选项没有把“已手动调整”渲染为独立标签",
+  );
+  assert.match(
+    sourceStyle,
+    /\.cro-config-adjusted-tag\s*\{[\s\S]*?var\(--warning\)[\s\S]*?background:[^;]*var\(--warning\)/,
+    "已手动调整标签没有使用黄色标签样式",
   );
   assert.match(
     sourceStyle,
@@ -837,6 +897,77 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
   );
 });
 
+test("配置下拉与导入弹窗提供带 Tool 影响告知的直接导入分支", () => {
+  const shellSource = read(mcpShellEntryFile);
+  const validationSource = read(mcpValidationAdapterFile);
+  const sourceStyle = read(mcpShellStyleFile);
+  for (const marker of [
+    "无需${missing.length}项补缺，直接导入",
+    "配置解析问题告知",
+    "继续导入",
+    "补齐后导入",
+    "取消导入",
+    "关闭并返回上一层",
+    "不会使用上一份配置补缺",
+    "missingFieldImpactRows",
+    "toolReadinessForMissingFields",
+    "incompleteImport: !useCompletion",
+  ]) {
+    assert.ok(shellSource.includes(marker), `直接导入交互缺少标记：${marker}`);
+  }
+  assert.match(
+    shellSource,
+    /mcp-import-issues__close[\s\S]*?closeIssueDialog\(\{ restoreFocus: true \}\)/,
+    "二次确认弹窗右上角关闭后没有只返回上一层",
+  );
+  assert.match(
+    shellSource,
+    /dialog\.addEventListener\("click", \(event\) => event\.stopPropagation\(\)\)/,
+    "二次确认弹窗的点击仍会冒泡并关闭配置下拉面板",
+  );
+  assert.match(
+    shellSource,
+    /mcp-import-issues__cancel[\s\S]*?croImportClose[\s\S]*?croPreviewCancel/,
+    "取消导入没有同时覆盖导入弹窗和配置选择面板",
+  );
+  assert.match(
+    shellSource,
+    /mcp-import-issues__continue[\s\S]*?applyParsed\(context\.state\.current, report, \{ useCompletion: false \}\)/,
+    "继续导入没有明确绕过补齐候选",
+  );
+  assert.match(
+    validationSource,
+    /assertToolReady[\s\S]*?不会从上一份配置继承[\s\S]*?incompleteToolReadiness/,
+    "直接导入后仍可能使用上一份配置驱动 MCP Tool",
+  );
+  assert.match(sourceStyle, /\.mcp-import-issues\s*\{[\s\S]*?z-index:\s*12000;/);
+  assert.match(sourceStyle, /\.cro-yaml__menu \.mcp-direct-import\s*\{[\s\S]*?order:\s*-1;/);
+  assert.ok(
+    !shellSource.includes('btn-solid mcp-import-issues__complete'),
+    "补齐后导入不应使用主按钮样式",
+  );
+  assert.doesNotMatch(
+    sourceStyle,
+    /\.mcp-direct-import\s*\{[^}]*var\(--warning\)/,
+    "直接导入按钮不应使用黄色警示样式",
+  );
+  assert.doesNotMatch(
+    sourceStyle,
+    /\.mcp-import-issues__continue\s*\{[^}]*var\(--warning\)/,
+    "继续导入按钮不应使用黄色警示样式",
+  );
+  assert.match(
+    sourceStyle,
+    /#croConfigError\.cro-config-error\.is-mcp-invalid,\s*#croConfigError\.cro-config-error\.is-mcp-unavailable\s*\{[\s\S]*?var\(--danger\)/,
+    "暂时不可用卡片没有复用红色错误样式",
+  );
+  assert.match(
+    sourceStyle,
+    /#croConfigError\.is-mcp-unavailable \.mcp-fixes\s*\{\s*display:\s*none;/,
+    "暂时不可用卡片仍会展示修复建议及其分割线",
+  );
+});
+
 test("导入弹窗默认提供大小有别的训练配置与可选模型结构输入", () => {
   const shellSource = read(mcpShellEntryFile);
   const sourceStyle = read(mcpShellStyleFile);
@@ -1040,8 +1171,11 @@ test("第 12 项以 compute_rank_topology 快照驱动原 Rank 页面", () => {
     /function syncMcpCapacityAvailability\(detail\)[\s\S]*?detail\.available === true[\s\S]*?setMemoryObservation\(false\)/,
     "容量证据不可用时画布没有自动回退到拓扑全景");
   assert.match(planeSource,
-    /mcp:parsed-config-applied[\s\S]*?preferMemoryOnNextCapacityReady = true/,
-    "应用新配置且容量成功后没有恢复默认的内存预估视图");
+    /function preferMemoryAfterConfigRefresh\(\)[\s\S]*?preferMemoryOnNextCapacityReady = true[\s\S]*?cro:change[\s\S]*?preferMemoryAfterConfigRefresh\(\)[\s\S]*?onChange\(event\.detail\)/,
+    "普通配置刷新且容量成功后没有恢复默认的内存预估视图");
+  assert.match(planeSource,
+    /mcp:parsed-config-applied[\s\S]*?preferMemoryAfterConfigRefresh\(\)[\s\S]*?mcp:pipeline-settings-change[\s\S]*?preferMemoryAfterConfigRefresh/,
+    "导入配置或 PP 分层设置刷新后没有沿用内存预估默认规则");
   assert.match(planeSource,
     /const restoreMemoryDefault = memoryAvailable && preferMemoryOnNextCapacityReady;[\s\S]*?setMemoryObservation\(true\)/,
     "容量成功事件没有消费新配置的内存预估默认偏好");
@@ -1129,7 +1263,7 @@ test("第 13 项以 suggest_config_fixes 驱动原建议区域并保留字段锁
   assert.ok(!builtShell.includes("mcp-fixes__boundary"), "修复候选底部不应继续显示边界文案");
   assert.match(
     sourceStyle,
-    /#croConfigError\.cro-config-error\.is-mcp-invalid\s*\{[\s\S]*?var\(--danger\)[\s\S]*?\}/,
+    /#croConfigError\.cro-config-error\.is-mcp-invalid,\s*#croConfigError\.cro-config-error\.is-mcp-unavailable\s*\{[\s\S]*?var\(--danger\)[\s\S]*?\}/,
     "阻断态整体问题卡片应沿用红色错误样式",
   );
   assert.doesNotMatch(sourceStyle, /\.cro-config-error__msg \+ \.mcp-validation/, "整体问题与校验明细之间不应继续显示分割线");

@@ -1,25 +1,12 @@
 /* ══════════════════════════════════════════════════════════════════════════
    配置 YAML 视图（顶栏「关系视图 / YAML 视图」的第二档）
    ------------------------------------------------------------------------
-   切到 YAML 档时整网列原样留着（这份 yaml 描述的就是左边这张网），右侧三个区
-   （Model Architecture / MoE / Cluster）整块换成上下分栏：
-     上 · configs/<家族>/run_<全名>.yaml —— MindSpore + MindFormers 口径
-     下 · msrun 启动命令 —— 集群规模（多少卡、多少节点）真实的落点
+   切到 YAML 档时整网列原样留着，右侧三个区换成上下分栏：
+     上 · 当前训练配置原文或按页面表单生成的 MindFormers YAML
+     下 · 用户在导入流程中提供的模型结构原文
 
-   ⚠ 两块都是**实时**由 croObserver 的当前配置生成的，不是写死的样例：用户刚在
-   四域里调完参数切过来，代码框里的数字必须和刚才那一屏对得上，否则整页的可信度
-   就没了。本文件只吃 cro:change 事件 + 读 croObserver.topology，一行不改主控制器
-   （与 config-relation-capacity.js 同样的接法）。
-
-   ── 为什么集群那几项不在 yaml 里 ──
-   对标 MindFormers 的真实 run_*.yaml：模型结构 / parallel_config / moe_config /
-   runner_config 确实同处一个文件，但**卡型号、单卡 HBM、节点数、总卡数不在**：
-     · 卡型号与 HBM 是硬件事实，由驱动探测；yaml 里只有 context.max_device_memory
-       这个「给框架划多少显存」的上限，故写成它的行尾注释；
-     · 总卡数 / 节点数由启动器给（msrun 的 worker_num / local_worker_num），
-       框架只校验并行度的乘积 == worker_num —— ep 进不进这个乘积取决于页面的
-       EP 口径开关：切出档（默认）是 dp×mp×pp×cp，正交档是 dp×mp×pp×cp×ep。
-   把它们硬塞进 yaml 会骗人（写 64 GB 也变不出 64 GB），所以下沉到启动命令那一栏。
+   模型结构栏不从页面预设或启动命令推断；上传、粘贴或手动填写过才显示，
+   没有独立模型结构证据时保持空白。
    ══════════════════════════════════════════════════════════════════════════ */
 (function (global) {
   "use strict";
@@ -430,29 +417,6 @@
     return lines;
   }
 
-  /* ── 下栏：msrun 启动命令 ──────────────────────────────────────────────
-     集群那三项（总卡数 / 每节点卡数 / 节点数）真实的落点。msrun 是 MindSpore 的
-     动态组网启动器，多机不再需要 RANK_TABLE_FILE。 */
-  function buildLaunchLines(topology) {
-    const c = topology.counts;
-    return [
-      L("# 每个节点执行一次，node_rank 从 0 递增到 " + Math.max(0, c.node - 1)
-        + "；msrun 动态组网，无需 RANK_TABLE_FILE"),
-      L("msrun --worker_num=" + c.totalRank + " \\", "totalRank"),
-      L("      --local_worker_num=" + c.ranksPerNode + " \\", "node"),
-      L("      --master_addr=${MASTER_ADDR} \\"),
-      L("      --master_port=8118 \\"),
-      L("      --node_rank=${NODE_RANK} \\"),
-      L("      --log_dir=./output/msrun_log \\"),
-      L("      --join=False \\"),
-      L("      --cluster_time_out=300 \\"),
-      L("      run_mindformer.py \\"),
-      L("      --config " + yamlPath(topology.preset) + " \\"),
-      L("      --run_mode train \\"),
-      L("      --use_parallel True"),
-    ];
-  }
-
   /* ── 高亮：注释 / 键 / 值三类，够读就行，不引外部 highlighter ── */
   const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -512,6 +476,7 @@
      的行标成 ≠（配平改了数，例如 mixtral 的 EP 8 → 2）。后者必须显眼 ——
      文件里写着 8、表单上是 2，不指出来就是让人对着两个数猜哪个算数。 */
   let source = null;   // { name, label, dialect, text, marks: [{token, label, value, got}] }
+  let modelSource = null; // { name, dialect, text }，只来自用户明确提供的模型结构
   /* 原文是否仍对应当前表单，不能用「又收到一次 cro:change」判断。
      MCP 适配层在应用样例后还会异步发布一次 compute_rank_topology 结果；那次发布只把
      同一份配置的拓扑补齐，并没有改任何表单值。如果逢 cro:change 就清 source，代码框
@@ -529,12 +494,17 @@
 
   function useSource(next) {
     source = next || null;
+    modelSource = next?.modelSource || null;
     sourceConfigSignature = source ? currentConfigSignature() : null;
   }
 
   function discardSourceIfConfigChanged() {
     if (!source || sourceConfigSignature === currentConfigSignature()) return false;
-    useSource(null);
+    /* 表单改动后训练配置原文不再对应当前值，但用户提供的模型结构仍是当前输入证据。 */
+    source = null;
+    sourceConfigSignature = null;
+    /* 切换到另一份页面内置预设时，上一份导入配置的模型结构不再属于当前配置。 */
+    if (global.croObserver?.config?.configPreset) modelSource = null;
     return true;
   }
 
@@ -580,6 +550,18 @@
     el.dataset.raw = source.text;
   }
 
+  function paintPlainSource(el, nextSource) {
+    if (!el) return;
+    const text = nextSource?.text?.trim() ? nextSource.text : "";
+    const highlighter = nextSource?.dialect === "sh" ? highlightShell
+      : nextSource?.dialect === "json" ? highlightJson : highlightYaml;
+    el.innerHTML = text.replace(/\r\n?/g, "\n").split("\n").filter((line, index, lines) => (
+      line || index < lines.length - 1
+    )).map((line) => '<li class="cro-yaml__line"><code>'
+      + highlighter(line) + "</code></li>").join("");
+    el.dataset.raw = text;
+  }
+
   function paint(el, lines, highlighter, changed) {
     if (!el) return;
     el.innerHTML = lines.map((line) => {
@@ -602,9 +584,7 @@
 
     if (source) paintSource(codeEl);
     else paint(codeEl, buildYamlLines(topology), highlightYaml, changed);
-    /* 启动命令那一栏照旧按表单生成：卡型号 / 节点数 / 总卡数本来就不在配置文件里
-       （见文件头），换成原文也补不出这几个数，反而会和上面的原文互相矛盾。 */
-    paint(doc.getElementById("croLaunchCode"), buildLaunchLines(topology), highlightShell, changed);
+    paintPlainSource(doc.getElementById("croLaunchCode"), modelSource);
 
     const pathEl = doc.getElementById("croYamlPath");
     if (pathEl) pathEl.textContent = source ? source.name : yamlPath(topology.preset);

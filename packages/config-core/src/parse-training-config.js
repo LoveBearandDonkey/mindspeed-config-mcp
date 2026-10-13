@@ -2,8 +2,9 @@ import { parseDocument } from "yaml";
 
 import { diagnostic, toolResult } from "./result.js";
 import { planTrainingConfigCompletion } from "./plan-training-config-completion.js";
+import { toolReadinessForMissingFields } from "./tool-readiness.js";
 
-const PARSER_SOURCE = "mindspeed-config-mcp:parse-training-config@0.3.0";
+const PARSER_SOURCE = "mindspeed-config-mcp:parse-training-config@0.3.1";
 const FORMAT_LABELS = Object.freeze({
   yaml: "YAML",
   json: "JSON",
@@ -356,6 +357,7 @@ function parseSingleTrainingConfig(input) {
       unmapped_fields: unmappedFields,
       ignored_fields: ignoredFields,
       missing_required_fields: missingRequiredFields,
+      tool_readiness: toolReadinessForMissingFields(missingRequiredFields),
       completion: planTrainingConfigCompletion(normalized, missingRequiredFields, {
         sourceName: input.source.name,
         detectedFormat,
@@ -505,6 +507,7 @@ function mergeParsedSources(input, trainingResult, modelResult) {
       unmapped_fields: unmappedFields,
       ignored_fields: ignoredFields,
       missing_required_fields: missingRequiredFields,
+      tool_readiness: toolReadinessForMissingFields(missingRequiredFields),
       source_conflicts: conflicts,
       completion: planTrainingConfigCompletion(normalized, missingRequiredFields, {
         sourceName: input.source.name,
@@ -532,7 +535,8 @@ function emptyData(input, format) {
     mapped_fields: [],
     unmapped_fields: [],
     ignored_fields: [],
-    missing_required_fields: [...REQUIRED_PATHS]
+    missing_required_fields: [...REQUIRED_PATHS],
+    tool_readiness: toolReadinessForMissingFields(REQUIRED_PATHS),
   };
 }
 

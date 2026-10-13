@@ -10,9 +10,15 @@ Deploy only an exact, pushed Git commit. Keep the current container serving traf
 ## Standard release
 
 1. Inspect `git status --short --branch` and the intended diff. Never absorb unrelated user changes into a release commit.
-2. If the requested version is not committed and pushed, run the relevant tests, commit only the intended paths, and push `main` first.
-3. Run `scripts/deploy-tencent-cloud.ps1` from this skill. It performs the full local test and packaging gate unless `-SkipLocalVerify` is explicitly used for diagnosis.
-4. Report the deployed commit, release directory, image ID, health result, authorization result, and packaged HTML SHA-256.
+2. For a new product release, run `scripts/prepare-release.ps1` exactly once before the release commit. It increments the patch component and rebuilds the standalone `deploy/github-pages/` package. If preparation failed after the version changed, retry with `-ReuseCurrentVersion` instead of incrementing again.
+3. If the requested version is not committed and pushed, run the relevant tests, commit only the intended paths including the version bump and refreshed `deploy/github-pages/`, and push `main` first.
+4. Run `scripts/deploy-tencent-cloud.ps1` from this skill. It performs the full local test and packaging gate unless `-SkipLocalVerify` is explicitly used for diagnosis.
+5. Report the product version, deployed commit, release directory, image ID, health result, authorization result, and packaged HTML SHA-256.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File `
+  .agents/skills/mindspeed-config-mcp-deploy/scripts/prepare-release.ps1
+```
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File `
@@ -28,12 +34,14 @@ The script intentionally refuses tracked changes, staged changes, unpushed `HEAD
 - Copy the existing remote `.env` with mode `600`. Never display it and never invent a fallback token.
 - Keep the service bound to `127.0.0.1:3002`; do not open the MCP port publicly.
 - Require `/health` to return success and unauthenticated `/mcp` to return `401`.
+- Require the packaged container HTML to contain the exact product version tag from `apps/mcp-server/package.json`.
+- Require `deploy/github-pages/` to be a current, self-contained browser-local package for the same product version. Validate its manifest and SHA-256 before contacting the server.
 - Retain the previous release directory and tag its image with a release-specific rollback tag. If post-switch verification fails, restore the previous image and compose project automatically.
 - A failed pre-switch build must not replace the running container.
 
 ## Packaging-only requests
 
-For a deployable HTML artifact without a server rollout, use the `mindspeed-config-mcp-package` skill instead. For page or style changes, also follow the repository instruction to run the local `Preview` workflow before the final response.
+For a deployable MCP App HTML artifact without a server rollout, use the `mindspeed-config-mcp-package` skill. For the non-MCP GitHub Pages experience, run `npm run package:github-pages` and preserve the complete `deploy/github-pages/` directory. For page or style changes, also follow the repository instruction to run the local `Preview` workflow before the final response.
 
 ## Failure handling
 

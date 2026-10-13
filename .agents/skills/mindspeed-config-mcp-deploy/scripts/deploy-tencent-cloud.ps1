@@ -145,6 +145,20 @@ try {
             throw "HEAD $commit is not the pushed origin/main $remoteCommit. Commit and push the intended version first."
         }
 
+        $serverPackageFile = Join-Path $ProjectRoot "apps\mcp-server\package.json"
+        $serverPackage = Get-Content -Raw -Encoding UTF8 -LiteralPath $serverPackageFile | ConvertFrom-Json
+        $productVersion = [string]$serverPackage.productVersion
+        if ($productVersion -notmatch '^\d+\.\d+\.\d+$') {
+            throw "apps/mcp-server/package.json productVersion must be a numeric semver."
+        }
+        $productVersionLabel = "v$productVersion"
+
+        $verifyPagesScript = Join-Path $PSScriptRoot "verify-github-pages.ps1"
+        if (-not (Test-Path -LiteralPath $verifyPagesScript -PathType Leaf)) {
+            throw "GitHub Pages verification script not found: $verifyPagesScript"
+        }
+        $githubPagesPackage = & $verifyPagesScript -ProjectRoot $ProjectRoot
+
         if (-not $SkipLocalVerify) {
             $packageScript = Join-Path $ProjectRoot ".agents\skills\mindspeed-config-mcp-package\scripts\package-ui.ps1"
             if (-not (Test-Path -LiteralPath $packageScript -PathType Leaf)) {
@@ -161,6 +175,12 @@ try {
         }
         $localArtifact = $artifacts[0]
         $localArtifactHash = (Get-FileHash -LiteralPath $localArtifact.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+        $localArtifactHtml = [IO.File]::ReadAllText($localArtifact.FullName, [Text.Encoding]::UTF8)
+        $expectedVersionClass = "mcp-product-tag mcp-product-version"
+        $expectedVersionText = ">$productVersionLabel</span>"
+        if (-not $localArtifactHtml.Contains($expectedVersionClass) -or -not $localArtifactHtml.Contains($expectedVersionText)) {
+            throw "Local packaged HTML does not contain product version $productVersionLabel."
+        }
 
         $releaseId = [TimeZoneInfo]::ConvertTimeBySystemTimeZoneId([DateTimeOffset]::UtcNow, "China Standard Time").ToString("yyyyMMdd-HHmmss")
         $tempDirectory = Join-Path ([IO.Path]::GetTempPath()) ("mindspeed-config-mcp-deploy-" + [guid]::NewGuid().ToString("N"))
@@ -239,9 +259,12 @@ try {
     $containerHash = ($containerHashOutput -split '\s+')[0].ToLowerInvariant()
     $containerBytes = Invoke-SshText -RemoteCommand ("sudo docker exec " + (ConvertTo-PosixLiteral $ContainerName) + " wc -c " + (ConvertTo-PosixLiteral $containerArtifact))
     $containerByteCount = [long](($containerBytes -split '\s+')[0])
+    Invoke-SshChecked -RemoteCommand ("sudo docker exec " + (ConvertTo-PosixLiteral $ContainerName) + " grep -Fq " + (ConvertTo-PosixLiteral $expectedVersionClass) + " " + (ConvertTo-PosixLiteral $containerArtifact))
+    Invoke-SshChecked -RemoteCommand ("sudo docker exec " + (ConvertTo-PosixLiteral $ContainerName) + " grep -Fq " + (ConvertTo-PosixLiteral $expectedVersionText) + " " + (ConvertTo-PosixLiteral $containerArtifact))
 
     [PSCustomObject]@{
         release_id = $releaseId
+        product_version = $productVersionLabel
         commit = $commit
         release_directory = $remoteRelease
         image_id = $builtImageId
@@ -251,6 +274,8 @@ try {
         unauthenticated_mcp_status = [int]$unauthorizedStatus
         local_artifact = $localArtifact.Name
         local_artifact_sha256 = $localArtifactHash
+        github_pages_directory = [string]$githubPagesPackage.directory
+        github_pages_sha256 = [string]$githubPagesPackage.sha256
         container_artifact = Split-Path -Leaf $containerArtifact
         container_artifact_bytes = $containerByteCount
         container_artifact_sha256 = $containerHash

@@ -294,6 +294,7 @@
 - 第 18 项产物名改为 `config-relation-plane-mindspeed-config-mcp-YYYYMMDD-HHmmss.html`，时间戳使用上海时区；每次构建清理旧产物并只保留当次文件。服务端按严格命名规则发现唯一 HTML，4174 固定预览 URL 也映射到该文件，无需手改路径。
 - 仓库新增 `$mindspeed-config-mcp-package` Skill，用于高频小步迭代打包；默认快速构建并返回路径/字节数/SHA-256，发布级复核可加 `-FullVerify`。
 - 时间戳改造后完整自动化测试 110/110 通过，Streamable HTTP smoke 通过；`-FullVerify` 最终产物 `config-relation-plane-mindspeed-config-mcp-20261010-165323.html` 为 1,710,521 bytes，SHA-256 为 `62F24910ADB229CE4DDE3E8CCBA0E26855FC5934ABCB41FC670E9B8F5BDD55CF`。同一内容的生产预览响应与磁盘文件字节级一致。
+- 配置下拉面板与导入弹窗在存在缺口时新增“无需 X 项补缺，直接导入”。二次确认弹窗逐字段列出受影响 Tool；“继续导入”保留缺口并停止对应 Tool，绝不继承上一份配置；“补齐后导入”复用原完整候选；“取消导入”关闭两层，右上角关闭只返回上一层。
 
 ### 第 10、11 项验收记录
 

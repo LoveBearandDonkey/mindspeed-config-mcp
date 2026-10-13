@@ -1137,7 +1137,7 @@
       ? String(value).slice(PRESET_PREFIX.length) : null;
 
     /* observer 只知道“已经脱离预设”，配置导入层才知道它原来叫什么。把来源名留在
-       select 的显示态上：后续参数手调时 observer 会用它生成“原名（已手动调整）”，
+       select 的显示态上：后续参数手调时 observer 会用它生成“原名 已经过调整”，
        菜单卡片又直接复用该 option 文本，因此两处名称始终一致。 */
     function setSourceConfigName(name) {
       if (!mergedSelect) return;
@@ -1146,15 +1146,25 @@
       mergedSelect.dataset.sourceConfigName = sourceName;
       delete mergedSelect.dataset.presetSignature;
       const customOption = mergedSelect.querySelector('option[value="__custom__"]');
-      if (customOption) customOption.textContent = `${sourceName}（已手动调整）`;
+      if (customOption) customOption.textContent = `${sourceName}已经过调整`;
       syncMergedTrigger();
+    }
+
+    const ADJUSTED_LABEL = "已经过调整";
+    function configLabelHtml(value) {
+      const label = String(value || "");
+      if (!label.endsWith(ADJUSTED_LABEL)) return escapeHtml(label);
+      const base = label.slice(0, -ADJUSTED_LABEL.length);
+      return `<span class="cro-config-label-text">${escapeHtml(base)}</span>`
+        + `<span class="cro-config-adjusted-tag">${ADJUSTED_LABEL}</span>`;
     }
 
     function syncMergedTrigger() {
       if (!mergedSelect || !mergedTrigger) return;
       const selected = mergedSelect.selectedOptions && mergedSelect.selectedOptions[0];
-      mergedTrigger.textContent = selected ? selected.textContent : "选择配置";
-      mergedTrigger.title = selected ? selected.textContent : "选择配置";
+      const label = selected ? selected.textContent : "选择配置";
+      mergedTrigger.innerHTML = configLabelHtml(label);
+      mergedTrigger.title = label;
     }
 
     /* 保留 observer 写入的内置预设，只在末尾追加样例 optgroup。「自定义」只用于
@@ -1303,7 +1313,7 @@
        不用 title —— 代表性是**选之前**要读到的东西，藏进悬浮里等于没写。 */
     const card = (meta) => `<button class="cro-yaml__opt" type="button" role="option"`
       + ` aria-selected="false" data-file="${escapeHtml(meta.file)}">`
-      + `<span class="cro-yaml__opt-line"><b>${escapeHtml(meta.label)}</b>`
+      + `<span class="cro-yaml__opt-line"><b>${configLabelHtml(meta.label)}</b>`
       + `<em>${escapeHtml(meta.source)}</em></span>`
       + `<span class="cro-yaml__opt-note">${rich(meta.note)}</span></button>`;
 

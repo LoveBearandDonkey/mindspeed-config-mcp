@@ -6969,10 +6969,18 @@
     });
   }
 
+  /* 新配置意味着进入新的画布观察上下文：不论它来自手调、修复建议、导入配置，
+     还是 PP 分层设置，只要随后拿到可用的容量内容，都从“内存预估”开始展示。
+     等待容量期间若用户主动选择画布模式，按钮监听仍会把这次默认偏好撤销。 */
+  function preferMemoryAfterConfigRefresh() {
+    preferMemoryOnNextCapacityReady = true;
+  }
+
   doc.addEventListener("cro:change", (event) => {
     /* observer.mount() 在 DOMContentLoaded 才完成。首次与后续配置事件都重新确认横幅
        的稳定挂载点，避免初始化重排把它留回 Architecture 区而失去全表单吸顶范围。 */
     mountConfigError();
+    preferMemoryAfterConfigRefresh();
     onChange(event.detail);
   });
   doc.addEventListener("cro:select", (event) => {
@@ -7013,10 +7021,9 @@
     if (!relation) renderDetail();
   });
   doc.addEventListener("mcp:parsed-config-applied", () => {
-    /* 应用一份新配置相当于进入新的观察上下文：容量成功后从默认的内存预估开始。
-       若用户在等待期间主动切换画布，上面的点击监听会撤销这次自动恢复。 */
-    preferMemoryOnNextCapacityReady = true;
+    preferMemoryAfterConfigRefresh();
   });
+  doc.addEventListener("mcp:pipeline-settings-change", preferMemoryAfterConfigRefresh);
 
   /* 拉窗口、收放左右栏都是**连续**的（一次拖拽几十上百个事件），与滚轮缩放同类，
      所以同样走节流的那条 —— 否则一次拖窗口就排上百次全量重铺。 */

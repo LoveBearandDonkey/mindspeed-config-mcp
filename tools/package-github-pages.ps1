@@ -12,6 +12,13 @@ $packageFile = Join-Path $resolvedRoot "package.json"
 if (-not (Test-Path -LiteralPath $packageFile -PathType Leaf)) {
     throw "mindspeed-config-mcp project not found: $resolvedRoot"
 }
+$serverPackageFile = Join-Path $resolvedRoot "apps\mcp-server\package.json"
+$serverPackage = Get-Content -Raw -Encoding UTF8 -LiteralPath $serverPackageFile | ConvertFrom-Json
+$productVersion = [string]$serverPackage.productVersion
+if ($productVersion -notmatch '^\d+\.\d+\.\d+$') {
+    throw "apps/mcp-server/package.json productVersion must be a numeric semver."
+}
+$productVersionLabel = "v$productVersion"
 if (-not (Get-Command "npm.cmd" -ErrorAction SilentlyContinue)) {
     throw "Command not found: npm.cmd"
 }
@@ -44,6 +51,9 @@ try {
     if (-not $html.Contains('mcpDistribution=`github-pages`')) {
         throw "Static demo marker missing; refusing to publish a host-dependent MCP App."
     }
+    if (-not $html.Contains("mcp-product-tag mcp-product-version") -or -not $html.Contains(">$productVersionLabel</span>")) {
+        throw "Static demo product version is not $productVersionLabel."
+    }
     if ($html -match '<(?:script|link|img|source|video|audio|iframe|object|embed)\b[^>]*(?:src|href|data)\s*=\s*["''][^"'']+["'']') {
         throw "Static demo HTML contains an external element asset."
     }
@@ -59,6 +69,7 @@ try {
     $manifest = [ordered]@{
         schema_version = "1.0"
         packaged_at_asia_shanghai = $timestamp
+        product_version = $productVersionLabel
         entry = "index.html"
         bytes = $bytes
         sha256 = $hash.Hash
@@ -89,6 +100,7 @@ try {
     Write-Host "GitHub Pages package ready."
     [PSCustomObject]@{
         timestamp = $timestamp
+        product_version = $productVersionLabel
         directory = $targetDirectory
         entry = $indexFile
         bytes = $bytes

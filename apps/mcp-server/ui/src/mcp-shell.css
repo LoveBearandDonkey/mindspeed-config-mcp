@@ -1,4 +1,35 @@
 /* 第 2 项 MCP 适配层：只调整导入入口与导入弹窗，不写回基线页面。 */
+.mcp-product-identity {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.mcp-product-title {
+  margin: 0;
+  color: var(--foreground);
+  font-size: var(--font-size-body-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.3;
+}
+
+.mcp-product-tag {
+  display: inline-flex;
+  min-height: 18px;
+  align-items: center;
+  padding: 0 6px;
+  border: 1px solid var(--comp-tag-border);
+  border-radius: var(--tag-radius);
+  background: var(--comp-tag-bg);
+  color: var(--comp-tag-fg);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  line-height: 1.2;
+}
+
 .mcp-compute-boundary {
   min-width: 0;
   color: var(--foreground-muted);
@@ -24,6 +55,35 @@
 
 .cro-board.is-plane .crop-left .cro-stepper .mcp-config-import-row .cro-config-picker__trigger {
   width: 100%;
+}
+
+.cro-config-picker__trigger .cro-config-label-text,
+.cro-yaml__opt-line b .cro-config-label-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cro-yaml__opt-line b:has(.cro-config-adjusted-tag) {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.cro-config-adjusted-tag {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid color-mix(in srgb, var(--warning) 38%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  color: var(--warning);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.5;
 }
 
 .mcp-config-import-button {
@@ -704,6 +764,143 @@
   display: none;
 }
 
+.mcp-direct-import {
+  min-width: 196px;
+}
+
+.mcp-direct-import[hidden] {
+  display: none;
+}
+
+.mcp-import-issues {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: color-mix(in srgb, #000 48%, transparent);
+}
+
+.mcp-import-issues[hidden] {
+  display: none;
+}
+
+.mcp-import-issues__box {
+  display: flex;
+  flex-direction: column;
+  width: min(760px, calc(100vw - var(--space-4) * 2));
+  max-height: min(720px, calc(100vh - var(--space-4) * 2));
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg, 12px);
+  background: var(--surface-1);
+  box-shadow: 0 22px 72px color-mix(in srgb, #000 38%, transparent);
+}
+
+.mcp-import-issues__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.mcp-import-issues__head h2 {
+  margin: 0;
+  color: var(--foreground);
+  font-size: var(--font-size-title-sm, 18px);
+}
+
+.mcp-import-issues__head p {
+  margin: var(--space-2) 0 0;
+  color: var(--foreground-secondary);
+  font-size: var(--font-size-body-sm);
+  line-height: 1.55;
+}
+
+.mcp-import-issues__close {
+  flex: 0 0 auto;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.mcp-import-issues__body {
+  overflow: auto;
+  padding: var(--space-4);
+}
+
+.mcp-import-issues table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--foreground);
+  font-size: var(--font-size-body-sm);
+}
+
+.mcp-import-issues th,
+.mcp-import-issues td {
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  text-align: left;
+  vertical-align: top;
+}
+
+.mcp-import-issues th {
+  background: var(--background-elevated, var(--surface-2));
+  color: var(--foreground-secondary);
+  font-size: var(--font-size-label-xs);
+}
+
+.mcp-import-issues td code {
+  display: block;
+  margin-top: 3px;
+  color: var(--foreground-secondary);
+  font-size: var(--font-size-label-xs);
+}
+
+.mcp-import-issues td span {
+  display: inline-block;
+  margin: 0 6px 4px 0;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  color: var(--warning);
+  white-space: nowrap;
+}
+
+.mcp-import-issues__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.cro-stepper.is-mcp-import-missing {
+  position: relative;
+  border-radius: var(--radius-sm, 6px);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+}
+
+.cro-stepper.is-mcp-import-missing .cro-stepper__control,
+.cro-stepper.is-mcp-import-missing .cro-select {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.mcp-import-missing-badge {
+  align-self: center;
+  margin-left: auto;
+  padding: 2px 7px;
+  border: 1px solid color-mix(in srgb, var(--warning) 42%, transparent);
+  border-radius: 999px;
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface-1));
+  font-size: var(--font-size-label-xs);
+  white-space: nowrap;
+}
+
 /* 应用结果使用页面级 Toast：绿色表示原值落地，黄色表示已落地但被页面配平。 */
 .mcp-import-applied {
   position: fixed;
@@ -776,6 +973,10 @@
 }
 
 .cro-yaml__menu .mcp-confirm-apply {
+  order: -2;
+}
+
+.cro-yaml__menu .mcp-direct-import {
   order: -1;
 }
 
@@ -906,7 +1107,8 @@
   );
 }
 
-#croConfigError.cro-config-error.is-mcp-invalid {
+#croConfigError.cro-config-error.is-mcp-invalid,
+#croConfigError.cro-config-error.is-mcp-unavailable {
   border: 1px solid color-mix(in srgb, var(--danger) 28%, transparent);
   background: linear-gradient(
     90deg,
@@ -915,10 +1117,13 @@
   );
 }
 
-.cro-config-error.is-mcp-pending,
-.cro-config-error.is-mcp-unavailable {
+.cro-config-error.is-mcp-pending {
   border: 1px solid var(--border-subtle);
   background: var(--surface-1);
+}
+
+#croConfigError.is-mcp-unavailable .mcp-fixes {
+  display: none;
 }
 
 .mcp-validation-host.is-with-page-result {

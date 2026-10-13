@@ -19,8 +19,10 @@ import { APP_RESOURCE_URI, createMcpServer } from "../src/server.js";
 import {
   diffApplied,
   formatFillCoverageScore,
+  missingFieldImpactRows,
   renderAppliedStatus,
   renderParseReport,
+  toolReadinessForMissingFields,
   toPagePartial,
 } from "../ui/src/mcp-parse-adapter.js";
 import {
@@ -61,6 +63,32 @@ const PARSE_INPUT = {
     content: "python train.py --num-layers 32 --hidden-size 4096 --custom-flag 1",
   },
 };
+
+test("缺字段按 Tool 真实用途计算不可用范围", () => {
+  const capacityOnly = toolReadinessForMissingFields(["model.vocab_size"]);
+  assert.equal(capacityOnly.validate_parallel_config.ready, true);
+  assert.equal(capacityOnly.compute_rank_topology.ready, true);
+  assert.equal(capacityOnly.suggest_config_fixes.ready, true);
+  assert.equal(capacityOnly.estimate_training_capacity.ready, false);
+
+  const shared = toolReadinessForMissingFields(["parallel.tp", "model.vocab_size"]);
+  assert.equal(shared.validate_parallel_config.ready, false);
+  assert.deepEqual(shared.compute_rank_topology.missing_fields, ["parallel.tp"]);
+  assert.deepEqual(shared.estimate_training_capacity.missing_fields, ["parallel.tp", "model.vocab_size"]);
+  const rows = missingFieldImpactRows(["parallel.tp", "model.vocab_size"]);
+  assert.deepEqual(rows[0].affected_tools.map(({ tool }) => tool), [
+    "validate_parallel_config",
+    "compute_rank_topology",
+    "suggest_config_fixes",
+    "estimate_training_capacity",
+  ]);
+  assert.deepEqual(rows[1].affected_tools.map(({ tool }) => tool), ["estimate_training_capacity"]);
+
+  const layerTypeEvidence = toolReadinessForMissingFields(["model.first_k_dense_layers"]);
+  assert.equal(layerTypeEvidence.validate_parallel_config.ready, true);
+  assert.equal(layerTypeEvidence.compute_rank_topology.ready, false);
+  assert.equal(layerTypeEvidence.estimate_training_capacity.ready, false);
+});
 
 async function withClient(run) {
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();

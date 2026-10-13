@@ -19,6 +19,7 @@ const baselinePage = fileURLToPath(new URL(
 ));
 const bridgeFile = fileURLToPath(new URL("./ui/src/mcp-shell-entry.js", import.meta.url));
 const bridgeDirectory = path.dirname(bridgeFile);
+const serverPackageFile = fileURLToPath(new URL("./package.json", import.meta.url));
 const sampleDirectory = path.join(path.dirname(baselinePage), "config-test");
 const outputDirectory = fileURLToPath(new URL("./ui/dist/ui-shell-v1/", import.meta.url));
 const outputHtmlDirectory = fileURLToPath(APP_HTML_DIRECTORY_URL);
@@ -39,6 +40,16 @@ function buildTimestamp(date = new Date()) {
 }
 
 const timestampedHtmlFilename = packagedAppHtmlFilename(buildTimestamp());
+
+function productVersion() {
+  const value = JSON.parse(fs.readFileSync(serverPackageFile, "utf8")).productVersion;
+  if (typeof value !== "string" || !/^\d+\.\d+\.\d+$/.test(value)) {
+    throw new Error("apps/mcp-server/package.json productVersion must be a numeric semver.");
+  }
+  return value;
+}
+
+const currentProductVersion = productVersion();
 
 function resolveLocalAsset(htmlFile, reference) {
   const cleanReference = reference.split(/[?#]/, 1)[0];
@@ -640,8 +651,20 @@ function subtractLegacyTopbar(html) {
   );
   transformed = replaceRequired(
     transformed,
+    /\s*<div class="pto-ide-frame__host-chip"[^>]*>[\s\S]*?<\/div>/,
+    "",
+    "the legacy host chip",
+  );
+  transformed = replaceRequired(
+    transformed,
     /\s*<div class="pto-ide-frame__workspace"[^>]*>[\s\S]*?<\/div>/,
-    '\n        <div class="mcp-compute-boundary" role="note">纯计算 · 不启动训练 · 不采集实时指标</div>',
+    `
+        <div class="mcp-product-identity">
+          <h1 class="mcp-product-title">配置校验与可视化</h1>
+          <span class="mcp-product-tag">Powered by MindSpeed Agent</span>
+          <span class="mcp-product-tag mcp-product-version" data-product-version="${currentProductVersion}">v${currentProductVersion}</span>
+        </div>
+        <div class="mcp-compute-boundary" role="note">纯静态文件校验</div>`,
     "the legacy workspace name",
   );
   transformed = replaceRequired(
@@ -690,6 +713,48 @@ function convergeProductCopy(html) {
     'aria-label="配置与关系观测"',
     'aria-label="配置与关系分析"',
     "the analysis pane accessibility name",
+  );
+  transformed = replaceRequired(
+    transformed,
+    'aria-label="配置文件"',
+    'aria-label="训练配置"',
+    "the training-config region accessibility name",
+  );
+  transformed = replaceRequired(
+    transformed,
+    '<h2 class="cro-region__title cro-yaml__title">配置文件</h2>',
+    '<h2 class="cro-region__title cro-yaml__title">训练配置</h2>',
+    "the training-config region title",
+  );
+  transformed = replaceRequired(
+    transformed,
+    'aria-label="配置文件选项"',
+    'aria-label="训练配置选项"',
+    "the training-config options accessibility name",
+  );
+  transformed = replaceRequired(
+    transformed,
+    '<span class="cro-yaml__launch-title">启动命令</span>',
+    '<span class="cro-yaml__launch-title">模型结构</span>',
+    "the model-structure code title",
+  );
+  transformed = replaceRequired(
+    transformed,
+    '<span class="cro-yaml__launch-note">msrun · 集群规模</span>',
+    '<span class="cro-yaml__launch-note">导入提供时显示</span>',
+    "the model-structure code note",
+  );
+  transformed = replaceRequired(
+    transformed,
+    'title="复制启动命令"',
+    'title="复制模型结构"',
+    "the model-structure copy title",
+  );
+  transformed = replaceRequired(
+    transformed,
+    'aria-label="复制启动命令"',
+    'aria-label="复制模型结构"',
+    "the model-structure copy accessibility name",
   );
   return replaceRequired(
     transformed,

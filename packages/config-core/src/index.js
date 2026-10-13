@@ -19,6 +19,10 @@ export {
 } from "./page-rules.js";
 export { validateParallelConfig } from "./validate-parallel-config.js";
 export { suggestConfigFixes } from "./suggest-config-fixes.js";
+export {
+  TOOL_READINESS_SOURCE,
+  toolReadinessForMissingFields,
+} from "./tool-readiness.js";
 
 export const CONFIG_CORE_STATUS = Object.freeze({
   phase: "core-extraction",

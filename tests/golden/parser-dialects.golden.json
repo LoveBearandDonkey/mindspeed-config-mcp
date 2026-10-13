@@ -210,7 +210,55 @@
     "status": "error",
     "code": "PARSE_SYNTAX_ERROR",
     "message_prefix": "输入格式不合法，无法按 YAML 解析",
-    "source_ref": "mindspeed-config-mcp:parse-training-config@0.3.0"
+    "source_ref": "mindspeed-config-mcp:parse-training-config@0.3.1"
+  },
+  "tool_readiness": {
+    "validate_parallel_config": {
+      "ready": false,
+      "missing_fields": [
+        "cluster.ranks_per_node",
+        "cluster.card_model",
+        "cluster.card_memory_gib",
+        "batch.micro_batch_size",
+        "batch.sequence_length"
+      ],
+      "source_ref": "mindspeed-config-mcp:training-config-v1.schema.json+topology+capacity@0.1.0"
+    },
+    "compute_rank_topology": {
+      "ready": false,
+      "missing_fields": [
+        "cluster.ranks_per_node",
+        "cluster.card_model",
+        "cluster.card_memory_gib",
+        "batch.micro_batch_size",
+        "batch.sequence_length"
+      ],
+      "source_ref": "mindspeed-config-mcp:training-config-v1.schema.json+topology+capacity@0.1.0"
+    },
+    "suggest_config_fixes": {
+      "ready": false,
+      "missing_fields": [
+        "cluster.ranks_per_node",
+        "cluster.card_model",
+        "cluster.card_memory_gib",
+        "batch.micro_batch_size",
+        "batch.sequence_length"
+      ],
+      "source_ref": "mindspeed-config-mcp:training-config-v1.schema.json+topology+capacity@0.1.0"
+    },
+    "estimate_training_capacity": {
+      "ready": false,
+      "missing_fields": [
+        "cluster.ranks_per_node",
+        "cluster.card_model",
+        "cluster.card_memory_gib",
+        "batch.micro_batch_size",
+        "batch.sequence_length",
+        "model.vocab_size",
+        "model.expert_ffn_hidden_size"
+      ],
+      "source_ref": "mindspeed-config-mcp:training-config-v1.schema.json+topology+capacity@0.1.0"
+    }
   },
   "paired_sources": {
     "model_source": "config.json",

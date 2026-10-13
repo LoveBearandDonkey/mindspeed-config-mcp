@@ -12,10 +12,12 @@ import {
   formatFillCoverageScore,
   inferSourceFormat,
   labelForPath,
+  missingFieldImpactRows,
   pageFieldForPath,
   renderAppliedStatus,
   renderParseReport,
   sourceMarks,
+  toolReadinessForMissingFields,
   toPagePartial,
 } from "@mcp-bridge/mcp-parse-adapter.js";
 import { installValidationAdapter } from "@mcp-bridge/mcp-validation-adapter.js";
@@ -93,12 +95,12 @@ if (previewMode) {
   // Preview must use the same pipeline/profile write-back path as the MCP host.
   installFixesAdapter(
     async (input) => suggestConfigFixes(input),
-    (config) => validationAdapter.trainingConfigFor(config),
+    (config) => validationAdapter.trainingConfigFor(config, "suggest_config_fixes"),
     (settings) => validationAdapter.applyPipelineSettings(settings),
   );
   installTopologyAdapter(
     async (input) => computeRankTopology(input),
-    (config) => validationAdapter.trainingConfigFor(config),
+    (config) => validationAdapter.trainingConfigFor(config, "compute_rank_topology"),
   );
   installCapacityAdapter(
     async (input) => estimateTrainingCapacity(input),
@@ -154,12 +156,12 @@ if (previewMode) {
   );
   fixesAdapter = installFixesAdapter(
     async (input) => callServerTool("suggest_config_fixes", input),
-    (config) => validationAdapter.trainingConfigFor(config),
+    (config) => validationAdapter.trainingConfigFor(config, "suggest_config_fixes"),
     (settings) => validationAdapter.applyPipelineSettings(settings),
   );
   topologyAdapter = installTopologyAdapter(
     async (input) => callServerTool("compute_rank_topology", input),
-    (config) => validationAdapter.trainingConfigFor(config),
+    (config) => validationAdapter.trainingConfigFor(config, "compute_rank_topology"),
   );
   capacityAdapter = installCapacityAdapter(
     async (input) => callServerTool("estimate_training_capacity", input),
@@ -194,6 +196,7 @@ function installParseAdapter(callParseTool, callValidateTool) {
   const APPLIED_STATUS_DURATION_MS = 3000;
   let appliedStatusSignature = null;
   let appliedStatusTimer = 0;
+  let issueDialogContext = null;
 
   const BOOLEAN_PATHS = new Set([
     "parallel.sequence_parallel",
@@ -288,7 +291,9 @@ function installParseAdapter(callParseTool, callValidateTool) {
     if (menuBody && !document.getElementById("mcpPreviewMissingPane")) {
       menuBody.append(createMissingPane("mcpPreviewMissingPane"));
     }
-    ensureConfirmApplyButton(document.getElementById("croPreviewApply"));
+    const applyButton = document.getElementById("croPreviewApply");
+    ensureConfirmApplyButton(applyButton);
+    ensureDirectImportButton(applyButton);
   }
 
   function createMissingPane(id) {
@@ -330,6 +335,150 @@ function installParseAdapter(callParseTool, callValidateTool) {
 
   function confirmApplyButtonFor(applyButton) {
     return applyButton ? document.getElementById(`${applyButton.id}Confirmed`) : null;
+  }
+
+  function ensureDirectImportButton(applyButton) {
+    if (!applyButton) return null;
+    const id = `${applyButton.id}Direct`;
+    const existing = document.getElementById(id);
+    if (existing) return existing;
+    const button = document.createElement("button");
+    button.id = id;
+    button.type = "button";
+    button.className = "btn btn-sm mcp-direct-import";
+    button.dataset.applyTarget = applyButton.id;
+    button.hidden = true;
+    button.disabled = true;
+    button.textContent = "无需补缺，直接导入";
+    applyButton.insertAdjacentElement("afterend", button);
+    return button;
+  }
+
+  function directImportButtonFor(applyButton) {
+    return applyButton ? document.getElementById(`${applyButton.id}Direct`) : null;
+  }
+
+  function syncDirectImportState(state, applyButton) {
+    const button = ensureDirectImportButton(applyButton);
+    if (!button) return;
+    const result = state.current?.result;
+    const missing = result?.data?.missing_required_fields ?? [];
+    const hasSourceValues = (result?.data?.mapped_fields?.length ?? 0) > 0;
+    const available = result?.status !== "error" && missing.length > 0 && hasSourceValues;
+    button.hidden = !available;
+    button.disabled = !available;
+    button.textContent = `无需${missing.length}项补缺，直接导入`;
+  }
+
+  function ensureIssueDialog() {
+    const existing = document.getElementById("mcpImportIssueDialog");
+    if (existing) return existing;
+    const dialog = document.createElement("div");
+    dialog.id = "mcpImportIssueDialog";
+    dialog.className = "mcp-import-issues";
+    dialog.hidden = true;
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    dialog.setAttribute("aria-labelledby", "mcpImportIssueTitle");
+    dialog.innerHTML = `
+      <section class="mcp-import-issues__box">
+        <header class="mcp-import-issues__head">
+          <div>
+            <h2 id="mcpImportIssueTitle">配置解析问题告知</h2>
+            <p data-mcp-issue-summary></p>
+          </div>
+          <button class="btn btn-sm btn-icon btn-ghost mcp-import-issues__close" type="button"
+                  aria-label="关闭并返回上一层" title="关闭并返回上一层">×</button>
+        </header>
+        <div class="mcp-import-issues__body">
+          <table>
+            <thead><tr><th>缺少配置</th><th>无法使用的 MCP 功能</th></tr></thead>
+            <tbody data-mcp-issue-rows></tbody>
+          </table>
+        </div>
+        <footer class="mcp-import-issues__footer">
+          <button class="btn btn-sm mcp-import-issues__continue" type="button">继续导入</button>
+          <button class="btn btn-sm mcp-import-issues__complete" type="button">补齐后导入</button>
+          <button class="btn btn-sm mcp-import-issues__cancel" type="button">取消导入</button>
+        </footer>
+      </section>`;
+    document.body.append(dialog);
+
+    // 配置下拉依靠 document click 判断是否点到了面板外。二次确认弹窗虽然挂在 body，
+    // 但它仍是下拉流程的一部分；在这里截住冒泡，关闭二次弹窗时保留原下拉面板。
+    dialog.addEventListener("click", (event) => event.stopPropagation());
+
+    dialog.querySelector(".mcp-import-issues__close")?.addEventListener("click", () => {
+      closeIssueDialog({ restoreFocus: true });
+    });
+    dialog.querySelector(".mcp-import-issues__cancel")?.addEventListener("click", () => {
+      const context = issueDialogContext;
+      closeIssueDialog();
+      if (context?.applyButton?.id === "croImportApply") {
+        document.getElementById("croImportClose")?.click();
+      } else {
+        document.getElementById("croPreviewCancel")?.click();
+      }
+    });
+    dialog.querySelector(".mcp-import-issues__complete")?.addEventListener("click", () => {
+      const context = issueDialogContext;
+      if (!context) return;
+      const applyButton = context.applyButton;
+      const confirmButton = confirmApplyButtonFor(applyButton);
+      closeIssueDialog();
+      if (!applyButton.disabled) applyButton.click();
+      else if (confirmButton && !confirmButton.hidden && !confirmButton.disabled) confirmButton.click();
+    });
+    dialog.querySelector(".mcp-import-issues__continue")?.addEventListener("click", () => {
+      const context = issueDialogContext;
+      if (!context?.state?.current) return;
+      const missingRequiredFields = [
+        ...(context.state.current.result?.data?.missing_required_fields ?? []),
+      ];
+      closeIssueDialog();
+      const report = context.applyButton.id === "croImportApply"
+        ? importUi().report : document.getElementById("croPreviewReport");
+      const adjusted = applyParsed(context.state.current, report, { useCompletion: false });
+      if (context.applyButton.id === "croImportApply") {
+        document.getElementById("croImportClose")?.click();
+      } else {
+        window.croImport?.selectAppliedSample?.(context.state.current.file);
+        document.getElementById("croPreviewCancel")?.click();
+        context.state.current = null;
+      }
+      if (adjusted) {
+        returnToFormAfterApply(adjusted, missingRequiredFields);
+      }
+    });
+    return dialog;
+  }
+
+  function closeIssueDialog({ restoreFocus = false } = {}) {
+    const dialog = document.getElementById("mcpImportIssueDialog");
+    const trigger = issueDialogContext?.trigger;
+    if (dialog) dialog.hidden = true;
+    issueDialogContext = null;
+    if (restoreFocus) trigger?.focus();
+  }
+
+  function openIssueDialog(state, applyButton, trigger) {
+    const result = state.current?.result;
+    const missing = result?.data?.missing_required_fields ?? [];
+    if (!state.current || result?.status === "error" || !missing.length) return;
+    const dialog = ensureIssueDialog();
+    const rows = missingFieldImpactRows(missing);
+    issueDialogContext = { state, applyButton, trigger };
+    dialog.querySelector("[data-mcp-issue-summary]").textContent =
+      `当前配置缺少 ${missing.length} 项。继续导入不会使用上一份配置补缺，受影响的 MCP 功能将停止计算。`;
+    const body = dialog.querySelector("[data-mcp-issue-rows]");
+    body.innerHTML = rows.map((row) => `<tr><td><b>${escapeHtml(row.label)}</b><code>${escapeHtml(row.path)}</code></td>`
+      + `<td>${row.affected_tools.map((tool) => `<span>${escapeHtml(tool.label)}</span>`).join("")}</td></tr>`).join("");
+    const completeButton = dialog.querySelector(".mcp-import-issues__complete");
+    const confirmButton = confirmApplyButtonFor(applyButton);
+    completeButton.disabled = applyButton.disabled
+      && (!confirmButton || confirmButton.hidden || confirmButton.disabled);
+    dialog.hidden = false;
+    dialog.querySelector(".mcp-import-issues__continue")?.focus();
   }
 
   function mountConfigImportEntry() {
@@ -498,7 +647,18 @@ function installParseAdapter(callParseTool, callValidateTool) {
     const footer = document.createElement("footer");
     footer.className = "mcp-import__footer";
     apply.classList.add("btn-solid");
-    footer.append(apply, ensureConfirmApplyButton(apply));
+    const cancel = document.createElement("button");
+    cancel.id = "mcpImportCancel";
+    cancel.type = "button";
+    cancel.className = "btn btn-sm";
+    cancel.textContent = "取消";
+    cancel.addEventListener("click", () => close.click());
+    footer.append(
+      apply,
+      ensureConfirmApplyButton(apply),
+      ensureDirectImportButton(apply),
+      cancel,
+    );
     box.append(footer);
     resetImported({ focus: false });
 
@@ -507,7 +667,10 @@ function installParseAdapter(callParseTool, callValidateTool) {
     document.getElementById("croImportConfig")?.addEventListener("click", () => {
       resetImported();
     });
-    close.addEventListener("click", () => resetImported({ focus: false }));
+    close.addEventListener("click", () => {
+      closeIssueDialog();
+      resetImported({ focus: false });
+    });
   }
 
   function syncClearButton() {
@@ -628,6 +791,7 @@ function installParseAdapter(callParseTool, callValidateTool) {
       confirmButton.hidden = !requiresConfirmation || state.current?.planConfirmed === true;
       confirmButton.disabled = !canApply;
     }
+    syncDirectImportState(state, button);
   }
 
   function renderCompletionLoading(pane, applyButton, message = "MCP 正在计算补齐方案…") {
@@ -650,6 +814,11 @@ function installParseAdapter(callParseTool, callValidateTool) {
       if (confirmButton) {
         confirmButton.hidden = true;
         confirmButton.disabled = true;
+      }
+      const directButton = directImportButtonFor(applyButton);
+      if (directButton) {
+        directButton.hidden = true;
+        directButton.disabled = true;
       }
     }
   }
@@ -754,6 +923,7 @@ function installParseAdapter(callParseTool, callValidateTool) {
       }
       current.modelStructureUploadedValues = uploadedValues;
       current.modelStructureUploadedName = file.name;
+      current.modelStructureUploadedSource = { name: file.name, content };
       current.modelStructureUploadStatus = "ready";
       applyModelStructureValues(current, missingModelPaths, uploadedValues);
       missingModelPaths.forEach((path) => current.userEditedPaths.add(path));
@@ -776,6 +946,7 @@ function installParseAdapter(callParseTool, callValidateTool) {
       current.modelStructureUploadStatus = "invalid";
       current.modelStructureUploadedName = "";
       current.modelStructureUploadedValues = null;
+      current.modelStructureUploadedSource = null;
       if (uploadStatus) {
         uploadStatus.className = "mcp-model-structure-upload__status is-invalid";
         uploadStatus.textContent = `无法使用该文件：${error instanceof Error ? error.message : String(error)}`;
@@ -1058,6 +1229,7 @@ function installParseAdapter(callParseTool, callValidateTool) {
           state.current.modelStructureUploadStatus = "idle";
           state.current.modelStructureUploadedName = "";
           state.current.modelStructureUploadedValues = null;
+          state.current.modelStructureUploadedSource = null;
           renderMissingInputs(result, state, pane, applyButton);
         });
         cards.append(card);
@@ -1260,6 +1432,50 @@ function installParseAdapter(callParseTool, callValidateTool) {
     renderMissingInputs(null, sample, pane, applyButton);
   }
 
+  function clearIncompleteImportMarks() {
+    document.querySelectorAll(".is-mcp-import-missing").forEach((element) => {
+      element.classList.remove("is-mcp-import-missing");
+      element.removeAttribute("data-mcp-missing-paths");
+      element.querySelector(":scope > .mcp-import-missing-badge")?.remove();
+    });
+  }
+
+  function missingFieldHost(path) {
+    const pageField = pageFieldForPath(path);
+    if (pageField) {
+      return [...document.querySelectorAll(".cro-stepper[data-field]")]
+        .find((element) => element.dataset.field === pageField) ?? null;
+    }
+    if (path.startsWith("model.")) {
+      return document.getElementById("croModelSelect")?.closest(".cro-stepper") ?? null;
+    }
+    if (path.startsWith("cluster.")) {
+      return document.getElementById("croCardSelect")?.closest(".cro-stepper") ?? null;
+    }
+    return null;
+  }
+
+  function markIncompleteImportFields(missingFields) {
+    clearIncompleteImportMarks();
+    const grouped = new Map();
+    for (const path of missingFields) {
+      const host = missingFieldHost(path);
+      if (!host) continue;
+      const paths = grouped.get(host) ?? [];
+      paths.push(path);
+      grouped.set(host, paths);
+    }
+    for (const [host, paths] of grouped) {
+      host.classList.add("is-mcp-import-missing");
+      host.dataset.mcpMissingPaths = paths.join(",");
+      const badge = document.createElement("span");
+      badge.className = "mcp-import-missing-badge";
+      badge.textContent = paths.length === 1 ? "未提供" : `缺少${paths.length}项`;
+      badge.title = paths.map((path) => `${labelForPath(path)}（${path}）`).join("\n");
+      host.append(badge);
+    }
+  }
+
   function errorHtml(error) {
     const message = error instanceof Error ? error.message : String(error);
     return `<p class="cro-import__empty" data-mcp-parse-report="error">MCP 解析失败：${escapeHtml(message)}</p>`;
@@ -1349,9 +1565,21 @@ function installParseAdapter(callParseTool, callValidateTool) {
     }
   }
 
-  function applyParsed(current, report) {
+  function applyParsed(current, report, { useCompletion = true } = {}) {
     if (!current || !window.croObserver?.importConfig) return null;
-    const normalizedConfig = materializedConfig(current);
+    clearIncompleteImportMarks();
+    const sourceNormalizedConfig = current.result?.data?.normalized_config ?? {};
+    const normalizedConfig = useCompletion
+      ? materializedConfig(current)
+      : structuredClone(sourceNormalizedConfig);
+    /* “应用”表示用户确认采用第三栏当前补齐结果；只有明确选择“继续导入”时，
+       才保留源文件缺口并阻止相关 Tool，避免误把已确认的补值判成未提供。 */
+    const missingRequiredFields = useCompletion
+      ? [] : [...(current.result?.data?.missing_required_fields ?? [])];
+    const toolReadiness = useCompletion
+      ? toolReadinessForMissingFields([])
+      : (current.result?.data?.tool_readiness
+        ?? toolReadinessForMissingFields(missingRequiredFields));
     const partial = toPagePartial(normalizedConfig);
     window.__mcpPipelinePolicy?.prepare?.(normalizedConfig);
     const modelId = normalizedConfig.model?.id;
@@ -1372,6 +1600,28 @@ function installParseAdapter(callParseTool, callValidateTool) {
     const adjusted = diffApplied(partial, applied.after);
     renderParseReportWithoutLede(report, current.result, { adjusted });
     report.scrollTop = 0;
+    const suppliedModelSource = current.source?.modelSource
+      ?? (current.modelStructureMode === "upload" ? current.modelStructureUploadedSource : null)
+      ?? null;
+    const manuallyEnteredModel = {};
+    for (const path of current.userEditedPaths ?? []) {
+      if (!path.startsWith("model.")) continue;
+      const value = getPath(normalizedConfig, path);
+      if (value !== undefined) manuallyEnteredModel[path.slice("model.".length)] = value;
+    }
+    const modelSource = suppliedModelSource?.content?.trim()
+      ? {
+        name: suppliedModelSource.name,
+        dialect: inferSourceFormat(suppliedModelSource.name),
+        text: suppliedModelSource.content,
+      }
+      : (Object.keys(manuallyEnteredModel).length
+        ? {
+          name: "手动填写的模型结构.json",
+          dialect: "json",
+          text: JSON.stringify(manuallyEnteredModel, null, 2),
+        }
+        : null);
     document.dispatchEvent(new CustomEvent("cro:source", { detail: {
       name: current.source?.name ?? `config-test/${current.file}`,
       label: current.source?.name ?? current.file,
@@ -1379,17 +1629,23 @@ function installParseAdapter(callParseTool, callValidateTool) {
         ? "sh" : current.result.data?.detected_format,
       text: current.source?.content ?? current.content,
       marks: sourceMarks(current.result, adjusted),
+      modelSource,
     } }));
     document.dispatchEvent(new CustomEvent("mcp:parsed-config-applied", { detail: {
       normalizedConfig,
-      supplements: Object.fromEntries(current.supplements ?? []),
-      sourceNormalizedConfig: current.result?.data?.normalized_config ?? {},
-      userEditedPaths: [...(current.userEditedPaths ?? [])],
+      supplements: useCompletion ? Object.fromEntries(current.supplements ?? []) : {},
+      sourceNormalizedConfig,
+      userEditedPaths: useCompletion ? [...(current.userEditedPaths ?? [])] : [],
+      sourceKind: current.file ? "sample" : "imported",
+      incompleteImport: !useCompletion,
+      missingRequiredFields,
+      toolReadiness,
     } }));
+    if (!useCompletion) markIncompleteImportFields(missingRequiredFields);
     return adjusted;
   }
 
-  function returnToFormAfterApply(adjusted) {
+  function returnToFormAfterApply(adjusted, incompleteMissingFields = []) {
     const left = document.getElementById("cropLeft");
     const formTab = document.querySelector('#cropLeftTabs [data-pane="form"]')
       ?? left?.querySelector('[data-pane="form"]');
@@ -1409,6 +1665,16 @@ function installParseAdapter(callParseTool, callValidateTool) {
     if (!pane) return;
     clearAppliedStatus();
     document.body.insertAdjacentHTML("beforeend", renderAppliedStatus(adjusted));
+    if (incompleteMissingFields.length) {
+      const status = document.getElementById("mcpImportAppliedStatus");
+      status?.classList.add("is-adjusted");
+      const title = status?.querySelector("strong");
+      const message = status?.querySelector("p");
+      if (title) title.textContent = "已直接导入不完整配置";
+      if (message) {
+        message.textContent = `仍缺少 ${incompleteMissingFields.length} 项；受影响的 MCP 功能已停止，且不会继承上一份配置。`;
+      }
+    }
     appliedStatusSignature = currentPageConfigSignature();
     const scrollHost = pane.closest(".crop-left__body");
     if (scrollHost) scrollHost.scrollTop = 0;
@@ -1431,6 +1697,7 @@ function installParseAdapter(callParseTool, callValidateTool) {
      当前表单已不再是那次应用的结果，旧差异必须立即失效，不能冒充当前配置的问题。
      MCP 拓扑完成后也会 refresh 同一份配置，因此按配置快照判断，不能见事件就清。 */
   document.addEventListener("cro:config-change", () => {
+    if (window.croObserver?.config?.configPreset) clearIncompleteImportMarks();
     if (appliedStatusSignature !== null
       && appliedStatusSignature !== currentPageConfigSignature()) clearAppliedStatus();
   });
@@ -1524,6 +1791,16 @@ function installParseAdapter(callParseTool, callValidateTool) {
       }
       if (state.current?.planConfirmed !== true) return;
       applyButton.click();
+      return;
+    }
+
+    const directImport = target?.closest?.(".mcp-direct-import");
+    if (directImport) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const applyButton = document.getElementById(directImport.dataset.applyTarget);
+      const state = applyButton?.id === "croImportApply" ? imported : sample;
+      if (state.current && applyButton) openIssueDialog(state, applyButton, directImport);
       return;
     }
 

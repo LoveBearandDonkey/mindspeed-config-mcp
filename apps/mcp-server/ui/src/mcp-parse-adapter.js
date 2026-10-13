@@ -1,3 +1,7 @@
+import { toolReadinessForMissingFields } from "@mindspeed-config/config-core";
+
+export { toolReadinessForMissingFields };
+
 export const PAGE_FIELDS = Object.freeze({
   "model.total_layers": "totalLayer",
   "model.routed_experts": "routedExpert",
@@ -32,6 +36,24 @@ const MCP_PAGE_FIELDS = Object.freeze({
   "parallel.num_layer_list": "mcpPipelineLayerMode",
   "parallel.pipeline_layer_offsets": "mcpPipelineLayerMode",
 });
+
+export const ANALYSIS_TOOL_LABELS = Object.freeze({
+  validate_parallel_config: "配置校验",
+  compute_rank_topology: "Rank 拓扑",
+  suggest_config_fixes: "配置修复建议",
+  estimate_training_capacity: "理论内存估算",
+});
+
+export function missingFieldImpactRows(missingFields = []) {
+  const readiness = toolReadinessForMissingFields(missingFields);
+  return [...new Set(missingFields)].map((path) => ({
+    path,
+    label: labelForPath(path),
+    affected_tools: Object.entries(readiness)
+      .filter(([, state]) => state.missing_fields.includes(path))
+      .map(([tool]) => ({ tool, label: ANALYSIS_TOOL_LABELS[tool] })),
+  }));
+}
 
 const PATH_LABELS = Object.freeze({
   "model.id": "模型标识",

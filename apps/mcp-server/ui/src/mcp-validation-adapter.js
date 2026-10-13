@@ -377,6 +377,8 @@ export function installValidationAdapter(callValidateTool) {
   };
   let supplementOverrides = {};
   let importedModelEvidence = null;
+  let incompleteToolReadiness = null;
+  let incompleteMissingFields = [];
   const pipelinePolicy = {
     mode: null,
     prepare(normalizedConfig) {
@@ -397,6 +399,8 @@ export function installValidationAdapter(callValidateTool) {
     pipelineSettings.confirmed = false;
     pipelinePolicy.mode = null;
     importedModelEvidence = null;
+    incompleteToolReadiness = null;
+    incompleteMissingFields = [];
   }
 
   function applyPresetPipelineContext(presetId) {
@@ -426,7 +430,18 @@ export function installValidationAdapter(callValidateTool) {
     });
   }
 
-  function trainingConfigFor(config) {
+  function assertToolReady(tool) {
+    const state = incompleteToolReadiness?.[tool];
+    if (!state || state.ready) return;
+    const fields = state.missing_fields?.length ? state.missing_fields : incompleteMissingFields;
+    throw new Error(
+      `${tool} 已停止：本次直接导入缺少 ${fields.join("、")}。`
+      + "这些字段不会从上一份配置继承；请补齐后重新导入。",
+    );
+  }
+
+  function trainingConfigFor(config, tool = "validate_parallel_config") {
+    assertToolReady(tool);
     const input = pageConfigToTrainingConfig(config, window.CroTopology, resolvedPipelineSettings(config));
     for (const [path, value] of Object.entries(supplementOverrides)) setPath(input, path, value);
     return input;
@@ -444,7 +459,7 @@ export function installValidationAdapter(callValidateTool) {
   }
 
   function capacityConfigFor(config) {
-    const input = trainingConfigFor(config);
+    const input = trainingConfigFor(config, "estimate_training_capacity");
     if (!importedModelEvidence) return input;
     const preset = window.CroTopology?.MODEL_PRESETS?.[config.model];
     const presetId = String(preset?.id ?? config.model ?? "").toLowerCase();
@@ -599,7 +614,7 @@ export function installValidationAdapter(callValidateTool) {
     try {
       const settings = resolvedPipelineSettings(controller.config);
       syncPipelineControl(controller.config);
-      const input = trainingConfigFor(controller.config);
+      const input = trainingConfigFor(controller.config, "validate_parallel_config");
       const result = await callValidateTool(input);
       if (currentToken !== token) return;
       clearTimeout(pendingTimer);
@@ -651,12 +666,16 @@ export function installValidationAdapter(callValidateTool) {
   document.addEventListener("mcp:pipeline-settings-change", () => schedule(0));
   document.addEventListener("mcp:parsed-config-applied", (event) => {
     const normalized = event.detail?.normalizedConfig ?? {};
+    incompleteToolReadiness = event.detail?.incompleteImport
+      ? (event.detail?.toolReadiness ?? {}) : null;
+    incompleteMissingFields = event.detail?.incompleteImport
+      ? [...(event.detail?.missingRequiredFields ?? [])] : [];
     pipelinePolicy.prepare(normalized);
     supplementOverrides = collectImportedOverrides(normalized);
     const sourcePaths = leafPaths(event.detail?.sourceNormalizedConfig ?? normalized);
     for (const path of event.detail?.userEditedPaths ?? []) sourcePaths.add(path);
-    /* 第三栏的预填结构值只有在用户完成确认后才会随 parsed-config-applied 到达这里；
-       因此 supplements 中的模型字段可作为本次容量估算的显式确认，而不是页面兜底。 */
+    /* 第三栏当前值随“应用”到达这里，代表用户已经确认采用该补齐方案；因此它们
+       可以作为本次容量估算的明确输入，但未补齐直接导入仍由 toolReadiness 阻止。 */
     for (const path of Object.keys(event.detail?.supplements ?? {})) sourcePaths.add(path);
     importedModelEvidence = sourcePaths;
     for (const [path, value] of Object.entries(event.detail?.supplements ?? {})) {

@@ -216,6 +216,12 @@ model:
       message_prefix: invalidYaml.errors[0].message.split("：")[0],
       source_ref: invalidYaml.errors[0].source_ref,
     },
+    tool_readiness: Object.fromEntries(Object.entries(mindformers.data.tool_readiness)
+      .map(([tool, state]) => [tool, {
+        ready: state.ready,
+        missing_fields: state.missing_fields,
+        source_ref: state.source_ref,
+      }])),
     paired_sources: {
       model_source: pairedSources.data.model_source_name,
       layers: pairedSources.data.normalized_config.model.total_layers,
