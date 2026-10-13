@@ -7,7 +7,7 @@ body {
   min-height: 100%;
 }
 
-/* training-metrics-chart 组件用 getComputedStyle(document.documentElement) 读取 colorVar,
+/* 指标图表组件用 getComputedStyle(document.documentElement) 读取 colorVar,
    不会向下取 .train-twin-page 上定义的同名变量,故在 :root/html 上镜像一份供其解析 */
 :root {
   --twin-chart-loss: var(--success);
@@ -194,7 +194,7 @@ html[data-theme="light"] .train-twin-page .twin-status,
 
 /* 顶栏 chrome(标题/透明背景/rail)由 patterns/ide-frame 提供,.twin-topbar/.twin-title-block/.twin-kicker/
    .twin-topbar-actions 等旧顶栏容器 class 已随 ide-frame 迁移移除;主题切换按钮改用 ide-frame 自带的
-   .pto-ide-frame__window-action + 内联月亮/太阳 SVG(见 training-monitoring.html #themeToggle),不再需要这里的
+   .pto-ide-frame__window-action + 内联月亮/太阳 SVG,不再需要这里的
    私有 pill/knob 样式(.twin-theme-toggle / .twin-theme-toggle-icon 已删除) */
 
 .train-twin-page .btn {
@@ -417,7 +417,7 @@ html[data-theme="light"] .train-twin-page .twin-status,
   line-height: 1.4;
 }
 
-/* 定位链模式:整网图列与训练监控/定位链列合并为一块大面板(见 training-run-twin.js
+/* 定位链模式:整网图列与训练监控/定位链列合并为一块大面板(由原监控脚本的
    showLocateChainPanel/hideLocateChainPanel 对 #twinWorkArea 的 .is-merged 切换) */
 #twinWorkArea.is-merged {
   gap: 0;
@@ -727,7 +727,7 @@ html[data-theme="light"] .train-twin-page .twin-status,
 }
 
 /* 精度指标:本页直出的合成时序图卡组(loss/acc/precision/recall/F1/corr),
-   复用 pangu-moe-trainviz 的 training-metrics-chart 组件(window.PtoTrainingMetricsChart),
+   复用指标图表组件(window.PtoTrainingMetricsChart),
    数据与卡片布局本页独立生成,不再经 iframe 内嵌整页 */
 .twin-accuracy-charts {
   display: flex;
@@ -911,7 +911,7 @@ html[data-theme="light"] .train-twin-page .twin-status,
   }
 }
 
-/* training-metrics-chart 组件自绘 SVG 的样式作用域(.pto-tmchart*),随本卡组一起独立演进 */
+/* 指标图表组件自绘 SVG 的样式作用域(.pto-tmchart*),随本卡组一起独立演进 */
 .pto-tmchart { position: relative; width: 100%; font-family: var(--font-sans); user-select: none; }
 .pto-tmchart__svg { display: block; width: 100%; height: auto; overflow: visible; }
 .pto-tmchart__grid line { stroke: var(--border-subtle); stroke-width: 1; }
@@ -931,7 +931,7 @@ html[data-theme="light"] .train-twin-page .twin-status,
 .pto-tmchart__marker { stroke: var(--danger); stroke-width: 0.9; stroke-dasharray: 4 3; opacity: .5; pointer-events: none; }
 .pto-tmchart__cursor-chip { fill: var(--surface-4); stroke: var(--border-strong); stroke-width: 1; }
 .pto-tmchart__cursor-chip-text { font-family: var(--font-mono); font-size: 10px; fill: var(--foreground); }
-/* SVG 内嵌气泡样式：training-metrics-chart 已改用下面的 body 浮层，这三条现由
+/* SVG 内嵌气泡样式：指标图表已改用下面的 body 浮层，这三条现由
    js/training-monitoring-v2-deck.js 的侧视层堆悬浮气泡复用（同一套视觉语言，不另起一套）。 */
 .pto-tmchart__cursor-tip-bg { fill: var(--surface-4); stroke: var(--border-strong); stroke-width: 1; filter: drop-shadow(0 4px 12px rgba(0,0,0,.28)); }
 .pto-tmchart__cursor-tip-step { font-family: var(--font-mono); font-size: 10px; font-weight: 700; fill: var(--foreground); }
@@ -1012,7 +1012,7 @@ html[data-theme="light"] .train-twin-page .twin-status,
   border-radius: 2px;
   cursor: help;
 }
-/* EP rank 列底色(8 色调循环),从 JS 内联 style.background 挪成类,配合 training-run-twin.js
+/* EP rank 列底色(8 色调循环),从 JS 内联 style.background 挪成类,配合原监控脚本
    的 EP_TINT_COLORS 数组保持颜色一致 —— 数千个热力图格子共享同一批类,浏览器可复用计算样式,
    避免每格各自解析一次唯一的内联颜色字符串(大集群规模下这是首屏/每次刷新的明显开销)。 */
 .twin-heat-cell.ep-tint-0 { background: rgba(59, 130, 246, 0.06); }
@@ -1528,7 +1528,7 @@ html[data-embed="hardware"] .twin-hardware-kpis {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-/* 内嵌模式（?embed=locate-sidebar）：training-monitoring-v2.html 的「详情与修复建议」抽屉用 iframe
+/* 内嵌模式（?embed=locate-sidebar）：原单屏监控页的「详情与修复建议」抽屉用 iframe
    内嵌本页，只要「训练监控」侧栏(.twin-monitor-sidebar，配合 ?diagnosis=<key> 深链此时展示的就是
    定位链面板)，隐藏顶栏/rail/问题诊断列/整网图列/Timeline dock，脱离布局流铺满 viewport */
 html[data-embed="locate-sidebar"] .pto-ide-frame__topbar,
@@ -1552,7 +1552,7 @@ html[data-embed="locate-sidebar"] .twin-monitor-sidebar {
 
 /* ── 模型层展开图(复用 ep-expert-parallel-2d.html 上方「层视图」的视觉,按 DeepSeek-V3.2 架构校准) ──
    非嵌入:不用 iframe,直接在定位链「模型层」内容区里用同款配色/几何画一份 DeepSeek MoE 层展开图。
-   js/training-run-twin.js 的 renderTwinLayerViews() 负责生成 SVG。 */
+   原监控逻辑的 renderTwinLayerViews() 负责生成 SVG。 */
 .twin-layerview {
   width: 100%;
   margin: 0 0 var(--space-2);
@@ -1586,7 +1586,7 @@ html[data-embed="locate-sidebar"] .twin-monitor-sidebar {
    原实现在命中的 8 个专家之间画 C(8,2)=28 条 mesh 并逐条描边生长,但 top-k 是逐 token 算的——
    一个 step 几万 token 就是几十万条路由,连线既画不全也读不动,还会被误读成「只有 8 条链路」。
    现在每个专家小格的色温/亮度 ∝ 它承接的 token 量:载入时 256 格全是「均衡基准 1/256」的同一档色,
-   js/training-run-twin.js 的 startExpertHeat() 在首帧上屏后把各自的真实负载写进行内样式,
+   原监控逻辑的 startExpertHeat() 在首帧上屏后把各自的真实负载写进行内样式,
    由下面这条 2s 过渡演出「路由坍缩」——整片退回冷蓝、只剩一格烫红。色阶蓝→绿→红,
    与 infra 集群热力图(renderInfraHeatSnapshot)同一套语义色系。
    不加祖先作用域:三个展开入口共用同一套格子,规则要都覆盖到——
@@ -1607,7 +1607,7 @@ html[data-embed="locate-sidebar"] .twin-monitor-sidebar {
   .lv-heat-grid.is-heat-live .lv-heat-cell { transition: none; }
 }
 
-/* 模型层展开图右上角「最大化」按钮 + 全屏态。逻辑见 js/training-run-twin.js 的 setLayerMax()。
+/* 模型层展开图右上角「最大化」按钮 + 全屏态。原监控逻辑由 setLayerMax() 处理。
    最大化用 position:fixed 铺满(带背板),动画仍跑在同一个 host 上,只是被 CSS 放大。 */
 .twin-layerview { position: relative; }
 .twin-layerview-max {
@@ -1653,7 +1653,7 @@ html[data-embed="locate-sidebar"] .twin-monitor-sidebar {
    定位链「模型层」的「查看」按钮 / 整网图上问题一红框触发,#modelLayerStage 覆盖在
    .twin-architecture-stage 上。进入展开图时:背后整网图(#graphStage)淡出消失,但保留顶栏
    .opv-topbar 继续控制展开图的缩放(+/−/Fit)与算子染色(层级下拉在展开图下隐藏)。逻辑见
-   js/training-run-twin.js 的 openModelLayerView() / closeModelLayerView() / bindLayerViewTopbar()。 */
+   原监控逻辑由 openModelLayerView() / closeModelLayerView() / bindLayerViewTopbar() 处理。 */
 #graphStage {
   transition: opacity 0.34s ease;
 }
@@ -1754,7 +1754,7 @@ html[data-embed="locate-sidebar"] .twin-monitor-sidebar {
 .twin-layerview-cta-text span { font-size: 11px; color: var(--foreground-secondary); line-height: 1.4; }
 .twin-layerview-cta-btn { flex: none; }
 
-/* 整网图上的紧凑问题徽标(见 js/training-run-twin.js 的 applyProblemMarkers):
+/* 整网图上的紧凑问题徽标（原监控逻辑由 applyProblemMarkers 处理）:
    序号圆点 + 白色描边环 + 轻投影,悬浮再显示完整标签,取代原来的大红卡片以减少遮挡。 */
 .pto-problem-badge { filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28)); transition: opacity 160ms ease; }
 .pto-problem-badge text { pointer-events: none; }

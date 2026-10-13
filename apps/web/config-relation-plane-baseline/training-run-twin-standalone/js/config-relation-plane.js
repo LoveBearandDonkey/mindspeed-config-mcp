@@ -35,7 +35,7 @@
   const board = doc.getElementById("croBoard");
   if (!board) return;
 
-  /* 共享规则层（../../shared/plane-rules.js，与 rank-intro/rank-intro.html 同一份）：
+  /* 共享规则层（../../shared/plane-rules.js）：
      热力色阶、量尺的 1/2/5 梯子、clamp 都从它读。
      见它顶部关于「为什么只抽规则、不抽渲染」的说明。 */
   const PR = global.PTOPlaneRules;
@@ -342,10 +342,8 @@
 
   /* ── 这根轴的时间口径：step ────────────────────────────────────────────────
      轴上那个 τ 只是「进程」，读的人第一个问题一定是「这是多长的一段时间」。答案
-     是 step，而且是**整条 run 上其它页共用的那一条时间线**：问题一的事故步钉在
-     15203（training-run-twin.js 的 INCIDENT_STEP、training-log-drawer.js 的日志
-     行、training-rank-swimlane.js 的泳道都是这个数），慢性偏斜从事故前 4200 步
-     开始爬（twin 的 LV_SKEW_CLIMB_FROM = INCIDENT_STEP - 4200）。所以这根轴写的
+     是 step：问题一的事故步钉在 15203，慢性偏斜从事故前 4200 步开始爬。
+     所以这根轴写的
      是 step 11003 → 15203。
 
      ⚠️ 这段时间不是一把匀速的尺子，而是**两种时间基**接在一起 —— 这正是这次事故
@@ -445,8 +443,7 @@
   /* 冷蓝 → 火红。六段线性插值，亮度单调上升（深色底上「越热越亮」这条不能破）。
      中途绕开绿色：绿在这套色板里是「安全 / 正常」的语义色，热力图的中段出现一片
      绿会被读成一档状态，而它其实只是「不冷不热」。 */
-  /* 色阶表、插值、图例渐变都在共享规则层（rank-intro 案例二读的是同一张表；
-     那页另有一张浅色主题的表，本页固定深色、只用这一张）。 */
+  /* 色阶表、插值、图例渐变都在共享规则层；本页固定深色、只用默认表。 */
   const HEAT_RAMP = PR.HEAT_RAMP;
   const HEAT_RAMP_CSS = PR.heatRampCss(HEAT_RAMP);
   const heatColor = PR.heatColor;
@@ -1980,24 +1977,29 @@
     memoryLegendRank.hidden = !single;
 
     if (single) {
-      const ratio = clamp(selectedMeasure.ratio, 0, 1);
+      /* 标记只能落在 0–100% 的色条内，但文字必须保留真实占用率。否则 105% 与
+         230% 都会被写成 100%，换卡之后看起来像容量没有进入计算。 */
+      const rawRatio = Math.max(0, selectedMeasure.ratio);
+      const ratio = clamp(rawRatio, 0, 1);
       memoryLegendCaption.textContent = `R${selectedRank} · HBM 占用`;
       placeMemoryLegendMarker(memoryLegendRank, ratio,
-        `R${selectedRank} · ${Math.round(ratio * 100)}%`);
-      memoryLegend.title = `Rank ${selectedRank} 的 HBM 占用为 ${Math.round(ratio * 100)}%`;
+        `R${selectedRank} · ${Math.round(rawRatio * 100)}%`);
+      memoryLegend.title = `Rank ${selectedRank} 的 HBM 占用为 ${Math.round(rawRatio * 100)}%`;
       return;
     }
 
     const lo = valid.length ? valid.reduce((a, b) => (b.ratio < a.ratio ? b : a), valid[0]) : null;
     const hi = valid.length ? valid.reduce((a, b) => (b.ratio > a.ratio ? b : a), valid[0]) : null;
-    const loRatio = lo ? clamp(lo.ratio, 0, 1) : 0;
-    const hiRatio = hi ? clamp(hi.ratio, 0, 1) : 1;
+    const loRawRatio = lo ? Math.max(0, lo.ratio) : 0;
+    const hiRawRatio = hi ? Math.max(0, hi.ratio) : 1;
+    const loRatio = clamp(loRawRatio, 0, 1);
+    const hiRatio = clamp(hiRawRatio, 0, 1);
     memoryLegendTrack.style.setProperty("--memory-min", `${(loRatio * 100).toFixed(3)}%`);
     memoryLegendTrack.style.setProperty("--memory-max", `${(hiRatio * 100).toFixed(3)}%`);
-    placeMemoryLegendMarker(memoryLegendMin, loRatio, `最小 ${Math.round(loRatio * 100)}%`);
-    placeMemoryLegendMarker(memoryLegendMax, hiRatio, `最大 ${Math.round(hiRatio * 100)}%`);
+    placeMemoryLegendMarker(memoryLegendMin, loRatio, `最小 ${Math.round(loRawRatio * 100)}%`);
+    placeMemoryLegendMarker(memoryLegendMax, hiRatio, `最大 ${Math.round(hiRawRatio * 100)}%`);
     memoryLegendCaption.textContent = "Rank HBM 占用 · 当前范围";
-    memoryLegend.title = `当前 Rank HBM 占用范围 ${Math.round(loRatio * 100)}%–${Math.round(hiRatio * 100)}%`
+    memoryLegend.title = `当前 Rank HBM 占用范围 ${Math.round(loRawRatio * 100)}%–${Math.round(hiRawRatio * 100)}%`
       + "；冷蓝 = 占用低，火红 = 占用高";
   }
 
@@ -2095,7 +2097,7 @@
      一格在屏幕上不足 minPx 时，就每隔 n 格才标一次；n 走 1 / 2 / 5 / 10 / 20…
      这个梯子（与地图、时间轴上的刻度同一套做法），不用任意整数 —— 刻度间隔本身
      要是个好读的数，否则「每 7 层标一次」比不标还费解。 */
-  /* 刻度的 1/2/5 梯子：共享规则层（rank-intro 的左侧 rank 刻度走同一份） */
+  /* 刻度的 1/2/5 梯子来自共享规则层。 */
   const niceStep = PR.niceStep;
 
   /* 一次布局解算：把 topology 换成「哪些列、哪些行、各在世界坐标的哪儿」。

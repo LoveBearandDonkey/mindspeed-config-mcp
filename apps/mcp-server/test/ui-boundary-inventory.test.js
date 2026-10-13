@@ -75,14 +75,10 @@ const REMOVAL_BATCHES = Object.freeze([
     label: "左侧框架导航",
     html: [
       "pto-ide-frame__activity-rail",
-      'id="navMonitoring"',
       'aria-label="Search"',
       'aria-label="Source control"',
       'aria-label="Terminal"',
-      'id="navTaskCompare"',
       'id="navRelationEvents"',
-      'go("navMonitoring"',
-      'go("navTaskCompare"',
     ],
     sources: [
       [observerFile, ['getElementById("navRelationEvents")?.addEventListener']],
@@ -135,7 +131,6 @@ const REMOVAL_BATCHES = Object.freeze([
     label: "顶栏旧宿主与占位动作",
     html: [
       "<span>训练监控</span>",
-      'id="croRankIntro"',
       'id="croExportConfig"',
       'href="./config-relation-observer.html"',
     ],
@@ -243,14 +238,10 @@ test("第 5 项只从 MCP App 产物移除 Activity Rail，基线证据保持不
   const builtShell = read(builtShellFile);
   const baselineMarkers = [
     'class="pto-ide-frame__activity-rail',
-    'id="navMonitoring"',
     'aria-label="Search"',
     'aria-label="Source control"',
     'aria-label="Terminal"',
-    'id="navTaskCompare"',
     'id="navRelationEvents"',
-    'go("navMonitoring"',
-    'go("navTaskCompare"',
   ];
   for (const marker of baselineMarkers) {
     assert.ok(baseline.includes(marker), `4173 基线缺少 Activity Rail 证据：${marker}`);
@@ -317,7 +308,6 @@ test("第 8 项删除旧顶栏入口但按验收要求保留 MindSpeed intro", (
   const removed = [
     'class="pto-ide-frame__host-chip"',
     'class="pto-ide-frame__workspace"',
-    'id="croRankIntro"',
     'id="croExportConfig"',
     'href="./config-relation-observer.html"',
   ];
@@ -1122,6 +1112,7 @@ test("配置选择面板保留来源说明并删除重复的解析总账", () =>
 
 test("第 12 项以 compute_rank_topology 快照驱动原 Rank 页面", () => {
   const planeSource = read(planeFile);
+  const viteConfig = read(viteConfigFile);
   const baselineEvidence = [read(observerFile), planeSource].join("\n");
   const builtShell = read(builtShellFile);
   for (const marker of [
@@ -1141,6 +1132,10 @@ test("第 12 项以 compute_rank_topology 快照驱动原 Rank 页面", () => {
   ]) {
     assert.ok(builtShell.includes(marker), `MCP App 缺少第 12 项接线：${marker}`);
   }
+  assert.ok(
+    !viteConfig.includes("const topology = lastValidTopology"),
+    "配置变化后必须从当前表单重新派生页面拓扑，不能继续拿旧 topology.card 作为 MCP 拓扑底稿",
+  );
   assert.ok(
     !builtShell.includes("out.push(base + i * dom.stride)"),
     "通信组成员不得继续由浏览器 stride/count 公式生成",
@@ -1347,6 +1342,7 @@ test("第 13 项以 suggest_config_fixes 驱动原建议区域并保留字段锁
 
 test("第 14 项以 estimate_training_capacity 驱动原容量与瓶颈展示", () => {
   const baseline = read(capacityFile);
+  const planeSource = read(planeFile);
   const builtShell = read(builtShellFile);
   const sourceStyle = read(mcpShellStyleFile);
   const viteConfig = read(viteConfigFile);
@@ -1408,8 +1404,15 @@ test("第 14 项以 estimate_training_capacity 驱动原容量与瓶颈展示", 
   );
   assert.ok(
     viteConfig.includes('memoryLegendRisk = el("span", "crop-memory-legend__risk", "OOM风险高")')
-      && viteConfig.includes("hiRatio <= cautionRatio"),
+      && viteConfig.includes("hiRawRatio <= cautionRatio")
+      && viteConfig.includes("rawRatio <= cautionRatio"),
     "Rank HBM 最大值越过警戒线后应在当前范围后显示 OOM 风险",
+  );
+  assert.ok(
+    planeSource.includes("Math.round(rawRatio * 100)")
+      && planeSource.includes("Math.round(loRawRatio * 100)")
+      && planeSource.includes("Math.round(hiRawRatio * 100)"),
+    "Rank HBM 图例应只夹取标记位置，百分比文案必须保留超过 100% 的真实值",
   );
   assert.ok(
     viteConfig.includes("cautionLabel.dataset.hint")
@@ -1533,8 +1536,8 @@ test("第 17 项资源收口不得破坏页面初始化主链路", () => {
   const baselineHash = crypto.createHash("sha256").update(fs.readFileSync(baselineHtmlFile)).digest("hex");
   assert.equal(
     baselineHash,
-    "0d71170953c50d4544736839f2b4f9faebca1856d44a94eeff5d07e21ea81bfb",
-    "除已确认的卡容量表单、MCP 适配度、YAML 源码保真和画布控制栏变更外，不得意外改写 4173 主页面基线",
+    "0033a9acc8fdf3df448606242245d9dd89330f63e71629c1631734a00262dca2",
+    "除已确认的卡容量表单、MCP 适配度、YAML 源码保真、画布控制栏、退役原型导航和 Rank 入门入口清理外，不得意外改写 4173 主页面基线",
   );
 });
 

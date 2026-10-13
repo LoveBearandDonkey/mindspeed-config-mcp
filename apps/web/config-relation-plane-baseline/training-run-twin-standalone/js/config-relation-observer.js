@@ -44,7 +44,7 @@
   "use strict";
 
   /* ── 共享规则层 ─────────────────────────────────────────────────────────
-     ../../shared/plane-rules.js —— 与 rank-intro/rank-intro.html 共用一份：
+     ../../shared/plane-rules.js —— 配置关系页面共用的规则层：
      EP 三档口径的换算（epDomain / EDP / dpReplica / world / d 轴命名）、几条整除
      约束的**判据**、专家四色、热力色阶、量尺的 1/2/5 梯子、字段量程。两页的展平
      画布一个是 DOM、一个是 canvas，渲染有意不合并；合的是这些与画法无关的规则，
@@ -507,8 +507,7 @@
 
   /* ── 量程的**单一来源**：共享规则层 ───────────────────────────────────────
      下面这一趟把 shared/plane-rules.js 的 FIELD_SPECS 里那 12 个字段的
-     min / max / pow2 盖到上表对应项上 —— rank-intro 读的是同一份，以后调量程只改
-     那里一处，两页同时生效。
+     min / max / pow2 盖到上表对应项上，以后调量程只改共享规则层一处。
      ⚠️ 只盖这三个键：label 留给上表自己（本页的 label 参与 emit() 的错误文案子串
      匹配、决定标红哪一枚 stepper，是承重的），group / step / digits / title 同理。
      ⚠️ 上表里那 12 项的 min/max/pow2 字面量因此只是**留痕**，真值看共享层；
@@ -994,7 +993,7 @@
      减半修不动了 —— 120 减半是 60，仍然不整除 256。所以「把某个字段挪到离现值
      最近的合法值」升格成基本操作：reconcile 的修复分支和报错横幅的建议修法都用
      它。三个纯函数，都不碰 config。 */
-  const gcd = PR.gcd;   /* 共享规则层（与 rank-intro 同一份） */
+  const gcd = PR.gcd;   /* 共享规则层 */
 
   function clampToSpec(value, spec) { return Math.min(spec.max, Math.max(spec.min, value)); }
 
@@ -1336,7 +1335,7 @@
      老配置里这枚是布尔 moeOrthogonal（true = 正交）。折算只写在 epModeOf 这一处，
      与 shardMode / recomputeMode 同一条规矩：下游一律读 epModeOf(config)，
      别再各自 `config.moeOrthogonal ? …` 一遍。 */
-  /* 三档的名字取共享规则层那一份（它另认 rank-intro 的 'ortho' 简写）。
+  /* 三档的名字取共享规则层那一份（同时兼容历史 'ortho' 简写）。
      ⚠️ 判断顺序与改动前逐位一致：epMode 只有**写着三档之一**时才算数，写了别的
      （或没写）一律退到老字段 moeOrthogonal —— 不能直接把 epMode 丢给 normalizeEpMode，
      那会让「epMode 是个无效值、而 moeOrthogonal = true」这种旧数据读成 split。
@@ -1378,7 +1377,7 @@
   /* EP 从哪个域里切出来（正交档没有「切出」这回事，返回 dp 只是为了让
      gcd 那几处不必分支 —— 正交档的 epBasis 本来就只看专家数）。 */
   function epDomainOf(config) {
-    return PR.epDomain(prCfg(config));   /* 共享规则层（与 rank-intro 同一份） */
+    return PR.epDomain(prCfg(config));   /* 共享规则层 */
   }
 
   /* 正交档 EP 独占 rank，进 world 的乘积；另两档 EP 是从已有的卡里再切一刀，
@@ -1395,8 +1394,7 @@
      整除性由 validate 拦、reconcile 修，除不尽的配置到不了这里；floor 只是
      防御性的兜底，保证万一漏过去几何仍是整数格。 */
   function expertDataParallel(config) {
-    /* 共享规则层。floor 那档兜底的理由见它的注释（rank-intro 侧取 round，
-       两者只在被校验拦掉的配置上才有差别）。 */
+    /* 共享规则层。floor 兜底与历史 round 快照只在被校验拦掉的配置上有差别。 */
     return PR.expertDataParallel(prCfg(config));
   }
 
@@ -1521,8 +1519,8 @@
     const { totalLayer, dp, pp, vpp, tp, cp, seqLen, routedExpert, topK, ep, totalRank, node } = config;
 
     /* ⚠️ 本页只要求「每个 stage 至少 1 层」，**允许不均分**（openPangu 的 46 层配
-       PP 4 会摆成 12,12,11,11）；rank-intro 的案例四要求整除（那页的展平图按等长
-       分块画）。两条判据都在共享规则层里并排放着，各页调自己那条：
+       PP 4 会摆成 12,12,11,11）；历史等长分块口径要求整除。两条判据都在共享
+       规则层里并排放着，本页调用允许不均分的这一条：
        本页 layersAtLeastPp / 那页 layersDivisibleByPp。别互换。 */
     if (PR.RULES.layersAtLeastPp(prCfg(config))) {
       errors.push(`层数 ${totalLayer} 少于 PP ${pp}，至少每个 stage 要有 1 层`);
@@ -1745,7 +1743,7 @@
   }
 
   /* ── 自动配平：保留用户刚调整的字段，只改满足约束所需的最少依赖项 ─────── */
-  /* 共享规则层（与 rank-intro 同一份）。展开写而不是对字段表求积：EP 是否进乘积
+  /* 共享规则层。展开写而不是对字段表求积：EP 是否进乘积
      由口径决定，一个 reduce 表达不了 —— 那段展开现在在共享层里。 */
   function parallelWorld(config) {
     return PR.parallelWorld(prCfg(config));
@@ -4491,7 +4489,7 @@
   }
 
   /* ══ 渲染：集群图（第 6 项）══════════════════════════════════════════════
-     完全参数化，不再是 training-run-twin.js 里写死的 DP4×8行×64列。
+     完全参数化，不使用旧演示中的 DP4×8行×64列固定布局。
      几何直接来自 rank 编址 r = s·(EDP·EP·TP·CP) + d·(EP·TP·CP) + p·(TP·CP) + inner：
 
         列组 = PP stage              （pp 个 Stage 块左右并排）

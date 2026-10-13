@@ -460,15 +460,6 @@ function connectMcpValidationOwnership(source, assetFile) {
     "",
     "the browser-local initial Total Rank and Node reconciliation",
   );
-  transformed = replaceRequired(
-    transformed,
-    /    function emit\(\) \{\r?\n      const topology = derive\(config\);/,
-    `    function emit() {
-      const topology = lastValidTopology
-        ? { ...lastValidTopology, config: { ...config }, valid: true, errors: [], warnings: [] }
-        : derive(config);`,
-    "the browser-local validation gate before MCP",
-  );
   transformed = replaceRangeRequired(
     transformed,
     "      // 配置校验异常统一标红；",
@@ -567,47 +558,41 @@ function connectMcpCapacity(source, assetFile) {
     transformed,
     `      memoryLegendCaption.textContent = \`R\${selectedRank} · HBM 占用\`;`,
     `      memoryLegendCaptionText.textContent = \`R\${selectedRank} · HBM 占用\`;
-      memoryLegendRisk.hidden = true;`,
+      memoryLegendRisk.hidden = cautionRatio === null || rawRatio <= cautionRatio;`,
     "the selected Rank HBM caption",
   );
   transformed = replaceRequired(
     transformed,
     `    memoryLegendCaption.textContent = "Rank HBM 占用 · 当前范围";`,
     `    memoryLegendCaptionText.textContent = "Rank HBM 占用 · 当前范围";
-    memoryLegendRisk.hidden = cautionRatio === null || hiRatio <= cautionRatio;`,
+    memoryLegendRisk.hidden = cautionRatio === null || hiRawRatio <= cautionRatio;`,
     "the Rank HBM range risk state",
   );
   transformed = replaceRequired(
     transformed,
-    `      memoryLegend.title = \`Rank \${selectedRank} 的 HBM 占用为 \${Math.round(ratio * 100)}%\`;`,
-    `      memoryLegend.title = \`Rank \${selectedRank} 的 HBM 占用为 \${Math.round(ratio * 100)}%\`
-        + cautionNote;`,
+    `      memoryLegend.title = \`Rank \${selectedRank} 的 HBM 占用为 \${Math.round(rawRatio * 100)}%\`;`,
+    `      memoryLegend.title = \`Rank \${selectedRank} 的 HBM 占用为 \${Math.round(rawRatio * 100)}%\`
+        + cautionNote
+        + (cautionRatio !== null && rawRatio > cautionRatio ? "；OOM风险高" : "");`,
     "the selected Rank HBM caution description",
   );
   transformed = replaceRequired(
     transformed,
-    `    memoryLegend.title = \`当前 Rank HBM 占用范围 \${Math.round(loRatio * 100)}%–\${Math.round(hiRatio * 100)}%\`
-      + "；冷蓝 = 占用低，火红 = 占用高";`,
-    `    memoryLegend.title = \`当前 Rank HBM 占用范围 \${Math.round(loRatio * 100)}%–\${Math.round(hiRatio * 100)}%\`
+    /    memoryLegend\.title = `当前 Rank HBM 占用范围 \$\{Math\.round\(loRawRatio \* 100\)\}%–\$\{Math\.round\(hiRawRatio \* 100\)\}%`\r?\n\s*\+ "；冷蓝 = 占用低，火红 = 占用高";/,
+    `    memoryLegend.title = \`当前 Rank HBM 占用范围 \${Math.round(loRawRatio * 100)}%–\${Math.round(hiRawRatio * 100)}%\`
       + "；冷蓝 = 占用低，火红 = 占用高" + cautionNote
-      + (cautionRatio !== null && hiRatio > cautionRatio ? "；OOM风险高" : "");`,
+      + (cautionRatio !== null && hiRawRatio > cautionRatio ? "；OOM风险高" : "");`,
     "the Rank HBM range caution description",
   );
   return transformed;
 }
 
 function subtractActivityRail(html) {
-  const withoutRail = replaceRequired(
+  return replaceRequired(
     html,
     /\s*<nav\b[^>]*class="[^"]*pto-ide-frame__activity-rail[^"]*"[^>]*>[\s\S]*?<\/nav>\s*/,
     "\n",
     "the activity rail",
-  );
-  return replaceRequired(
-    withoutRail,
-    /\s*\/\/ rail 底部互跳组：[\s\S]*?go\("navTaskCompare", "\.\/TaskCompare\.html"\);\s*\}\)\(\);/,
-    "",
-    "the activity rail navigation listeners",
   );
 }
 
@@ -666,12 +651,6 @@ function subtractLegacyTopbar(html) {
         </div>
         <div class="mcp-compute-boundary" role="note">纯静态文件校验</div>`,
     "the legacy workspace name",
-  );
-  transformed = replaceRequired(
-    transformed,
-    /\s*<!-- what is rank：[\s\S]*?<a\b[^>]*id="croRankIntro"[\s\S]*?<\/a>/,
-    "",
-    "the Rank introduction link",
   );
   transformed = transformed.replace(
     /\s*<!-- MindSpeed intro：[\s\S]*?-->/,
@@ -1633,7 +1612,9 @@ function verifyMcpAppResource() {
   return {
     name: "verify-mcp-app-resource",
     apply: "build",
-    closeBundle() {
+    /* Rolldown 下 closeBundle 可能先于 HTML 落盘触发；重命名与完整性校验必须等
+       writeBundle，才能稳定拿到 Vite 刚写出的未带时间戳入口。 */
+    writeBundle() {
       const viteHtmlFile = path.join(outputHtmlDirectory, viteHtmlFilename);
       const appFile = path.join(outputHtmlDirectory, timestampedHtmlFilename);
       fs.renameSync(viteHtmlFile, appFile);

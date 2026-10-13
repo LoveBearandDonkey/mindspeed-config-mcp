@@ -6,7 +6,7 @@
 - 来源：`D:\Projects\compute-graph-viewer-wzh\Profiling_Insight_and_Tool`
 - 来源 Git 提交：`485d520`；复制的是 2026-10-08 的工作区快照，包含源页面尚未提交的更新。
 - 原始主页面 SHA-256：`067563EBFA2E584488A4C852B0889A498BECB46E20EEECC61A668849A473A6B2`
-- 复制范围：`training-run-twin-standalone`、`shared`、`rank-intro`、`mindspeed-intro`，共 120 个文件；复制后逐文件 SHA-256 校验为 0 个差异。
+- 初始复制范围包含 `training-run-twin-standalone`、`shared`、`mindspeed-intro` 和现已退役的 Rank 入门原型，共 120 个文件；复制后逐文件 SHA-256 校验为 0 个差异。
 - 已批准的基线偏差：本项目副本的文件名追加 `-mindspeed-config-mcp`，`<title>` 追加 `· mindspeed-config-mcp`，只用于区分浏览器地址和页签；源仓库、页面可见布局和操作逻辑不变。v1 页面返回 v2 的内部链接同步指向新文件名。
 
 基线目录只用于比对和验收，不直接接入 MCP、不重构、不格式化。后续功能改造应在 MCP App 工作副本或适配层中完成。

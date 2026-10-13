@@ -400,7 +400,7 @@ graph TD
 
 ## 6. 并行与部署规格（集中规格表）
 
-> 本节数据来源于 `CHANGELOG.md`（并行策略公式）、`定位链-openPangu-2.0-Flash.md`（训练超参）、`training-monitoring.html`（训练监控页）、`config-relation-observer.html` 的 `CroTopology` 推导逻辑，以及源仓库 `configuration_openpangu_v2.py`（TP/PP plan）与 `omni_infer_server_template_performance1P1D_92B_bf16_open.yml`（推理部署模板）。
+> 本节数据来源于 `CHANGELOG.md`（并行策略公式）、`定位链-openPangu-2.0-Flash.md`（训练超参）、项目早期演示规格、`config-relation-observer.html` 的 `CroTopology` 推导逻辑，以及源仓库 `configuration_openpangu_v2.py`（TP/PP plan）与 `omni_infer_server_template_performance1P1D_92B_bf16_open.yml`（推理部署模板）。早期演示规格仅作历史记录，可从 Git 历史追溯，不作为运行时依赖。
 
 ### 6.1 训练并行策略（主配置 · 2048 Ascend 910B NPU）
 
@@ -439,14 +439,14 @@ graph TD
 
 | 参数 | 值 | 来源 |
 |---|---|---|
-| Global Batch Size | **12288** | `training-monitoring.html:1329` |
+| Global Batch Size | **12288** | 项目早期演示规格（Git 历史可追溯） |
 | Sequence Length（预训练） | **4096** | `定位链:105` |
-| 每步 Token 数 | **50.3M**（12288 × 4096） | `training-monitoring.html:1337` |
-| 总训练 Token | **24T** | `training-monitoring.html:1329` |
-| 总训练步数 | ~480K | `training-monitoring.html:1339` |
-| Optimizer | **AdamW**（β₁=0.9, β₂=0.95, weight_decay=0.1） | `training-monitoring.html:1332` |
-| Learning Rate | **3e-4** → cosine → **3e-5**（2K warmup） | `training-monitoring.html:1333` |
-| Grad Clip | **1.0** | `training-monitoring.html:1334` |
+| 每步 Token 数 | **50.3M**（12288 × 4096） | 项目早期演示规格（Git 历史可追溯） |
+| 总训练 Token | **24T** | 项目早期演示规格（Git 历史可追溯） |
+| 总训练步数 | ~480K | 项目早期演示规格（Git 历史可追溯） |
+| Optimizer | **AdamW**（β₁=0.9, β₂=0.95, weight_decay=0.1） | 项目早期演示规格（Git 历史可追溯） |
+| Learning Rate | **3e-4** → cosine → **3e-5**（2K warmup） | 项目早期演示规格（Git 历史可追溯） |
+| Grad Clip | **1.0** | 项目早期演示规格（Git 历史可追溯） |
 
 ### 6.5 推理部署规格
 

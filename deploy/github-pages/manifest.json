@@ -1,10 +1,10 @@
 {
     "schema_version":  "1.0",
-    "packaged_at_asia_shanghai":  "20261013-101522",
-    "product_version":  "v1.0.2",
+    "packaged_at_asia_shanghai":  "20261013-134517",
+    "product_version":  "v1.0.3",
     "entry":  "index.html",
-    "bytes":  1620664,
-    "sha256":  "B12AE3452E6200A244A803B2C5350A8CC9192262A6803A705222ECB960F080AA",
+    "bytes":  1625496,
+    "sha256":  "A35ABFCDC00EE2571FD3991FF85490FAB61CCB8E513AB439E4B4D64FEE9C52F2",
     "execution_mode":  "browser-local-config-core",
     "mcp_protocol_endpoint":  false,
     "capabilities":  [

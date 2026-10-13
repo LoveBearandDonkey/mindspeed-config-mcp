@@ -11,7 +11,7 @@
     })();
   </script>
 
-  <!-- 设计系统 tokens + 组件（本目录 vendored 副本，与 training-monitoring-v2.html 同源） -->
+  <!-- 设计系统 tokens + 组件（本目录 vendored 副本） -->
   <link rel="stylesheet" href="./css/foundation.css">
   <link rel="stylesheet" href="./css/semantic.css">
   <link rel="stylesheet" href="./css/components.css">
@@ -76,16 +76,7 @@
           </svg>
           <span>文档</span>
         </button>
-        <!-- what is rank：rank 概念入口，独立静态页，放在右上角动作组最左侧 -->
-        <a class="btn btn-sm cro-export-btn" id="croRankIntro" href="../rank-intro/rank-intro.html" target="_blank" rel="noopener noreferrer" title="Rank 的设计表达 · 分步入门">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M14 3h7v7"></path>
-            <path d="M10 14 21 3"></path>
-            <path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"></path>
-          </svg>
-          <span>what is rank</span>
-        </a>
-        <!-- MindSpeed intro：MindSpeed × 工具矩阵的能力与 UX 机会地图，跟「what is rank」一样是独立静态页 -->
+        <!-- MindSpeed intro：MindSpeed × 工具矩阵的能力与 UX 机会地图 -->
         <a class="btn btn-sm cro-export-btn" id="croMindSpeedIntro" href="../mindspeed-intro/mindspeed-tool-matrix-analysis.html" target="_blank" rel="noopener noreferrer" title="MindSpeed × Profiling Insight · 双向能力与 UX 机会地图">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M14 3h7v7"></path>
@@ -132,13 +123,6 @@
 
     <div class="pto-ide-frame__body">
       <nav class="pto-ide-frame__activity-rail pto-ide-frame__standalone-chrome" data-ide-slot="activity-rail" aria-label="Activity rail">
-        <!-- 首键与 TaskCompare.html 同款：文件夹图标 = 跳转训练监控大盘。本页选中态归属末位的
-             「配置关系」，故首键不带 is-selected。 -->
-        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" id="navMonitoring" aria-label="训练监控" title="训练监控">
-          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9l-.81-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path>
-          </svg>
-        </button>
         <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" aria-label="Search" title="Search">
           <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="11" cy="11" r="8"></circle>
@@ -158,13 +142,6 @@
             <rect x="3" y="5" width="18" height="14" rx="2"></rect>
             <path d="m7 9 3 3-3 3"></path>
             <path d="M12 15h5"></path>
-          </svg>
-        </button>
-        <!-- 互跳组：对比 / 配置关系，三页同款同序（训练监控即首键），当前页保持 is-selected 不绑定跳转。 -->
-        <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button" type="button" id="navTaskCompare" aria-label="对比" title="对比">
-          <svg class="pto-ide-frame__rail-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
-            <path d="M12 3v18"></path>
           </svg>
         </button>
         <button class="btn btn-icon btn-ghost pto-ide-frame__rail-button is-selected" type="button" id="navRelationEvents" aria-label="配置关系与运行事件" title="配置关系与运行事件" aria-pressed="true">
@@ -2965,7 +2942,7 @@ t  TP 序号              c  CP 序号      n  物理节点号</div>
   <script src="./js/ide-frame-pattern.js"></script>
   <script src="./js/model-graphviz-pattern.js"></script>
   <script src="./js/model-architecture-3d-deck-pattern.js"></script>
-  <!-- 展平视图的**规则层**（与 ../rank-intro/rank-intro.html 共用一份）：EP 三档口径的
+  <!-- 展平视图的**规则层**：EP 三档口径的
        换算、几条整除约束的判据、专家四色、热力色阶、量尺的 1/2/5 梯子、字段量程。
        那页的展平画布是 canvas、本页是 DOM，渲染有意不合并；合的是这些与画法无关的
        规则，改一处两页同时生效。**必须排在 observer / plane 两个脚本之前**（它们把
@@ -2985,7 +2962,7 @@ t  TP 序号              c  CP 序号      n  物理节点号</div>
        拿 config-test/ 的回归样本直接撞它。 -->
   <script src="./js/config-relation-import.js?v=20261009-plain-textarea"></script>
   <script>
-    // 主题切换：与 training-monitoring-v2.html 同款单图标按钮，只改 data-theme。
+    // 主题切换：单图标按钮只改 data-theme。
     (() => {
       const btn = document.getElementById("themeToggle");
       const icon = document.getElementById("themeToggleIcon");
@@ -3056,15 +3033,6 @@ t  TP 序号              c  CP 序号      n  物理节点号</div>
       apply(initial ? initial.dataset.netView : "both");
     })();
 
-    // rail 底部互跳组：跳转另两页（本页「配置关系」键即当前页，不绑定）。
-    (() => {
-      const go = (id, href) => {
-        const btn = document.getElementById(id);
-        if (btn) btn.addEventListener("click", () => { window.location.href = href; });
-      };
-      go("navMonitoring", "./training-monitoring-v2.html");
-      go("navTaskCompare", "./TaskCompare.html");
-    })();
   </script>
 
   <!-- ═══ 平面视图重排（本页与 config-relation-observer.html 的唯一差别）═══════
@@ -3072,5 +3040,7 @@ t  TP 序号              c  CP 序号      n  物理节点号</div>
        挂在 DOMContentLoaded 上、此刻尚未 boot —— 搬完再 boot，所有 getElementById
        拿到的还是同一批节点，配置 / 校验 / 关系解析一行逻辑都没动。 -->
   <script src="./js/config-relation-plane.js?v=20261009-left-title"></script>
+  <!-- 只增强画布右下角两枚浮层的光学材质；不参与配置、容量或拓扑计算。 -->
+  <script src="./js/config-relation-liquid-glass.js?v=20261013-refraction"></script>
 </body>
 </html>

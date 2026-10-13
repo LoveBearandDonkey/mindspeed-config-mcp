@@ -563,7 +563,7 @@ body:has(.cro-board.is-plane) .cro-link-layer { display: none; }
      浓度 6%（原先 10%）：这条影子是**纵向参照**而不是选中态——选中态由格子自己的
      高亮去表达。10% 时它在格缝与行标道里比格子本身还抢眼，一整列从顶尺压到画布底，
      读一行 rank 时眼睛总被它拽走；压到 6% 仍看得出「选的是这一列」，但退回了背景层。
-     ⚠️ 与 rank-intro 那页 canvas 里画这条影子的 alpha 保持同值（搜 layerGuide）。 */
+     该透明度与历史视觉基线保持一致。 */
   background: color-mix(in srgb, var(--foreground) 6%, transparent);
   pointer-events: none;
 }
@@ -987,7 +987,7 @@ html[data-theme="dark"] .crop-ruler__corner {
 }
 
 .cro-board.is-plane {
-  /* Match rank-intro step 10 exactly. Do not derive these from --foreground:
+  /* Match the historical flat-view palette exactly. Do not derive these from --foreground:
      that token already carries alpha, so color-mix would make both values dimmer. */
   --crop-cell-fill: rgb(255 255 255 / 0.07);
   --crop-cell-stroke: rgb(255 255 255 / 0.34);
@@ -1041,7 +1041,7 @@ html[data-theme="dark"] .crop-ruler__corner {
    原先这里画的是 45° 斜纹（repeating-linear-gradient）。一屏几千个格子、每个都
    要合成一遍渐变，是这幅图上最贵的一笔纯装饰开销；换成一个纯色，绘制几乎不要钱，
    而「这一格是空的」这件事一点没少说。
-   填充与普通格共用 rank-intro 第 10 步的 tile 色；区别由格内内容表达。 */
+   填充与普通格共用展平视图的 tile 色；区别由格内内容表达。 */
 .crop-cell[data-ffn="dense"] {
   background: var(--crop-cell-fill);
 }
@@ -1496,10 +1496,18 @@ html[data-theme="dark"] .crop-ruler__corner {
   gap: 0;
   padding: var(--space-1);
   border-radius: var(--radius-md);
-  /* 第 10 步的 pzoom 使用页面基底色；这里保持同一层级，不再抬成浮层卡片色。 */
-  background: var(--surface-1);
-  border: 1px solid var(--border-subtle);
-  backdrop-filter: var(--surface-backdrop-filter, none);
+  /* 与 npu-memory-atlas/index_comm 的导航玻璃使用同一底色与折射边缘；
+     backdrop-filter 会由 config-relation-liquid-glass.js 换成位移贴图。 */
+  background: rgb(26 26 26 / 28%);
+  border: 1px solid rgb(255 255 255 / 28%);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 22%),
+    inset 0 -1px 0 rgb(255 255 255 / 7%),
+    0 8px 24px rgb(0 0 0 / 22%);
+  isolation: isolate;
+  overflow: hidden;
   z-index: var(--z-raised);
 }
 
@@ -1583,12 +1591,35 @@ html[data-theme="dark"] .crop-ruler__corner {
   box-sizing: border-box;
   width: min(340px, calc(100% - 2 * var(--space-3)));
   padding: 8px 10px 7px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid rgb(255 255 255 / 28%);
   border-radius: var(--radius-md);
-  background: var(--surface-1);
-  box-shadow: var(--shadow-sm, 0 2px 8px rgb(0 0 0 / 0.16));
+  background: rgb(26 26 26 / 28%);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 22%),
+    inset 0 -1px 0 rgb(255 255 255 / 7%),
+    0 8px 24px rgb(0 0 0 / 22%);
+  isolation: isolate;
+  overflow: hidden;
   z-index: var(--z-raised);
   pointer-events: none;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .crop-tools,
+  .crop-heat__legend.crop-memory-legend {
+    background: #242424;
+  }
+}
+
+html[data-theme="light"] .crop-tools,
+html[data-theme="light"] .crop-heat__legend.crop-memory-legend {
+  background: rgb(255 255 255 / 78%);
+  border-color: rgb(255 255 255 / 0.78);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 8px 24px rgb(0 0 0 / 8%);
 }
 
 .crop-heat__legend.crop-memory-legend[hidden],

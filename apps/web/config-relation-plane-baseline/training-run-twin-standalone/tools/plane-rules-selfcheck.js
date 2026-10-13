@@ -4,9 +4,9 @@
 
    用法：  node Profiling_Insight_and_Tool/training-run-twin-standalone/tools/plane-rules-selfcheck.js
 
-   什么时候跑：**改了 shared/plane-rules.js 之后**，或改了两页里任何一处口径 /
+   什么时候跑：**改了 shared/plane-rules.js 之后**，或改了页面中的口径 /
    校验 / 配色 / 量程之后。它回答一个问题 ——
-     「共享层此刻算出来的东西，是否还与两页原先各自的实现逐位相同？」
+     「共享层此刻算出来的东西，是否还与规则抽取前的实现逐位相同？」
    原先那两份实现在这里各留了一份**快照副本**（下面 ① ②），所以这个脚本是
    独立的判据，不读页面代码。快照是抽取当时（2026-09-20）的行为基线：如果哪天
    有意要改行为，先改共享层、再把对应快照一起改，并在本文件里记一句为什么。
@@ -14,8 +14,8 @@
    四组检查：
      ① vs config-relation-observer.js 的口径函数（epDomain / EDP / dpReplica /
         world / d 轴命名 / DP 换算）
-     ② vs rank-intro 的 topoOf（rows / groupRows / groups / dpS / world）
-     ③ 约束谓词与两页原判据同真假；rank-intro 侧的错误文案与标红字段逐字相同
+     ② vs 历史 topoOf 快照（rows / groupRows / groups / dpS / world）
+     ③ 约束谓词与历史判据同真假；错误文案与标红字段逐字相同
      ④ niceStep / heatColor / 专家四色 / 字段量程
    ═══════════════════════════════════════════════════════════════════════════ */
 "use strict";
@@ -65,7 +65,7 @@ const ob = {
   },
 };
 
-/* ══ ② rank-intro 改动前的 topoOf 与案例四的口径（快照） ══════════════════ */
+/* ══ ② 规则抽取前的 topoOf 与等长分块口径（快照） ════════════════════════ */
 const ri = {
   topoOf(D, o) {
     o = o || {};
@@ -102,7 +102,7 @@ const ri = {
   },
 };
 
-/* 共享层现在的 validate 组装法（与 rank-intro 页内那段逐行同形） */
+/* 共享层现在的 validate 组装法（与历史快照逐行同形） */
 const BAD_KEY = { totalLayer: "layers", routedExpert: "routed", topK: "topk" };
 function validateViaShared(c) {
   const errs = []; const marked = {}; const R = PR.RULES; let h;
@@ -212,4 +212,4 @@ if (bad.length) {
   console.log("\n若这是**有意**的行为改动：改共享层的同时，把本文件里对应的快照基线一起改，并记一句为什么。");
   process.exit(1);
 }
-console.log("✅ 全部与两页改动前的实现逐位一致");
+console.log("✅ 全部与规则抽取前的实现逐位一致");

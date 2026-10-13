@@ -932,9 +932,8 @@
    用开关而不是按钮：按钮读起来是「点它会发生一件事」，开关读起来是「现在是这个
    状态」—— 而这两项正是后者，它们时刻决定着右边那根容量柱怎么画。
 
-   ⚠️ 设计系统没有 switch 原语（css/style.css 只有 .btn 系列）。这份实现与
-   TaskCompare.html 的 .cmp-switch（那里是「标记最优 / 只看差异」）**逐条相同**，
-   只按本页前缀改了名；两处应当一起被吸收进共享系统，改动时请同步。 */
+   ⚠️ 设计系统没有 switch 原语（css/style.css 只有 .btn 系列），
+   因此本页保留带前缀的独立实现。 */
 .cro-switch {
   display: inline-flex;
   align-items: center;
@@ -2357,8 +2356,7 @@
   gap: var(--space-3);
 }
 
-/* 集群网格：几何全部由 JS 按 rank 编址算，这里只补 training-run-twin.css 里
-   原本由 training-run-twin.js 写成内联样式的那几条布局规则（列数除外）。
+/* 集群网格：几何全部由 JS 按 rank 编址算，这里补充共享热力图样式缺少的布局规则（列数除外）。
    .twin-heat 基类自带 grid + 32 列，这里改成纵向堆叠 Stage标签 / DP组 / EP标签。 */
 .cro-heat {
   display: flex;
@@ -2428,7 +2426,7 @@
 
 
 /* .twin-heat-cell 基类只有 aspect-ratio + 6% 的 .ep-tint-N 底色，本身没有
-   可见描边 —— 原页面是靠 training-run-twin.js 的 renderHeat() 给每格写
+   可见描边 —— 原演示逻辑会给每格写
    inset 0 0 0 2px var(--twin-util-*) 才看得见的。本页不做 util 着色，
    所以在这里补一圈中性描边作为静息态，否则整张矩阵是空白的。
    描边颜色走 --cro-cell-ring，让 stage 分隔 / 关联 / 选中三种状态叠加不打架。 */
