@@ -22,12 +22,12 @@
 ## 页面可调项清单（对照用）
 
 - 并行：`totalLayer` / `dp` / `pp` / `tp` / `cp`，高级折叠内 `vpp`、`cpMode`(Ulysses/Ring)
+- 模型结构：`hidden` / `heads` / `kvHeads` / `denseIntermediate` / `moeIntermediate`
 - 批次：`microBatch` / `seqLen`
 - MoE：`routedExpert` / `topK` / `sharedExpert` / `ep`（+ EP 口径切出/正交开关）
 - 集群：`totalRank` / 卡型号（Node 由每机 8 卡整除得出）
 - 开关：`recomputeMode`(关/选择性/按层数/全开) + `recomputeLayers`、`seqParallel`、
   `shardMode`(关/ZeRO-1/FSDP2)、`vocabEmbDp`、`lora` + `loraRank`
 
-**结构常量不可调**：hidden / vocab / heads / kvHeads / intermediate / moeIntermediate /
-firstKDense / mtpLayers 全部写死在 `MODEL_PRESETS`（openpangu-flash、qwen2-7b 两档）。
-拿外部配置来试时，这一层只能"挑一个形状最近的预设"，属于已知缺口。
+`vocab` / `firstKDense` / `mtpLayers` 仍由 `MODEL_PRESETS` 提供；其余已建模结构项
+会从外部配置导入并参与页面与 MCP 校验。导入报告继续显式列出尚未建模的结构差异。

@@ -29,7 +29,7 @@ export const ACCEPTANCE_SCENARIOS = Object.freeze({
   A02: createTrainingConfig({ cluster: { total_ranks: 32 } }),
   A03: createTrainingConfig({ model: { total_layers: 31 } }),
   A04: createTrainingConfig({
-    model: { num_attention_heads: 30, ffn_hidden_size: 2048 },
+    model: { num_attention_heads: 30, num_key_value_heads: 5, ffn_hidden_size: 2048 },
     parallel: { tp: 4 },
     cluster: { total_ranks: 32 },
   }),
@@ -44,7 +44,7 @@ export const ACCEPTANCE_SCENARIOS = Object.freeze({
     cluster: { total_ranks: 8 },
   }),
   A08: createTrainingConfig({
-    model: { num_attention_heads: 30, ffn_hidden_size: 2048 },
+    model: { num_attention_heads: 30, num_key_value_heads: 5, ffn_hidden_size: 2048 },
     parallel: { tp: 2, cp: 4, cp_mode: "ulysses" },
     cluster: { total_ranks: 64 },
   }),

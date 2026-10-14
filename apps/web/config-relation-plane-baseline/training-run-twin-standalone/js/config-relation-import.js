@@ -13,7 +13,7 @@
       用户只会以为页面漏读了。四堆分别是：
         · 已识别 · 不建模 —— 通信 / 融合 / 调度器超参 / 数据集，不进显存模型；
         · 已识别 · 缺口   —— 不补数就是错的，逐条挂着升级计划的行号；
-        · 结构常量        —— 由计算图给，本页不覆盖（见下面「谁赢」那段）；
+        · 未建模结构常量  —— 由计算图给，本页不覆盖（见下面「谁赢」那段）；
         · 未识别          —— 没见过的键。**照样列出来**：宁可承认不认识，
                              也不能悄悄吞掉（吞掉就等于骗用户说「都读了」）。
 
@@ -23,12 +23,13 @@
      · 这四项 **配置赢** —— 它们本来就是表单里可调的字段，导入的目的就是让表单
        跳到那份配置的档位；不覆盖的话会出现「配置写 61 层、表单显示 46 层」这种
        没人解释得清的状态。
-     · 结构常量（hidden / vocab / heads / kvHeads / intermediate / moeIntermediate
-       / firstKDense / mtpLayers）**预设赢，一个都不覆盖** —— 它们由计算图给，
-       是另一条路线的事。
+     · 页面已建模的结构项（hidden / heads / kvHeads / intermediate /
+       moeIntermediate）**配置赢**，与并行项一起进入即时校验；
+     · 尚未做成页面输入的结构常量（vocab / firstKDense / mtpLayers）仍由预设赢，
+       并在报告里显式展示差异。
    ⚠️ 但第二条有一个必须当面说清的后果：把 deepseek3 的并行度导到 openPangu 的
    结构上，算出来的容量**不是 deepseek3 的容量**。所以面板上单列一栏，把配置里的
-   结构常量与当前预设的值并排摆出来，差多少一目了然。宁可显得啰嗦。
+   尚未建模的结构常量与当前预设值并排摆出来，差多少一目了然。宁可显得啰嗦。
 
    ── 与其余模块的耦合面 ────────────────────────────────────────────────────
    只用两个已导出的全局：`croObserver.importConfig()`（本行新增的批量入口）与
@@ -250,6 +251,20 @@
     { field: "totalLayer", label: "层数",
       keys: ["model.model_config.num_layers", "model.model_config.num_hidden_layers",
         "num_hidden_layers", "num_layers", "num-layers"] },
+    { field: "hidden", label: "Hidden Size",
+      keys: ["model.model_config.hidden_size", "hidden_size", "hidden-size", "hidden-dim"] },
+    { field: "heads", label: "Attention Heads",
+      keys: ["model.model_config.num_attention_heads", "num_attention_heads",
+        "num-attention-heads", "attention-heads"] },
+    { field: "kvHeads", label: "KV Heads",
+      keys: ["model.model_config.num_key_value_heads", "num_key_value_heads",
+        "num-key-value-heads", "num-query-groups", "num-kv-heads"] },
+    { field: "denseIntermediate", label: "Dense FFN Intermediate",
+      keys: ["model.model_config.intermediate_size", "intermediate_size",
+        "ffn-hidden-size", "ffn_hidden_size"] },
+    { field: "moeIntermediate", label: "Expert FFN Intermediate",
+      keys: ["model.model_config.moe_intermediate_size", "moe_intermediate_size",
+        "moe-ffn-hidden-size", "expert-ffn-hidden-size", "expert_ffn_hidden_size"] },
     { field: "dp", label: "DP", keys: ["parallel_config.data_parallel", "data_parallel"] },
     { field: "tp", label: "TP",
       keys: ["parallel_config.model_parallel", "model_parallel", "tensor-model-parallel-size"] },
@@ -653,20 +668,10 @@
     ["lora_target", 32, "LoRA 作用面 —— all 会覆盖到 FFN，本页只按注意力四件套算"],
   ];
 
-  /* ── 结构常量：由计算图给，本页不覆盖，但要把差异摆出来 ───────────────── */
+  /* ── 尚未建模的结构常量：由计算图给，本页不覆盖，但要把差异摆出来 ─────── */
   const STRUCTURAL = [
-    ["hidden_size", "hidden", "hidden size"],
-    ["hidden-size", "hidden", "hidden size"],
     ["vocab_size", "vocab", "词表"],
     ["vocab-size", "vocab", "词表"],
-    ["num_attention_heads", "heads", "注意力头"],
-    ["num-attention-heads", "heads", "注意力头"],
-    ["num_key_value_heads", "kvHeads", "KV 头"],
-    ["num-query-groups", "kvHeads", "KV 头（GQA 组数）"],
-    ["intermediate_size", "denseIntermediate", "Dense FFN intermediate"],
-    ["ffn-hidden-size", "denseIntermediate", "Dense FFN intermediate"],
-    ["moe_intermediate_size", "moeIntermediate", "MoE 专家 intermediate"],
-    ["moe-ffn-hidden-size", "moeIntermediate", "MoE 专家 intermediate"],
     ["first_k_dense_replace", "firstKDense", "前几层走 Dense"],
     ["num_nextn_predict_layers", "mtpLayers", "MTP 层数"],
   ];
@@ -837,7 +842,7 @@
     { group: "HF config.json（模型定义，不是训练配置）", items: [
       { file: "hf_deepseekv3_config.json", label: "DeepSeek-V3",
         source: "HF · deepseek-ai/DeepSeek-V3",
-        note: "MLA + 256 专家 + 共享专家 + first_k_dense + MTP，与页面的 openPangu 预设同形 —— 拿它看「结构常量不覆盖」那一栏最直观" },
+        note: "MLA + 256 专家 + 共享专家 + first_k_dense + MTP，与页面的 openPangu 预设同形 —— 可直接检查结构项回填与剩余差异" },
       { file: "hf_mixtral_config.json", label: "Mixtral 8×7B-v0.1 · HF 结构",
         source: "HF · mistralai/Mixtral-8x7B-v0.1",
         note: "模型结构侧：MoE 字段（num_local_experts / num_experts_per_tok）怎么被接住" },
@@ -1033,7 +1038,7 @@
       + `</li>`), "配置赢：这几项表单里本来就可调，导入的目的就是让它们跳到这份配置的档位。"));
 
     if (r.structural.length) {
-      out.push(`<div class="cro-import__block is-struct"><h4>结构常量 · 未覆盖（由计算图给）</h4>`
+      out.push(`<div class="cro-import__block is-struct"><h4>尚未建模的结构常量 · 未覆盖（由计算图给）</h4>`
         + `<p class="cro-import__hint">这些是模型自身的形状，不是并行配置，本页<b>一个都不改</b> ——`
         + `它们由计算图那条路线给。把别人的并行度导到当前预设的结构上，`
         + `算出来的容量<b>不是那份配置的容量</b>。</p><ul>`
@@ -1080,8 +1085,8 @@
      不能省 —— 一份陌生配置直接糊到表单上，用户看不出页面替他改了什么（EP 口径
      不合、VPP 被配平、总卡数反推……这些都写在报告里）。
 
-     ⚠️ 模型不换。importConfig 只收 FIELD/FLAG 认得的字段，MAP 里根本没有 model ——
-     样例的结构常量（hidden / layers / 专家数）一律不覆盖，那是计算图那条路线的活。 */
+     ⚠️ 模型身份不换：MAP 里没有 model id。但已经建模的 hidden / heads / FFN
+     intermediate / layers / 专家数会覆盖当前表单并重新校验；未建模结构项仍留在差异栏。 */
   function bootYamlPicker() {
     const legacyTrigger = doc.getElementById("croYamlPickerBtn");
     /* 平面页把样例文件并入「配置」选择器；原 observer 页仍保留文件名按钮。
@@ -1691,7 +1696,7 @@
         el.tag.title = `当前档位来自 ${meta.label}（${meta.source}）`
           + (adjusted.length ? `\n页面配平改了 ${adjusted.length} 项：`
             + adjusted.map((a) => `${a.field} ${a.want}→${a.got}`).join("、") : "")
-          + `\n模型与结构常量未跟随切换。`;
+          + `\n模型身份不切换；已建模结构项已按这份配置回填。`;
       }
     });
   }

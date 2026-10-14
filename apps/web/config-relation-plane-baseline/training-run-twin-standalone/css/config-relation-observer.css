@@ -579,6 +579,25 @@
   color: var(--foreground-muted);
 }
 
+/* 模型结构与并行参数分行呈现：前者定义“模型是什么”，后者定义“怎么切”。
+   五项等宽并允许在窄视口换行，长 intermediate 标签交给统一省略号与问号说明。 */
+.cro-stepper-row--structure {
+  gap: var(--space-2);
+}
+
+.cro-stepper-row--structure > .cro-stepper {
+  flex: 1 1 112px;
+  min-width: 0;
+}
+
+.cro-stepper-row--structure .cro-stepper__control {
+  min-width: 0;
+}
+
+.cro-stepper-row--structure .cro-stepper__input {
+  min-width: 0;
+}
+
 /* ── 通用：内部滚动条 ────────────────────────────────────────────────────
    典型层的算子栈与路由专家列表都是页面内部的密集滚动区，用系统默认滚动条
    （Windows 上是 17px 实心灰槽）会在算子条右侧劈出一条硬边，比内容本身还

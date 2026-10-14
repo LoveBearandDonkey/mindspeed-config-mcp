@@ -348,6 +348,28 @@ test("原页面表单可转换为校验 Tool 输入，结论包含公式并定�
   assert.equal(input.batch.global_batch_size, undefined,
     "页面不应在 MCP 输入中额外生成本地批量公式结果");
 
+  const editedStructure = pageConfigToTrainingConfig({
+    ...pageConfig,
+    hidden: 4096,
+    heads: 32,
+    kvHeads: 8,
+    denseIntermediate: 11008,
+  }, topologyApi);
+  assert.equal(editedStructure.model.hidden_size, 4096);
+  assert.equal(editedStructure.model.num_attention_heads, 32);
+  assert.equal(editedStructure.model.num_key_value_heads, 8);
+  assert.equal(editedStructure.model.ffn_hidden_size, 11008);
+  assert.deepEqual(validateTrainingConfig(editedStructure), { valid: true, errors: [] });
+
+  const invalidHeadGroups = pageConfigToTrainingConfig({
+    ...pageConfig,
+    heads: 30,
+    kvHeads: 8,
+  }, topologyApi);
+  assert.ok(validateParallelConfig(invalidHeadGroups).errors.some((item) => (
+    item.code === "MODEL_ATTENTION_HEADS_DIVISIBLE_BY_KV_HEADS"
+  )));
+
   const customMemory = pageConfigToTrainingConfig(
     { ...pageConfig, customCardMemoryGB: 56.5 },
     topologyApi,
@@ -436,7 +458,7 @@ test("原页面表单可转换为校验 Tool 输入，结论包含公式并定�
   assert.doesNotMatch(html, /mcp-validation__eyebrow|MCP 静态校验/);
   assert.doesNotMatch(html, /mcp-validation__assumption/);
   assert.match(html, /num_attention_heads % tp === 0/);
-  assert.deepEqual([...validationMarks(result)], [["model", "invalid"], ["tp", "invalid"]]);
+  assert.deepEqual([...validationMarks(result)], [["heads", "invalid"], ["tp", "invalid"]]);
 
   const validHtml = renderValidationConclusion({
     status: "valid",
@@ -553,6 +575,21 @@ test("解析结果适配到原页面字段，并在原报告结构中区分映�
     seqParallel: true,
     totalRank: 16,
     node: 2,
+  });
+  assert.deepEqual(toPagePartial({
+    model: {
+      hidden_size: 4096,
+      num_attention_heads: 32,
+      num_key_value_heads: 8,
+      ffn_hidden_size: 11008,
+      expert_ffn_hidden_size: 2048,
+    },
+  }), {
+    hidden: 4096,
+    heads: 32,
+    kvHeads: 8,
+    denseIntermediate: 11008,
+    moeIntermediate: 2048,
   });
   const html = renderParseReport(result);
   assert.match(html, /已映射 · 原文显式值/);

@@ -234,6 +234,9 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     "model.total_layers": 46,
     "model.hidden_size": 7168,
     "model.num_attention_heads": 128,
+    "model.num_key_value_heads": 0,
+    "model.ffn_hidden_size": 28672,
+    "model.expert_ffn_hidden_size": 2048,
     "model.routed_experts": 256,
     "model.top_k": 8,
     "model.shared_experts": 1,
@@ -761,8 +764,11 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
       : card.memory;
     return {
       "model.id": preset.id ?? config.model,
-      "model.hidden_size": preset.hidden,
-      "model.num_attention_heads": preset.heads,
+      "model.hidden_size": config.hidden ?? preset.hidden,
+      "model.num_attention_heads": config.heads ?? preset.heads,
+      "model.num_key_value_heads": config.kvHeads ?? preset.kvHeads,
+      "model.ffn_hidden_size": config.denseIntermediate ?? preset.denseIntermediate,
+      "model.expert_ffn_hidden_size": config.moeIntermediate ?? preset.moeIntermediate,
       "cluster.ranks_per_node": card.ranksPerNode,
       "cluster.card_model": card.value,
       "cluster.card_memory_gib": cardMemory,

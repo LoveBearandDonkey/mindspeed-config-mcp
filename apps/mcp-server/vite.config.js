@@ -777,7 +777,7 @@ function subtractCapabilityClosureHtml(html) {
   transformed = transformed.slice(0, netStart) + transformed.slice(archStart);
   transformed = replaceRequired(
     transformed,
-    /(<h2 class="cro-region__title">(?:Model Architecture|模型结构与并行)<\/h2>)/,
+    /(<h2 class="cro-region__title">(?:Model Architecture|模型结构与并行策略)<\/h2>)/,
     `$1\n              ${presetStepper.trim()}`,
     "the Model Architecture title for relocating the configuration preset selector",
   );

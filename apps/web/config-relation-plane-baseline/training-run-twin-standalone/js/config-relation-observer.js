@@ -74,6 +74,10 @@
          参考配置里写的 "dp: 8" 是 EDP，真 DP = 2048/(PP4×TP1×CP1) = 512。
          切到正交档时由 controller.setEpMode() / setModel() 按 EP 换算回 8。 */
       defaults: {
+        /* 结构参数同时进入 config：页面控件、即时校验、预设预览与导入必须读取
+           同一份当前值。顶层字段仍作为内置模型的证据基线与兼容读口。 */
+        hidden: 2560, heads: 48, kvHeads: 0,
+        denseIntermediate: 9216, moeIntermediate: 1024,
         totalLayer: 46,
         /* vpp = 1 是这个预设唯一的合法值：46 层连 PP=4 都除不尽（本页的 stage 允许
            不均分，交错式流水不允许），46 % (4×v) 对任何 v > 1 都不为 0。要试 VPP
@@ -161,6 +165,8 @@
         ],
       },
       defaults: {
+        hidden: 3584, heads: 28, kvHeads: 4,
+        denseIntermediate: 18944, moeIntermediate: 0,
         totalLayer: 28,
         dp: 2, pp: 4, vpp: 1, tp: 1, cp: 1,
         microBatch: 1, seqLen: 4096,
@@ -297,6 +303,31 @@
   /* ── stepper 字段规格：min/max/step 与取值方式（pow2 = 按 2 的幂增减） ── */
   const FIELD_SPECS = {
     totalLayer:   { label: "Total Layer",    group: "parallel", min: 1,  max: 256,  step: 1 },
+    /* 模型结构参数现在是页面真实输入，不再只藏在 MODEL_PRESETS。预设值仍作为
+       切换模型/配置时的种子；修改后立即进入页面规则、MCP 校验、YAML 与容量估算。 */
+    hidden: {
+      label: "Hidden Size", group: "structure", min: 1, max: 262144, step: 128, digits: 5,
+      title: "模型隐藏维度 H。它线性影响激活、平方级影响多数权重矩阵，并作为当前配置值送入 MCP 校验与容量估算。",
+    },
+    heads: {
+      label: "Attention Heads", group: "structure", min: 1, max: 4096, step: 1, digits: 3,
+      title: "Query 注意力头数。TP 必须整除它；Ulysses 下 TP × CP 必须整除它。",
+    },
+    kvHeads: {
+      label: "KV Heads", group: "structure", min: 0, max: 4096, step: 1, digits: 3,
+      title: "KV 头数 / Query Group 数。0 表示当前模型未声明独立 KV 头数；非 0 时必须能整分 Attention Heads。",
+    },
+    denseIntermediate: {
+      label: "Dense FFN Intermediate", group: "structure", min: 1, max: 1048576, step: 128, digits: 5,
+      title: "Dense FFN 的 intermediate size。TP 必须整除它。",
+    },
+    moeIntermediate: {
+      label: "Expert FFN Intermediate", group: "structure", min: 0, max: 1048576, step: 128, digits: 5,
+      title: "MoE 专家的 intermediate size。只有 MoE 模型使用；开启「专家切 TP」时 TP 必须整除它。",
+      enabledWhen: (config) => !presetOf(config).noMoe,
+      disabledValue: 0,
+      disabledReason: "当前是 Dense 模型，没有 MoE Expert FFN。",
+    },
     /* dp 的上界比其余并行维宽：切出口径下它记的是**含 EP 组**的真 DP，
        与正交口径的读数差一个 EP 倍（参考配置 8 ↔ 512），1024 会在 EP 大时把
        换算夹掉、Total Rank 跟着变。8192 = node 的上界，两者是同一个量级。 */
@@ -943,6 +974,7 @@
        CP 口径为什么也在折叠里。凡是拨了 Total Rank 一张卡都不变的，一律收进
        「高级」：VPP 与那四枚开关 / 档位控件，见 ADVANCED_ITEMS.parallel。 */
     parallel: ["totalLayer", "dp", "pp", "tp", "cp"],
+    structure: ["hidden", "heads", "kvHeads", "denseIntermediate", "moeIntermediate"],
     moe: ["routedExpert", "topK", "sharedExpert", "ep"],
     /* node 不在这里，而且**整个收进了「高级」**（见 ADVANCED_ITEMS.batch）：
        每节点卡数是硬件事实（CARD_SPECS.ranksPerNode），Node 数因而由 Total Rank
@@ -970,7 +1002,7 @@
      判据一条：**它不是输入**，由别的字段乘除出来，拨不动。三枚：
 
        Node          Total Rank ÷ 整机卡数（收在「高级」里）
-       Hidden        [B, S, H] 的 H，模型预设里的结构常量（换模型才变）
+       Hidden        [B, S, H] 的 H，镜像模型结构参数行的当前值
        Global Batch  MBS × DP × 微批数，这一步一共吃多少样本
 
      后两枚原先只活在 YAML 视图里（model_config.hidden_size 与
@@ -1045,7 +1077,18 @@
      MODEL_PRESETS 里，不是 stepper。所以 reconcile 只能把并行度自己收回来，而
      加减键必须提前跳过这些档位（见 stepValue），不能步进过去再指望修复。 */
   function presetOf(config) {
-    return MODEL_PRESETS[config.model] || MODEL_PRESETS["openpangu-flash"];
+    const base = MODEL_PRESETS[config.model] || MODEL_PRESETS["openpangu-flash"];
+    /* 结构字段先取当前配置、再退回内置证据值。返回合成视图，让既有容量、YAML、
+       3D deck 等消费者统一获得用户当前配置，而不是继续暗取预设常量。 */
+    return Object.assign({}, base, {
+      hidden: Number.isInteger(config.hidden) ? config.hidden : base.hidden,
+      heads: Number.isInteger(config.heads) ? config.heads : base.heads,
+      kvHeads: Number.isInteger(config.kvHeads) ? config.kvHeads : (base.kvHeads || 0),
+      denseIntermediate: Number.isInteger(config.denseIntermediate)
+        ? config.denseIntermediate : base.denseIntermediate,
+      moeIntermediate: Number.isInteger(config.moeIntermediate)
+        ? config.moeIntermediate : (base.moeIntermediate || 0),
+    });
   }
 
   /* TP 同时切两样东西，两样都得切得整：注意力头（Q 头）与 FFN 的 intermediate
@@ -1100,6 +1143,9 @@
        cp   只有 Ulysses 档进来 —— Ring 那条的对手是 seqLen，可以联动修，不该跳档
        vpp  只判「有没有流水线可交错」；层数整除那条的对手是 Total Layer，同样走联动修 */
   function structurallyAllowed(field, value, config) {
+    if (field === "heads") return !config.kvHeads || value % config.kvHeads === 0;
+    if (field === "kvHeads") return value === 0 || config.heads % value === 0;
+    if (field === "moeIntermediate") return presetOf(config).noMoe || value > 0;
     if (field === "tp") {
       if (!(value >= 1 && tpShardBasis(config) % value === 0)) return false;
       if (!cpIsUlysses(config) || config.cp <= 1) return true;
@@ -1265,8 +1311,8 @@
          头数确实改不了，但 CP 是可调的，得把这条出路说出来。 */
       const tail = cpIsUlysses(config) && config.cp > 1
         ? `。Ulysses 档下 CP ${config.cp} 也在切同一批头（TP × CP 必须整除 ${preset.heads}）`
-          + ` —— 头数是模型常量改不了，但 CP 可以：把它调小就给 TP 腾出了档位`
-        : `。这几个数都是模型结构常量、不是可调字段，所以这一头没有可用的档位了`;
+          + ` —— 可以调小 CP，或在模型结构参数行修改头数`
+        : `。可在模型结构参数行修改这些数，或把 TP 调回可整除档位`;
       return `TP 必须同时整除 ${divisors.join(" / ")}（公约数 ${tpShardBasis(config)}），`
         + `${up ? "往上" : "往下"}的 ${skippedSteps(spec, value, direction).join(" / ")} 都除不尽`
         + tail;
@@ -1454,16 +1500,16 @@
      与 nodeSummary 同一副形状（{ text, title }）、同一条判据（不是输入）。
      两枚都在 Cluster 那一行上，各答一个原先只有 YAML 视图答得出的问题。 */
 
-  /* Hidden：[B, S, H] 的 H。模型预设里的结构常量，**换模型才会变** —— 所以它没有
-     加减键不是「暂时没做」，而是这一页压根不该让人拨它（拨了就不是这个模型了）。 */
+  /* Hidden：[B, S, H] 的 H。这里是 Cluster 行里的只读镜像；真实输入位于模型结构
+     参数行。两处都读 config.hidden，避免表单与容量/YAML 各拿一份值。 */
   function hiddenSummary(config) {
     const preset = presetOf(config);
     const tp = Math.max(1, config.tp || 1);
     return {
       text: String(preset.hidden),
-      title: "Hidden Size · [B, S, H] 的 H（" + preset.label + " = " + preset.hidden + "）\n\n"
-        + "一个 token 的向量宽度。它和层数一起决定模型多大，但**不是这一页能拨的量**："
-        + "它是模型预设里的结构常量，换模型才会变（YAML 的 model_config.hidden_size 照抄它）。\n\n"
+      title: "Hidden Size · [B, S, H] 的 H（当前配置 = " + preset.hidden + "）\n\n"
+        + "一个 token 的向量宽度。可在上方「模型结构参数」行调整；"
+        + "这里作为 [B,S,H] 的只读镜像展示。\n\n"
         + "── 它怎么进显存 ──\n"
         + "权重 ∝ H²（每层几个 H×H 的投影矩阵），激活 ∝ B×S×H。所以同样是翻一倍，"
         + "H 抬的是权重那一段（平方），Seq Length 抬的是激活那一段（线性）。\n\n"
@@ -1529,18 +1575,27 @@
        emit() 按 FIELD_SPECS.label 子串匹配标红 stepper，而这条错误的对手字段
        （头数）是模型常量、不是 stepper，红圈只该落在 TP 这一枚上。 */
     const preset = presetOf(config);
+    if (preset.kvHeads && preset.heads % preset.kvHeads !== 0) {
+      errors.push(`Attention Heads ${preset.heads} 不能被 KV Heads ${preset.kvHeads} 整除，GQA/MQA 分组不完整`);
+    }
+    if (!preset.denseIntermediate) {
+      errors.push("Dense FFN Intermediate 必须是正整数");
+    }
+    if (!preset.noMoe && !preset.moeIntermediate) {
+      errors.push("MoE 模型的 Expert FFN Intermediate 必须是正整数");
+    }
     if (preset.heads && preset.heads % tp !== 0) {
-      errors.push(`注意力头 ${preset.heads} 不能被 TP ${tp} 整除，每张卡分不到整数个头`);
+      errors.push(`Attention Heads（注意力头）${preset.heads} 不能被 TP ${tp} 整除，每张卡分不到整数个头`);
     }
     /* FFN 沿 intermediate 维切分，与头数是同一类约束（对手是模型常量，配不了平）。
        MoE 那条把「MoE 区」写进文案：stepper 的红圈只会落在 Model Architecture 的
        TP 上，而该去看的是 MoE 区那个 1024，两边对不上时全靠这句话把人引过去。 */
     if (preset.denseIntermediate && preset.denseIntermediate % tp !== 0) {
-      errors.push(`Dense FFN 的 intermediate ${preset.denseIntermediate} 不能被 TP ${tp} 整除`);
+      errors.push(`Dense FFN Intermediate ${preset.denseIntermediate} 不能被 TP ${tp} 整除`);
     }
     /* 只在「专家切 TP」开着时才是约束：ETP = 1（默认）下专家整份持有，TP 切不到它。 */
     if (expertTpOf(config) && !preset.noMoe && preset.moeIntermediate && preset.moeIntermediate % tp !== 0) {
-      errors.push(`MoE 区专家的 intermediate ${preset.moeIntermediate} 不能被 TP ${tp} 整除（「专家切 TP」开着）`);
+      errors.push(`Expert FFN Intermediate ${preset.moeIntermediate} 不能被 TP ${tp} 整除（「专家切 TP」开着）`);
     }
     /* CP 的硬约束**跟着口径走**（升级计划行 16）—— 两档拦的根本不是同一个字段：
          Ulysses  沿头维 all-to-all，而 TP 已切过一轮头 → TP×CP 必须整除 num_heads
@@ -1554,7 +1609,7 @@
     if (cp > 1) {
       if (cpIsUlysses(config)) {
         if (preset.heads && preset.heads % (tp * cp) !== 0) {
-          errors.push(`Ulysses 口径下 CP 也沿头维切：注意力头 ${preset.heads} 不能被 `
+          errors.push(`Ulysses 口径下 CP 也沿头维切：Attention Heads（注意力头）${preset.heads} 不能被 `
             + `TP ${tp} × CP ${cp} = ${tp * cp} 整除`
             + `（Ring 口径不看头数，那一档的约束换成序列长度被 2×CP 整除）`);
         }
@@ -1836,13 +1891,23 @@
       }
     }
 
+    /* GQA/MQA 的 Query 头必须能均分到 KV 组。两边如今都是可配置项：锚在 KV Heads
+       时抬 Attention Heads，锚在其它字段（含批量导入）时把 KV Heads 收到最近因子。 */
+    if (config.kvHeads > 0 && config.heads % config.kvHeads !== 0) {
+      if (anchor === "kvHeads") {
+        config.heads = nearestMultiple(config.kvHeads, config.heads, FIELD_SPECS.heads);
+      } else {
+        config.kvHeads = nearestDivisor(config.heads, config.kvHeads, FIELD_SPECS.kvHeads);
+      }
+    }
+
     /* TP 除不尽头数：对手字段是模型常量，改不了，只能把 TP 自己收到最近的合法
        因子。anchor === "tp" 时不收 —— 那是用户刚指定的值，收了等于没听他的；
        加减键已在 stepValue 里跳过了非法档位，能走到这里的只有手输，它该停在报错
        态由横幅给出口（这一条给不出建议修法，横幅退化成只有「取消修改」）。 */
     const shardBasis = tpShardBasis(config);
     if (anchor !== "tp" && shardBasis % config.tp !== 0) {
-      config.tp = nearestDivisor(shardBasis, config.tp, FIELD_SPECS.tp);
+      config.tp = nearestPow2Divisor(shardBasis, config.tp, FIELD_SPECS.tp);
     }
 
     /* CP 的整除约束按口径分两条（升级计划行 16）。两条同形 —— 都是「两边都可调、
@@ -1959,6 +2024,11 @@
        多标出两行「与默认不同」，是同一种病换个方向犯。
        被改掉的这一下会走联动高亮（highlightLinkedChanges 已把布尔开关一并纳入），
        所以它不是悄悄发生的。 */
+    Object.keys(FIELD_SPECS).forEach((field) => {
+      const spec = FIELD_SPECS[field];
+      if (!spec.enabledWhen || spec.enabledWhen(config)) return;
+      if (spec.disabledValue !== undefined) config[field] = spec.disabledValue;
+    });
     Object.keys(FLAG_SPECS).forEach((flag) => {
       const spec = FLAG_SPECS[flag];
       if (!spec.enabledWhen || spec.enabledWhen(config)) return;
@@ -3436,7 +3506,8 @@
   /* 只有这些量变了才值得重建 deck（46 层 × ~30 节点，重挂不便宜） */
   function deckSignature(topology) {
     const c = topology.counts;
-    return [c.totalLayer, c.pp, c.routedExpert, c.topK, c.denseLayers].join("/");
+    return [c.totalLayer, c.pp, c.routedExpert, c.topK, c.denseLayers,
+      topology.preset.heads, topology.preset.kvHeads].join("/");
   }
 
   function createDeck(hostId, options = {}) {
@@ -7766,6 +7837,7 @@
        JS，档位不能写死在 CONFIG_PRESETS 的排序里。没写就取数组首元素。 */
     const controller = createController({ configPreset: document.body.dataset.croPreset || undefined });
     controller.mount(document.getElementById("croParallelSteppers"), "parallel");
+    controller.mount(document.getElementById("croStructureSteppers"), "structure");
     controller.mount(document.getElementById("croMoeSteppers"), "moe");
     controller.mount(document.getElementById("croClusterSteppers"), "cluster");
     // Micro Batch / Seq Length：与卡型号一起决定单卡装多少，故排在下拉之后

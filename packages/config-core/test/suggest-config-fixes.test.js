@@ -16,6 +16,41 @@ test("合法配置不生成装饰性修改", () => {
   assert.deepEqual(result.data.suggestions, []);
 });
 
+test("Attention Heads 与 KV Heads 不整除时生成可回填的模型结构修复", () => {
+  const input = createTrainingConfig({
+    model: { num_attention_heads: 32, num_key_value_heads: 6 },
+  });
+  const result = suggestConfigFixes(input);
+
+  assert.equal(result.data.solved, true);
+  assert.ok(result.data.suggestions.length > 0);
+  assert.ok(result.data.suggestions.every((suggestion) => (
+    suggestion.changes.every((change) => [
+      "model.num_attention_heads",
+      "model.num_key_value_heads",
+    ].includes(change.path))
+  )));
+  assert.ok(result.data.suggestions.some((suggestion) => (
+    suggestion.changes.some((change) => change.path === "model.num_key_value_heads")
+  )));
+  for (const suggestion of result.data.suggestions) {
+    assert.equal(validateParallelConfig(suggestion.proposed_config).status, "valid");
+  }
+});
+
+test("锁定 Attention Heads 后仅调整 KV Heads 修复分组约束", () => {
+  const result = suggestConfigFixes(createTrainingConfig({
+    model: { num_attention_heads: 32, num_key_value_heads: 6 },
+    policy: { locked_fields: ["model.num_attention_heads"] },
+  }));
+
+  assert.equal(result.data.solved, true);
+  assert.ok(result.data.suggestions.every((suggestion) => (
+    suggestion.changes.length === 1
+      && suggestion.changes[0].path === "model.num_key_value_heads"
+  )));
+});
+
 test("均匀 PP 无法整除总层数时提供切换到动态 PP 的候选", () => {
   const input = createTrainingConfig({ model: { total_layers: 31 } });
   const result = suggestConfigFixes(input);
@@ -357,7 +392,7 @@ test("锁定总 Rank 和 EP 时通过调整未锁定字段修复 world", () => {
 
 test("最多四字段搜索能修复四组相互独立的静态约束", () => {
   const input = createTrainingConfig({
-    model: { num_attention_heads: 30, routed_experts: 10, top_k: 12 },
+    model: { num_attention_heads: 30, num_key_value_heads: 5, routed_experts: 10, top_k: 12 },
     parallel: { tp: 4, cp: 4, ep: 4 },
     cluster: { total_ranks: 48 },
     batch: { sequence_length: 4098 },

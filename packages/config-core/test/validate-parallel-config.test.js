@@ -137,6 +137,20 @@ test("Ulysses 和 Ring 使用各自的 CP 约束", () => {
   assert.ok(ring.errors.some((item) => item.code === "MINDSPEED_RING_SEQUENCE_DIVISIBLE_BY_2CP"));
 });
 
+test("Attention Heads 必须能均分到 KV Heads", () => {
+  const result = validateParallelConfig(createTrainingConfig({
+    model: { num_attention_heads: 32, num_key_value_heads: 6 },
+  }));
+  const issue = result.errors.find((item) => (
+    item.code === "MODEL_ATTENTION_HEADS_DIVISIBLE_BY_KV_HEADS"
+  ));
+
+  assert.ok(issue);
+  assert.deepEqual(issue.fields, ["model.num_attention_heads", "model.num_key_value_heads"]);
+  assert.match(issue.formula, /num_key_value_heads/);
+  assert.match(issue.source_ref, /model-structure@2026-10-14/);
+});
+
 test("不同 EP 口径使用正确的 world 与切分域", () => {
   const orthogonal = validateParallelConfig(createTrainingConfig({
     parallel: { dp: 2, ep_mode: "orthogonal" },

@@ -4,6 +4,11 @@ export { toolReadinessForMissingFields };
 
 export const PAGE_FIELDS = Object.freeze({
   "model.total_layers": "totalLayer",
+  "model.hidden_size": "hidden",
+  "model.num_attention_heads": "heads",
+  "model.num_key_value_heads": "kvHeads",
+  "model.ffn_hidden_size": "denseIntermediate",
+  "model.expert_ffn_hidden_size": "moeIntermediate",
   "model.routed_experts": "routedExpert",
   "model.top_k": "topK",
   "model.shared_experts": "sharedExpert",
@@ -60,6 +65,7 @@ const PATH_LABELS = Object.freeze({
   "model.total_layers": "Total Layer",
   "model.hidden_size": "Hidden Size",
   "model.num_attention_heads": "Attention Heads",
+  "model.num_key_value_heads": "KV Heads",
   "model.ffn_hidden_size": "Dense FFN Hidden Size",
   "model.expert_ffn_hidden_size": "Expert FFN Hidden Size",
   "model.vocab_size": "Vocab Size",

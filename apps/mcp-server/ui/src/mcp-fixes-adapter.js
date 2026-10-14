@@ -1,6 +1,8 @@
 import { labelForPath, pageFieldForPath } from "./mcp-parse-adapter.js";
 
 export const FIXABLE_FIELDS = Object.freeze([
+  "model.num_attention_heads",
+  "model.num_key_value_heads",
   "cluster.total_ranks",
   "parallel.dp",
   "parallel.pp",
@@ -16,7 +18,7 @@ export const FIXABLE_FIELDS = Object.freeze([
 ]);
 
 export const FIX_OBJECTIVES = Object.freeze([
-  ["mindspeed-compatible", "MindSpeed 合法优先"],
+  ["mindspeed-compatible", "MindSpeed 兼容警告最少"],
   ["keep-current-resources", "保持资源规模"],
   ["memory-safe", "显存安全优先"],
   ["pipeline-balanced", "流水线均衡优先"],

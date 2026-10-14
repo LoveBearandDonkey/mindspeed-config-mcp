@@ -41,6 +41,11 @@ const builtShellFile = path.join(builtShellDirectory, builtShellFiles[0].name);
 
 const FIELD_DESTINATIONS = Object.freeze({
   totalLayer: "model.total_layers",
+  hidden: "model.hidden_size",
+  heads: "model.num_attention_heads",
+  kvHeads: "model.num_key_value_heads",
+  denseIntermediate: "model.ffn_hidden_size",
+  moeIntermediate: "model.expert_ffn_hidden_size",
   dp: "parallel.dp",
   pp: "parallel.pp",
   vpp: "parallel.vpp",
@@ -1468,7 +1473,7 @@ test("第 13 项以 suggest_config_fixes 驱动原建议区域并保留字段锁
     "推荐",
     "修改方案",
     "已限制检索4个字段以内的修改方案保障性能，评分越低越优",
-    "MindSpeed 合法优先",
+    "MindSpeed 兼容警告最少",
     "保持资源规模",
     "显存安全优先",
     "流水线均衡优先",
@@ -1772,7 +1777,7 @@ test("第 17 项资源收口不得破坏页面初始化主链路", () => {
   const baselineHash = crypto.createHash("sha256").update(baselineForHash).digest("hex");
   assert.equal(
     baselineHash,
-    "54aa9d2ac087eedd1e79f437f274221b4cbc56fff234061976e22002967cbe8d",
+    "5c43ed794ea7b76ddfd074a1317f8542388feeebc9508cd6e6177d905a20585d",
     "除已确认的页面修改和单独校验的 MindSpeed intro 地址外，不得意外改写 4173 主页面基线",
   );
 });

@@ -54,6 +54,23 @@ test("适配层会拒绝任何意外触碰锁定字段的候选", () => {
   assert.deepEqual(changesLockedBySuggestion(suggestion, ["parallel.ep"]), suggestion.changes);
 });
 
+test("模型结构修复候选可映射回 Attention Heads 与 KV Heads 表单", () => {
+  const result = suggestConfigFixes(createTrainingConfig({
+    model: { num_attention_heads: 32, num_key_value_heads: 6 },
+  }));
+  const headsSuggestion = result.data.suggestions.find((suggestion) => (
+    suggestion.changes.some((change) => change.path === "model.num_attention_heads")
+  ));
+  const kvSuggestion = result.data.suggestions.find((suggestion) => (
+    suggestion.changes.some((change) => change.path === "model.num_key_value_heads")
+  ));
+
+  assert.ok(headsSuggestion);
+  assert.ok(kvSuggestion);
+  assert.ok(Object.hasOwn(suggestionPagePartial(headsSuggestion), "heads"));
+  assert.ok(Object.hasOwn(suggestionPagePartial(kvSuggestion), "kvHeads"));
+});
+
 test("动态 PP 修复从普通表单回填中分离并保留完整分层设置", () => {
   const result = suggestConfigFixes(createTrainingConfig({ model: { total_layers: 31 } }));
   const suggestion = result.data.suggestions.find((item) => item.changes.some(

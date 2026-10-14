@@ -15,11 +15,11 @@ function leafPaths(schema, prefix = "") {
   return paths;
 }
 
-test("当前 MCP 解析适配层登记的 26 个页面字段都有训练配置 Schema 去向", () => {
+test("当前 MCP 解析适配层登记的 31 个页面字段都有训练配置 Schema 去向", () => {
   const schemaFields = new Set(leafPaths(trainingConfigSchema));
   const contractPaths = Object.keys(PAGE_FIELDS);
-  assert.equal(contractPaths.length, 26);
-  assert.equal(new Set(Object.values(PAGE_FIELDS)).size, 26);
+  assert.equal(contractPaths.length, 31);
+  assert.equal(new Set(Object.values(PAGE_FIELDS)).size, 31);
   for (const path of contractPaths) {
     assert.ok(schemaFields.has(path), `页面字段映射到了不存在的 Schema 路径：${path}`);
   }

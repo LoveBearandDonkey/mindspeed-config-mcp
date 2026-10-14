@@ -25,7 +25,7 @@
   <!-- 集群热力图样式（复用 training-monitoring-v2 的 .twin-heat* 视觉） -->
   <link rel="stylesheet" href="./css/training-run-twin.css">
   <!-- 本页模块私有 layout -->
-  <link rel="stylesheet" href="./css/config-relation-observer.css?v=20261009-plain-textarea">
+  <link rel="stylesheet" href="./css/config-relation-observer.css?v=20261014-model-structure">
   <!-- 单卡容量（Cluster 区右栏）：容量是「卡」的属性，与集群矩阵同区并排 -->
   <link rel="stylesheet" href="./css/config-relation-capacity.css?v=20260820-spread-head">
   <!-- 顶栏视图页签 / 导出配置键 / YAML 代码框 -->
@@ -60,7 +60,7 @@
            三档统一由 js/config-relation-yaml.js 的 setup() 监听，见那里的说明。 -->
       <div class="pto-ide-frame__topbar-center">
         <div class="segmented-control segmented-control-muted cro-view-tabs" id="croViewTabs" role="tablist" aria-label="观测视图切换">
-          <button class="btn btn-sm is-selected" type="button" role="tab" data-observer-view="relation" aria-selected="true" title="整网 / 模型结构与并行 / 混合专家（MoE） / 训练规模与资源 四域联动">关系视图</button>
+          <button class="btn btn-sm is-selected" type="button" role="tab" data-observer-view="relation" aria-selected="true" title="整网 / 模型结构与并行策略 / 混合专家（MoE） / 训练规模与资源 四域联动">关系视图</button>
           <button class="btn btn-sm" type="button" role="tab" data-observer-view="yaml" aria-selected="false" title="按当前配置实时生成训练启动 yaml，整网列保留">YAML 视图</button>
           <button class="btn btn-sm" type="button" role="tab" data-observer-view="doc" aria-selected="false" title="这些配置项之间的兼容规则：已生效的、计划中的、待确认的">文档</button>
         </div>
@@ -343,7 +343,7 @@
             </section>
 
             <!-- ═══ 区域 B · Model Architecture（配置 + Layer 导航 + 结构条） ═══ -->
-            <section class="cro-region cro-region--arch" aria-label="模型结构与并行">
+            <section class="cro-region cro-region--arch" aria-label="模型结构与并行策略">
               <!-- 参数不兼容时这里从一行错误文字升格成横幅（建议修法 + 一键应用 /
                    取消修改），内容全部由 JS 的 renderConfigError 写。
                    摆在区标题**之上**而不是 stepper 行下方：它建议改的字段常常横跨
@@ -351,7 +351,7 @@
                    Routed 与 Total Rank），挂在某一个区里面会读成「这个区出错了」。 -->
               <div class="cro-config-error" id="croConfigError" role="status" aria-live="polite"></div>
 
-              <h2 class="cro-region__title">模型结构与并行</h2>
+              <h2 class="cro-region__title">模型结构与并行策略</h2>
 
               <!-- 五枚 stepper 之后，JS 还会在这一行末尾接一枚「高级选项」折叠按钮（见 mount()
                    与 mountAdvanced()），里面是一枚 stepper（VPP）加四枚开关 / 档位控件
@@ -367,6 +367,13 @@
                    「只在另一枚控件拨到某一档之后才有意义」。 -->
               <div class="cro-stepper-row" id="croParallelSteppers">
                 <div class="cro-placeholder">Total Layer / DP / PP / TP / CP stepper · 第 2 项接入</div>
+              </div>
+
+              <div class="cro-section cro-section--model-structure">
+                <div class="cro-section__heading">
+                  <div class="cro-section__title">模型结构</div>
+                </div>
+                <div class="cro-stepper-row cro-stepper-row--structure" id="croStructureSteppers"></div>
               </div>
 
               <div class="cro-section">
@@ -523,8 +530,8 @@
                            与 yaml 的 runner_config.batch_size 同源。排在最前是因为看配置
                            的顺序是从粗到细：先「一步多大」，再「摊到这张卡上是多大」。
                          · Micro Batch / Seq Length / Hidden = 这张卡上那个张量的 [B, S, H]。
-                           B 与 S 之间不插任何东西；Hidden（只读）是模型预设的结构常量，
-                           换模型才变，与 yaml 的 model_config.hidden_size 同源。
+                           B 与 S 之间不插任何东西；Hidden（只读）镜像上方模型结构参数的当前值，
+                           与 yaml 的 model_config.hidden_size 同源。
                          微批数不在这里 —— 它是「这个 [B,S,H] 一步之内跑几遍」，不是形状的
                          一维，收进行末的「高级选项」（值仍进 Global Batch 的乘积，
                          在飞份数也仍取 min(1F1B 公式, 它)，升级计划行 22）。
@@ -1049,7 +1056,7 @@
                       <code>intermediate</code></b>，也就是它们公约数的因子。
                       openPangu 是 <code>gcd(48, 9216, 1024) = 16</code> → 可取 1/2/4/8/16；
                       Qwen2 是 <code>gcd(28, 18944) = 4</code> → 1/2/4。
-                      头数是模型常量、不是可调字段，撞上它时没有「改另一个数来兼容」的修法 ——
+                      头数来自当前模型结构配置；调整它会把配置标记为自定义，并重新校验 TP / CP ——
                       所以加减键会跳过除不尽的档位，到顶之后加号直接置灰，而不是让你步进到一个报错态里去。
                       <code>n_kv_heads</code> 则<b>不</b>硬拦：GQA 下 TP 超过 KV 头数只是把 KV 复制一份，
                       功能上合法、通信与显存变差，页面按软警告提示 —— 与「TP 组跨节点」同一档。
@@ -2906,7 +2913,7 @@ t  TP 序号              c  CP 序号      n  物理节点号</div>
           支持三种方言：<b>MindFormers / LLaMA-Factory 的 yaml</b>、<b>Megatron 的 sh</b>、
           <b>HF config.json 与 DeepSpeed json</b>。
           解析只读**并行 / 批次 / MoE / 开关**这几类键 ——
-          结构常量（hidden / vocab / heads / intermediate）由计算图那条路线给，本页<b>不覆盖</b>。
+          已建模的结构项（hidden / heads / KV heads / intermediate）会写入表单并参与校验；尚未建模的结构常量会显式列出差异。
           <br>手上没有配置也能试：切到<b>「YAML 视图」</b>，点文件名那一格，
           里面是 <code>config-test/</code> 中 8 份信息较完整的公开配置。
         </p>
@@ -2948,7 +2955,7 @@ t  TP 序号              c  CP 序号      n  物理节点号</div>
        规则，改一处两页同时生效。**必须排在 observer / plane 两个脚本之前**（它们把
        它当硬依赖，缺了会直接抛错而不是静默退化）。见 ../shared/plane-rules.js 顶部。 -->
   <script src="../shared/plane-rules.js?v=20261013-warm-red-heat"></script>
-  <script src="./js/config-relation-observer.js?v=20260920-guidance"></script>
+  <script src="./js/config-relation-observer.js?v=20261014-model-structure"></script>
   <!-- 单卡容量：必须排在主脚本之后（要读它导出的 croObserver / croSelect） -->
   <script src="./js/config-relation-capacity.js?v=20260917-etp-switch"></script>
   <!-- YAML 视图：同样排在主脚本之后（要读它导出的 croObserver.topology）。
@@ -2960,7 +2967,7 @@ t  TP 序号              c  CP 序号      n  物理节点号</div>
   <!-- 导入配置（行 20）：同样排在主脚本之后（要用它导出的 croObserver.importConfig）。
        解析层与 DOM 无关、整块导出到 croImport，好让 tools/cro-selfcheck.js
        拿 config-test/ 的回归样本直接撞它。 -->
-  <script src="./js/config-relation-import.js?v=20261009-plain-textarea"></script>
+  <script src="./js/config-relation-import.js?v=20261014-model-structure"></script>
   <script>
     // 主题切换：单图标按钮只改 data-theme。
     (() => {

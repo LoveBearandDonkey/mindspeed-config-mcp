@@ -8,11 +8,6 @@ const CARD_FALLBACKS = Object.freeze({
 
 const NON_STEPPER_FIELDS = Object.freeze({
   "model.id": "model",
-  "model.hidden_size": "model",
-  "model.num_attention_heads": "model",
-  "model.num_key_value_heads": "model",
-  "model.ffn_hidden_size": "model",
-  "model.expert_ffn_hidden_size": "model",
   "model.vocab_size": "model",
   "cluster.ranks_per_node": "card",
   "cluster.card_model": "card",
@@ -126,15 +121,18 @@ export function pageConfigToTrainingConfig(config, topologyApi, pipelineSettings
   const model = {
     id: preset.id ?? config.model,
     total_layers: configuredNumber(config.totalLayer, 1),
-    hidden_size: positiveInteger(preset.hidden),
-    num_attention_heads: positiveInteger(preset.heads),
+    hidden_size: configuredNumber(config.hidden, preset.hidden),
+    num_attention_heads: configuredNumber(config.heads, preset.heads),
     routed_experts: dense ? 0 : configuredNumber(config.routedExpert, 0),
     top_k: dense ? 0 : configuredNumber(config.topK, 0),
     shared_experts: dense ? 0 : configuredNumber(config.sharedExpert, 0),
   };
-  optionalPositiveInteger(model, "num_key_value_heads", preset.kvHeads);
-  optionalPositiveInteger(model, "ffn_hidden_size", preset.denseIntermediate);
-  if (!dense) optionalPositiveInteger(model, "expert_ffn_hidden_size", preset.moeIntermediate);
+  const kvHeads = config.kvHeads ?? preset.kvHeads;
+  if (kvHeads !== 0) model.num_key_value_heads = configuredNumber(kvHeads, kvHeads);
+  model.ffn_hidden_size = configuredNumber(config.denseIntermediate, preset.denseIntermediate);
+  if (!dense) {
+    model.expert_ffn_hidden_size = configuredNumber(config.moeIntermediate, preset.moeIntermediate);
+  }
   optionalPositiveInteger(model, "vocab_size", preset.vocab);
   optionalNonNegativeInteger(model, "first_k_dense_layers", preset.firstKDense);
 

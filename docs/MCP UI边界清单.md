@@ -172,13 +172,14 @@
 
 | 页面项 | 契约去向 | 决定 |
 |---|---|---|
-| `#croModelSelect` / `model` | `model.id`、`model.hidden_size`、`model.num_attention_heads`、`model.num_key_value_heads`、`model.ffn_hidden_size`、`model.expert_ffn_hidden_size`、`model.vocab_size`、`model.first_k_dense_layers` | 保留；模型预设是这些结构常量的当前输入来源 |
+| `#croModelSelect` / `model` | `model.id`、`model.vocab_size`、`model.first_k_dense_layers` | 保留；模型预设提供模型身份及尚未开放编辑的结构常量 |
+| `#croStructureSteppers` / `hidden` / `heads` / `kvHeads` / `denseIntermediate` / `moeIntermediate` | `model.hidden_size`、`model.num_attention_heads`、`model.num_key_value_heads`、`model.ffn_hidden_size`、`model.expert_ffn_hidden_size` | 保留；当前页面值进入即时校验、预设切换校验、导入校验和容量估算 |
 | `#croConfigPresetSelect` | 一次设置多项训练配置字段 | 保留；不是独立契约字段 |
 | `#croEpMode` / `epMode` | `parallel.ep_mode` | 保留；“MF EP 域”只决定 MoE 专家组从哪个 Rank 域切分，不参与 PP/VPP 层分配 |
 | `#mcpPipelineLayerMode` | `parallel.pipeline_layer_mode`、`parallel.num_layer_list`、`parallel.pipeline_layer_offsets` | 保留；支持均分、MCore 动态 PP 与 MindFormers PP 层偏置三种显式口径；“MF 层偏置”只分配 PP/VPP 各虚拟 Stage 的层数，与“MF EP 域”互相独立；手动选择但没有导入矩阵时，由 `suggest_config_fixes` 返回近均衡 `VPP×PP` 矩阵供用户显式应用 |
 | `#croCardSelect` / `card` | `cluster.ranks_per_node`、`cluster.card_model`、`cluster.card_memory_gib` | 保留 |
 | `globalBatch` | 不进入 Tool 输入；Tool 使用 `batch.micro_batch_size` 与 `batch.micro_batch_count` | 仅保留表单侧只读换算，帮助理解批量关系；不参与合法性判断、修复、拓扑或容量结论，也不作为源配置值发送 |
-| `hiddenDim` | `model.hidden_size` | 保留只读结果；来自模型预设 |
+| `hiddenDim` | `model.hidden_size` | 保留只读镜像；来自 `hidden` 当前页面值 |
 | 导入源选择与文本 | `parse_training_config.source` | 保留 |
 | `policy.locked_fields` | 已接入第 13 项修复建议区 | 仅允许用户显式锁定；单候选时隐藏，多候选时默认折叠 |
 | `policy.objective` | 已接入第 13 项修复建议区 | 多候选时提供四种 MindSpeed 规则派生排序；旧值只在核心层兼容，不再作为 UI 选项 |

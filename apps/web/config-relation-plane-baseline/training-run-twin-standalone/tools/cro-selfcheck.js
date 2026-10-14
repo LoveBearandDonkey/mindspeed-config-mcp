@@ -77,6 +77,11 @@ function boot() {
     vm.runInContext(src, ctx, { filename: file });
   };
 
+  vm.runInContext(
+    fs.readFileSync(path.join(ROOT, "..", "shared", "plane-rules.js"), "utf8"),
+    ctx,
+    { filename: "shared/plane-rules.js" },
+  );
   run("config-relation-observer.js");
 
   // 导入通路（行 20）：解析层与 DOM 无关，整块导出到 croImport，直接拿来撞样本
@@ -412,8 +417,9 @@ function checkImport(fs2, path2) {
     `deepseek3 ${k} = ${want[k]}`, ds.partial[k]));
   ok(ds.gaps.some((g) => g.row === 23 || g.key.endsWith("max_device_memory")),
     "deepseek3 报出缺口");
-  ok(ds.structural.some((s) => s.field === "hidden" && s.value === 7168),
-    "deepseek3 的 hidden 7168 进结构常量栏（不覆盖预设）");
+  ok(ds.partial.hidden === 7168, "deepseek3 的 hidden 7168 落入页面结构配置", ds.partial.hidden);
+  ok(ds.partial.moeIntermediate === 2048,
+    "deepseek3 的 MoE intermediate 2048 落入页面结构配置", ds.partial.moeIntermediate);
 
   const mx = I.analyze(fs2.readFileSync(path2.join(dir, "mixtral_8x7b.sh"), "utf8"),
     "mixtral_8x7b.sh", { model: "openpangu-flash" });

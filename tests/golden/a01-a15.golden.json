@@ -74,5 +74,16 @@
       }
     ],
     "validation_status": "valid"
+  },
+  "model_structure_validation": {
+    "status": "invalid",
+    "error_codes": ["MODEL_ATTENTION_HEADS_DIVISIBLE_BY_KV_HEADS"]
+  },
+  "model_structure_fix": {
+    "solved": true,
+    "changes": [
+      { "path": "model.num_attention_heads", "new_value": 30 }
+    ],
+    "validation_status": "valid"
   }
 }

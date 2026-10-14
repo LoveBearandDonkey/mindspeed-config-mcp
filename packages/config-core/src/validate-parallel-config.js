@@ -11,6 +11,7 @@ import { diagnostic, toolResult } from "./result.js";
 
 const PAGE_RULES = "compute-graph-viewer-wzh:shared/plane-rules.js@1e6bb6e";
 const PAGE_VALIDATOR = "compute-graph-viewer-wzh:config-relation-observer.js:1519@1e6bb6e";
+const PAGE_MODEL_STRUCTURE = "mindspeed-config-mcp:config-relation-observer.js:model-structure@2026-10-14";
 const MEGATRON_PP = "Megatron-LM:megatron/training/arguments.py@core_v0.12.1";
 const MINDSPEED_DYNAMIC_PP = "MindSpeed-LLM:mindspeed_llm/training/arguments.py@7826e88";
 const MINDSPEED_CP = "MindSpeed:mindspeed/arguments.py:868-882@6563468";
@@ -157,6 +158,17 @@ export function validateParallelConfig(input) {
     PAGE_VALIDATOR,
     "num_attention_heads % tp === 0",
   ));
+
+  if (model.num_key_value_heads) {
+    push(errors, model.num_attention_heads % model.num_key_value_heads !== 0, diagnostic(
+      "MODEL_ATTENTION_HEADS_DIVISIBLE_BY_KV_HEADS",
+      `注意力头 ${model.num_attention_heads} 不能被 KV 头 ${model.num_key_value_heads} 整除，GQA/MQA 分组不完整。`,
+      ["model.num_attention_heads", "model.num_key_value_heads"],
+      "page-rule",
+      PAGE_MODEL_STRUCTURE,
+      "num_attention_heads % num_key_value_heads === 0",
+    ));
+  }
 
   if (model.ffn_hidden_size) {
     push(errors, model.ffn_hidden_size % config.tp !== 0, diagnostic(

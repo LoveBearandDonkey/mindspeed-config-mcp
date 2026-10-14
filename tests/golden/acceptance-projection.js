@@ -58,6 +58,12 @@ export function projectAcceptanceScenarios() {
   const dynamicPpLayerListFix = suggestConfigFixes(DYNAMIC_PP_LAYER_LIST_GAP);
   const dynamicPpProfileFix = suggestConfigFixes(DYNAMIC_PP_PROFILE_MISMATCH);
   const mindFormersOffsetFix = suggestConfigFixes(MINDFORMERS_OFFSET_MATRIX_GAP);
+  const modelStructureValidation = validateParallelConfig(createDenseTrainingConfig({
+    model: { num_attention_heads: 32, num_key_value_heads: 6 },
+  }));
+  const modelStructureFix = suggestConfigFixes(createDenseTrainingConfig({
+    model: { num_attention_heads: 32, num_key_value_heads: 6 },
+  }));
 
   return {
     A01: {
@@ -164,6 +170,19 @@ export function projectAcceptanceScenarios() {
       })) ?? [],
       validation_status: mindFormersOffsetFix.data.suggestions[0]
         ? validateParallelConfig(mindFormersOffsetFix.data.suggestions[0].proposed_config).status
+        : null,
+    },
+    model_structure_validation: {
+      status: modelStructureValidation.status,
+      error_codes: errorCodes(modelStructureValidation),
+    },
+    model_structure_fix: {
+      solved: modelStructureFix.data.solved,
+      changes: modelStructureFix.data.suggestions[0]?.changes.map(({ path, new_value }) => ({
+        path, new_value,
+      })) ?? [],
+      validation_status: modelStructureFix.data.suggestions[0]
+        ? validateParallelConfig(modelStructureFix.data.suggestions[0].proposed_config).status
         : null,
     },
   };

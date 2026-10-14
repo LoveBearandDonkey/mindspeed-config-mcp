@@ -4,6 +4,8 @@ import { estimateTrainingCapacity } from "./estimate-training-capacity.js";
 import { validateParallelConfig } from "./validate-parallel-config.js";
 
 const FIELD_LIMITS = Object.freeze({
+  "model.num_attention_heads": [1, 1024],
+  "model.num_key_value_heads": [1, 1024],
   "parallel.dp": [1, 8192],
   "parallel.pp": [1, 128],
   "parallel.tp": [1, 64],
@@ -41,7 +43,7 @@ const MINDFORMERS_OFFSET_PROFILE_PATHS = Object.freeze([
 
 const OBJECTIVES = Object.freeze({
   "mindspeed-compatible": {
-    label: "MindSpeed 合法优先",
+    label: "MindSpeed 兼容警告最少",
     confidence: "deterministic",
     primary: "compatibility_warning_count",
   },
@@ -105,6 +107,27 @@ function divisors(value, min, max) {
   return output;
 }
 
+function greatestCommonDivisor(left, right) {
+  let a = Math.abs(left);
+  let b = Math.abs(right);
+  while (b) [a, b] = [b, a % b];
+  return a;
+}
+
+function leastCommonMultiple(left, right) {
+  if (!Number.isInteger(left) || !Number.isInteger(right) || left <= 0 || right <= 0) return 0;
+  return (left / greatestCommonDivisor(left, right)) * right;
+}
+
+function multiples(value, min, max) {
+  const output = new Set();
+  if (!Number.isInteger(value) || value <= 0) return output;
+  for (let multiple = Math.ceil(min / value) * value; multiple <= max; multiple += value) {
+    output.add(multiple);
+  }
+  return output;
+}
+
 function exactWorldCandidate(input, path) {
   const { parallel, cluster } = input;
   const includesEp = epInWorld(input) !== 1;
@@ -126,6 +149,18 @@ function valuesFor(input, path) {
   const current = getAtPath(input, path);
   const values = new Set(path === "model.top_k" ? [] : powersOfTwo(min, max));
   values.add(current);
+
+  if (path === "model.num_attention_heads") {
+    const headDivisors = [input.model.num_key_value_heads, input.parallel.tp];
+    if (input.parallel.cp > 1 && input.parallel.cp_mode === "ulysses") {
+      headDivisors.push(input.parallel.tp * input.parallel.cp);
+    }
+    const commonDivisor = headDivisors.reduce(leastCommonMultiple, 1);
+    for (const value of multiples(commonDivisor, min, max)) values.add(value);
+  }
+  if (path === "model.num_key_value_heads") {
+    for (const value of divisors(input.model.num_attention_heads, min, max)) values.add(value);
+  }
 
   if (path === "parallel.pp" || path === "parallel.vpp") {
     for (const value of divisors(input.model.total_layers, min, max)) values.add(value);
@@ -576,7 +611,7 @@ export function suggestConfigFixes(input) {
       "当前工具搜索最多修改四个可编辑字段的合法方案；四项上限用于控制确定性搜索成本，不是 MindSpeed 的硬性要求。",
       "束搜索先按剩余违规数和修改距离保留候选，再用所选策略排序已发现的合法方案；search_pruned=true 时不代表穷举全局最优。",
       `${OBJECTIVES[objective].label}属于 MindSpeed 规则派生的静态排序；不启动训练、不采集 Profiling。`,
-      "未修改模型结构字段；如果无解，可能需要用户放宽 locked_fields 或调整模型结构。",
+      "仅将 Attention Heads 与 KV Heads 纳入模型结构修复搜索；其他模型结构字段保持不变。",
     ],
     data: {
       already_valid: false,
