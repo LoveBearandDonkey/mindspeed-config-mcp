@@ -3,11 +3,11 @@ import { estimateTrainingCapacity } from "./estimate-training-capacity.js";
 import { validateParallelConfig } from "./validate-parallel-config.js";
 import { parallelWorld } from "./page-rules.js";
 
-const COMPLETION_SOURCE = "mindspeed-config-mcp:plan-training-config-completion@0.3.0";
+const COMPLETION_SOURCE = "mindspeed-config-mcp:plan-training-config-completion@0.3.1";
 const DEEPSEEK_SOURCE = "compute-graph-viewer-wzh:config-test/hf_deepseekv3_config.json";
-const OPENPANGU_SOURCE = "apps/web/config-relation-plane-baseline/training-run-twin-standalone/openPangu-2.0-Flash架构参考.md#4-关键参数全部-source-verified";
-const OPENPANGU_STRUCTURE = Object.freeze({
-  "model.id": "openpangu-flash",
+const EDITABLE_STRUCTURE_PRESET_SOURCE = "mindspeed-config-mcp:editable-model-structure-preset@0.3.1";
+const EDITABLE_MODEL_STRUCTURE_PRESET = Object.freeze({
+  "model.id": "editable-moe-structure-preset",
   "model.total_layers": 46,
   "model.hidden_size": 2560,
   "model.num_attention_heads": 48,
@@ -230,7 +230,7 @@ function staticSafeFallback(base) {
 
   candidate.cluster.ranks_per_node = positiveInteger(candidate.cluster.ranks_per_node, 8);
   candidate.cluster.card_memory_gib = Number(candidate.cluster.card_memory_gib) > 0
-    ? Number(candidate.cluster.card_memory_gib) : 64;
+    ? Number(candidate.cluster.card_memory_gib) : 128;
   candidate.batch.micro_batch_size = positiveInteger(candidate.batch.micro_batch_size);
   candidate.batch.micro_batch_count = positiveInteger(candidate.batch.micro_batch_count);
   candidate.cluster.total_ranks = parallelWorld(candidate);
@@ -256,6 +256,18 @@ function runtimeDefault(path, config, context) {
   const dp = Number(config.parallel?.dp)
     || (Number.isInteger(inferredDp) && inferredDp >= 1 ? inferredDp : defaultDp);
   const inferredMicroBatchCount = globalBatch / (microBatch * dp);
+  if (path === "cluster.card_model") {
+    const declaredMemory = Number(config.cluster?.card_memory_gib);
+    if (declaredMemory > 0 && declaredMemory <= 32) return "昇腾 910";
+    if (declaredMemory > 32 && declaredMemory <= 64) return "昇腾 910B";
+    return "昇腾 950PR";
+  }
+  if (path === "cluster.card_memory_gib") {
+    const declaredModel = String(config.cluster?.card_model ?? "");
+    if (declaredModel === "昇腾 910") return 32;
+    if (declaredModel === "昇腾 910B") return 64;
+    return 128;
+  }
   const defaults = {
     "model.id": String(context.sourceName ?? "imported-model").replace(/\.[^.]+$/, ""),
     "model.total_layers": 1,
@@ -265,8 +277,6 @@ function runtimeDefault(path, config, context) {
     "model.vocab_size": 32000,
     "model.first_k_dense_layers": 0,
     "cluster.ranks_per_node": 8,
-    "cluster.card_model": "昇腾 910B",
-    "cluster.card_memory_gib": 64,
     "batch.micro_batch_size": 1,
     "batch.sequence_length": 4096,
     "batch.micro_batch_count": Number.isInteger(inferredMicroBatchCount)
@@ -322,8 +332,18 @@ function completionReason(path, config, context) {
   if (path === "cluster.total_ranks") {
     return "由本次候选的 DP、PP、TP、CP、EP 口径即时计算 world size。";
   }
-  if (["cluster.ranks_per_node", "cluster.card_model", "cluster.card_memory_gib"].includes(path)) {
-    return "源文件未声明机器规格；采用可编辑的昇腾 910B 单机 8 卡工作台假设。";
+  if (path === "cluster.ranks_per_node") {
+    return "源文件未声明单机卡数；采用可编辑的单机 8 卡工作台假设。";
+  }
+  if (["cluster.card_model", "cluster.card_memory_gib"].includes(path)) {
+    const hasNoDeclaredCard = config.cluster?.card_model === undefined
+      && config.cluster?.card_memory_gib === undefined;
+    const capacityPriority = hasNoDeclaredCard
+      || config.cluster?.card_model === "昇腾 950PR"
+      || Number(config.cluster?.card_memory_gib) === 128;
+    return capacityPriority
+      ? "源文件未声明完整机器规格；采用可编辑的昇腾 950PR 128G 容量优先假设。"
+      : "源文件只声明了部分机器规格；按已声明卡型或显存补齐匹配值。";
   }
   if (path === "batch.micro_batch_size") {
     return "源文件未声明单卡 micro batch；采用保守起点 1，并在应用前做完整静态复验。";
@@ -402,23 +422,23 @@ function suggestionPlanCopy(suggestion) {
   };
 }
 
-function openPanguStructurePlan(base, recommended = true) {
+function editableModelStructurePresetPlan(base, recommended = true) {
   const candidate = structuredClone(base);
   const values = [];
-  for (const [path, value] of Object.entries(OPENPANGU_STRUCTURE)) {
+  for (const [path, value] of Object.entries(EDITABLE_MODEL_STRUCTURE_PRESET)) {
     setPath(candidate, path, value);
     values.push(completion(
       path,
       value,
-      "采用工作台已登记的 openPangu 2.0 Flash 模型结构；这是用户可确认的结构选择，不是从当前训练配置推断出的值。",
+      "采用工作台提供的可编辑模型结构候选值；该值仅用于补齐校验输入，不是从当前训练配置推断或还原的。",
       "requires-confirmation",
-      OPENPANGU_SOURCE,
+      EDITABLE_STRUCTURE_PRESET_SOURCE,
     ));
   }
   return plan(
-    "openpangu-flash-structure",
-    "采用预置 openPangu 2.0 Flash 模型结构（需确认）",
-    "当前训练配置没有给全模型结构；复用工作台已登记的 openPangu 2.0 Flash 结构后，可继续并行校验与理论容量估算。",
+    "editable-model-structure-preset",
+    "采用可编辑模型结构预置（需确认）",
+    "当前训练配置没有给全模型结构；使用工作台提供的可编辑候选值后，可继续执行并行校验与理论容量估算。",
     candidate,
     values,
     recommended,
@@ -485,7 +505,7 @@ export function planTrainingConfigCompletion(normalizedConfig, missingRequiredFi
     || missingRequiredFields.includes("model.hidden_size");
   const lacksAnyModelStructure = missingRequiredFields.some((path) => path.startsWith("model."));
   if (lacksEssentialModelStructure) {
-    const presetPlan = openPanguStructurePlan(base, true);
+    const presetPlan = editableModelStructurePresetPlan(base, true);
     if (presetPlan.validation.status === "valid") plans.push(presetPlan);
   }
   const needsConfirmation = values.some((item) => item.confidence === "requires-confirmation");
@@ -503,7 +523,7 @@ export function planTrainingConfigCompletion(normalizedConfig, missingRequiredFi
   );
   if (sourcePlan.validation.status === "valid") plans.push(sourcePlan);
   if (lacksAnyModelStructure && !lacksEssentialModelStructure) {
-    const presetPlan = openPanguStructurePlan(base, false);
+    const presetPlan = editableModelStructurePresetPlan(base, false);
     if (presetPlan.validation.status === "valid") plans.push(presetPlan);
   }
 

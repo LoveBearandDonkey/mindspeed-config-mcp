@@ -188,6 +188,8 @@ model:
       preset_hidden_size: llamaFactory.data.completion.plans[0].proposed_config.model.hidden_size,
       preset_dp: llamaFactory.data.completion.plans[0].proposed_config.parallel.dp,
       preset_total_ranks: llamaFactory.data.completion.plans[0].proposed_config.cluster.total_ranks,
+      preset_card_model: llamaFactory.data.completion.plans[0].proposed_config.cluster.card_model,
+      preset_card_memory_gib: llamaFactory.data.completion.plans[0].proposed_config.cluster.card_memory_gib,
       preset_source: llamaFactory.data.completion.plans[0].values[0].source_ref,
     },
     deepseek_completion: {

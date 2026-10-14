@@ -152,17 +152,19 @@
     "remaining_model_gaps": []
   },
   "model_structure_choice": {
-    "selected_plan": "openpangu-flash-structure",
+    "selected_plan": "editable-model-structure-preset",
     "recommended_plan": null,
     "requires_confirmation": "requires-confirmation",
     "capacity_level": "over",
-    "capacity_ratio": 2.963632,
-    "preset_model": "openpangu-flash",
+    "capacity_ratio": 1.481816,
+    "preset_model": "editable-moe-structure-preset",
     "preset_layers": 46,
     "preset_hidden_size": 2560,
     "preset_dp": 8,
     "preset_total_ranks": 8,
-    "preset_source": "apps/web/config-relation-plane-baseline/training-run-twin-standalone/openPangu-2.0-Flash架构参考.md#4-关键参数全部-source-verified"
+    "preset_card_model": "昇腾 950PR",
+    "preset_card_memory_gib": 128,
+    "preset_source": "mindspeed-config-mcp:editable-model-structure-preset@0.3.1"
   },
   "deepseek_completion": {
     "computation": "runtime-per-parse",

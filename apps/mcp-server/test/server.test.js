@@ -224,20 +224,20 @@ test("MCP App 资源可读取且为单文件 HTML", async () => {
     assert.match(response.contents[0].text, /mcpImportModelText/);
     assert.match(response.contents[0].text, /mcpImportScore/);
     assert.match(response.contents[0].text, /可回填/);
-    assert.match(response.contents[0].text, /固定必填字段集合/);
-    assert.match(response.contents[0].text, /MCP缺口配置补齐方案/);
+    assert.match(response.contents[0].text, /MCP 校验必填项/);
+    assert.match(response.contents[0].text, /MCP缺口配置推荐补齐方案/);
     assert.match(response.contents[0].text, /MCP缺口（/);
     assert.match(response.contents[0].text, /mcp-completion-plan__cards/);
     assert.match(response.contents[0].text, /核对并应用/);
     assert.match(response.contents[0].text, /计算中… MCP 正在解析当前代码并求解完整候选/);
     assert.match(response.contents[0].text, /aria-busy/);
-    assert.match(response.contents[0].text, /MCP 静态复验已通过/);
-    assert.match(response.contents[0].text, /缺失值已预填/);
+    assert.match(response.contents[0].text, /原配置与补填项合并后的完整配置/);
+    assert.match(response.contents[0].text, /已通过 MCP 规则检查/);
     assert.match(response.contents[0].text, /理论显存预计超限/);
     assert.match(response.contents[0].text, /mcp-completion-capacity-status/);
     assert.match(response.contents[0].text, /mcp-completion-plan__capacity/);
     assert.match(response.contents[0].text, /静态安全兜底方案/);
-    assert.match(response.contents[0].text, /MCP 已把缺失项和冲突项列在下方/);
+    assert.match(response.contents[0].text, /MCP 已列出缺失项和冲突项/);
     assert.doesNotMatch(response.contents[0].text, /当前没有通过完整静态复验的候选，暂不可应用/);
     assert.match(response.contents[0].text, /mcp-missing-pane/);
     assert.match(response.contents[0].text, /MutationObserver/);
@@ -631,7 +631,7 @@ test("配置预览和导入弹窗共用固定 MCP 必填口径", () => {
 
   assert.equal(
     formatFillCoverageScore(result),
-    "本文件共 100 个配置，其中 23 项可回填 MCP，缺口 47 项。总适配度 23/70",
+    "本文件共 100 个配置，其中 23 项可回填 MCP，缺口 47 项。MCP 校验必填项 23/70（补齐缺口后才能校验）",
   );
 });
 

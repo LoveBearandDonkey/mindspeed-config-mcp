@@ -142,7 +142,8 @@ export function formatFillCoverageScore(result) {
   const gap = Math.max(0, requiredTotal - filledRequired);
   const sourceLabel = data.model_source_name ? "两份来源" : "本文件";
   return `${sourceLabel}共 ${sourceTotal} 个配置，其中 ${filledRequired} 项可回填 MCP，缺口 ${gap} 项。`
-    + `总适配度 ${filledRequired}/${requiredTotal}`;
+    + `MCP 校验必填项 ${filledRequired}/${requiredTotal}`
+    + (gap > 0 ? "（补齐缺口后才能校验）" : "（已满足校验条件）");
 }
 
 export function labelForPath(path) {

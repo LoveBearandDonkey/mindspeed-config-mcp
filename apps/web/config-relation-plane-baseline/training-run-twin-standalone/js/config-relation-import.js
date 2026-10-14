@@ -1344,7 +1344,7 @@
     function fillMenu() {
       const rows = [];
       if (mergedSelect) {
-        rows.push(`<div class="cro-yaml__opt-group">已预置模型结构（openPangu 2.0 Flash）的配置</div>`);
+        rows.push(`<div class="cro-yaml__opt-group">已预置模型结构的配置</div>`);
         Array.from(mergedSelect.options)
           .filter((option) => !sampleFile(option.value))
           .map((option) => presetMeta(option.value))
@@ -1445,6 +1445,8 @@
       if (!p) return;
       previewToken += 1;
       const meta = defaultMeta();
+      const current = (global.croObserver && global.croObserver.config) || {};
+      const target = Object.assign({}, current, p.defaults || {});
       /* 只如实列这份默认配置的各项取值，不和当前表单比「改了什么」——
          右栏回答的是「这份配置是什么」，不是「应用会动哪几项」。 */
       const rows = Object.keys(p.defaults || {})
@@ -1455,6 +1457,9 @@
         + `<p class="cro-import__hint">${escapeHtml(p.label || "")} 的内置参考配置，各项取值如下。</p>`
         + (rows.length ? `<ul>${rows.join("")}</ul>` : "") + `</div>`,
         true, `页面内置预设 · ${rows.length} 项已完整落入表单`);
+      doc.dispatchEvent(new CustomEvent("cro:config-preset-preview-ready", {
+        detail: { file: DEFAULT_FILE, kind: "default", presetId: current.configPreset || "", config: target },
+      }));
     }
 
     function previewPreset(id) {
@@ -1511,6 +1516,9 @@
         + (rows.length ? `这份预设的各项取值：` : ``) + `</p>`
         + errors + warningText + (rows.length ? `<ul>${rows.join("")}</ul>` : "") + `</div>`,
         valid, valid ? `页面内置预设 · ${rows.length} 项已完整落入表单` : "页面内置预设 · 与当前模型冲突，不能应用");
+      doc.dispatchEvent(new CustomEvent("cro:config-preset-preview-ready", {
+        detail: { file: PRESET_PREFIX + id, kind: "preset", presetId: id, config: target },
+      }));
     }
 
     function choose(file) {

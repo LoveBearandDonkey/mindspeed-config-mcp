@@ -188,7 +188,7 @@ test("导入补齐方案把动态 PP 作为明确命名且默认推荐的第一�
   )));
 });
 
-test("缺少模型结构时提供可确认的 openPangu 2.0 Flash 预置结构", () => {
+test("缺少模型结构时提供不绑定具体模型名称的可确认预置结构", () => {
   const input = createTrainingConfig({
     parallel: { dp: 8, tp: 8 },
     cluster: { total_ranks: 128, card_memory_gib: 128 },
@@ -204,17 +204,20 @@ test("缺少模型结构时提供可确认的 openPangu 2.0 Flash 预置结构",
   ]);
   const preset = completion.plans[0];
 
-  assert.equal(preset.id, "openpangu-flash-structure");
+  assert.equal(preset.id, "editable-model-structure-preset");
   assert.equal(preset.recommended, true);
   assert.equal(preset.capacity_assessment.level, "safe");
   assert.equal(preset.confidence, "requires-confirmation");
-  assert.equal(preset.proposed_config.model.id, "openpangu-flash");
+  assert.equal(preset.proposed_config.model.id, "editable-moe-structure-preset");
   assert.equal(preset.proposed_config.model.total_layers, 46);
   assert.equal(preset.proposed_config.model.hidden_size, 2560);
   assert.equal(preset.proposed_config.model.num_attention_heads, 48);
   assert.equal(preset.proposed_config.model.routed_experts, 256);
   assert.equal(preset.validation.status, "valid");
-  assert.ok(preset.values.every((item) => item.source_ref.includes("openPangu-2.0-Flash架构参考.md")));
+  assert.ok(preset.values.every((item) => (
+    item.source_ref === "mindspeed-config-mcp:editable-model-structure-preset@0.3.1"
+  )));
+  assert.doesNotMatch(JSON.stringify(preset), /openpangu/i);
 });
 
 test("源配置完全没有并行拓扑时采用可编辑的单机 8 Rank 起点", () => {
@@ -245,6 +248,32 @@ test("源配置完全没有并行拓扑时采用可编辑的单机 8 Rank 起点
   assert.ok(completion.plans[0].values.some((item) => (
     item.path === "parallel.dp" && item.reason.includes("单机 8 Rank")
   )));
+});
+
+test("源配置缺少机器规格时采用 950PR 128G 容量优先假设", () => {
+  const input = createTrainingConfig();
+  delete input.cluster.card_model;
+  delete input.cluster.card_memory_gib;
+  const completion = planTrainingConfigCompletion(input, [
+    "cluster.card_model",
+    "cluster.card_memory_gib",
+  ]);
+  const proposed = completion.plans[0].proposed_config;
+
+  assert.equal(proposed.cluster.card_model, "昇腾 950PR");
+  assert.equal(proposed.cluster.card_memory_gib, 128);
+  assert.ok(completion.plans[0].values.every((item) => (
+    item.reason.includes("950PR 128G") && item.source_ref.endsWith("@0.3.1")
+  )));
+});
+
+test("源配置已声明卡型时补齐匹配显存而不静默升级硬件", () => {
+  const input = createTrainingConfig({ cluster: { card_model: "昇腾 910B" } });
+  delete input.cluster.card_memory_gib;
+  const completion = planTrainingConfigCompletion(input, ["cluster.card_memory_gib"]);
+
+  assert.equal(completion.plans[0].proposed_config.cluster.card_model, "昇腾 910B");
+  assert.equal(completion.plans[0].proposed_config.cluster.card_memory_gib, 64);
 });
 
 test("动态 PP 使用错误 framework 时提供切换 MCore 规则口径的候选", () => {

@@ -20,7 +20,11 @@ import {
   toolReadinessForMissingFields,
   toPagePartial,
 } from "@mcp-bridge/mcp-parse-adapter.js";
-import { installValidationAdapter } from "@mcp-bridge/mcp-validation-adapter.js";
+import {
+  installValidationAdapter,
+  pageConfigToTrainingConfig,
+  pipelineSettingsForPreset,
+} from "@mcp-bridge/mcp-validation-adapter.js";
 import { installTopologyAdapter } from "@mcp-bridge/mcp-topology-adapter.js";
 import { installFixesAdapter } from "@mcp-bridge/mcp-fixes-adapter.js";
 import { installCapacityAdapter } from "@mcp-bridge/mcp-capacity-adapter.js";
@@ -29,7 +33,7 @@ import { createMcpHostInteraction } from "@mcp-bridge/mcp-host-interaction.js";
 const staticDemoMode = __MCP_STATIC_DEMO__;
 const previewMode = staticDemoMode || new URLSearchParams(window.location.search).has("preview");
 const BUILTIN_SOURCES = __MCP_BUILTIN_SOURCES__;
-const FILL_COVERAGE_HINT = "文件总项按源配置统计；总适配度按 MCP 后续工具所需的固定必填字段集合统计。";
+const FILL_COVERAGE_HINT = "文件总项按源配置统计；MCP 校验必填项表示后续规则检查所需的固定输入，存在缺口时必须先补齐。";
 
 if (staticDemoMode) {
   document.documentElement.dataset.mcpDistribution = "github-pages";
@@ -195,6 +199,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
   const appliedImport = { current: null, signature: null, adjusted: [], source: null };
   let lastParseKind = null;
   let liveParseTimer = 0;
+  let presetPreviewToken = 0;
   const LIVE_PARSE_DELAY_MS = 450;
   const APPLIED_STATUS_DURATION_MS = 3000;
   let appliedStatusSignature = null;
@@ -245,8 +250,8 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     "parallel.expert_tensor_parallel": false,
     "cluster.total_ranks": 8,
     "cluster.ranks_per_node": 8,
-    "cluster.card_model": "昇腾 910B",
-    "cluster.card_memory_gib": 64,
+    "cluster.card_model": "昇腾 950PR",
+    "cluster.card_memory_gib": 128,
     "batch.micro_batch_size": 1,
     "batch.sequence_length": 4096,
     "batch.micro_batch_count": 1,
@@ -277,6 +282,8 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     const ui = importUi();
     ui.workspace?.classList.toggle("is-awaiting-validation", !started);
     if (ui.resultPane) ui.resultPane.hidden = !started;
+    const banner = ui.workspace?.querySelector(":scope > .mcp-parse-banner");
+    if (banner) banner.hidden = !started;
   }
 
   function createParseBanner(score) {
@@ -286,9 +293,23 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     banner.setAttribute("aria-live", "polite");
     const title = document.createElement("b");
     title.className = "cro-config-error__title";
-    title.textContent = "配置解析";
-    score.classList.add("mcp-parse-banner__body");
-    banner.append(title, score);
+    title.textContent = "配置智能解析";
+    const body = document.createElement("div");
+    body.className = "mcp-parse-banner__body";
+    const scoreLine = document.createElement("p");
+    scoreLine.className = "mcp-parse-banner__line";
+    score.classList.add("mcp-parse-banner__text");
+    scoreLine.append(score);
+    const validationLine = document.createElement("p");
+    validationLine.className = "mcp-parse-banner__line mcp-completion-status is-pending";
+    validationLine.dataset.mcpParseValidation = "";
+    validationLine.innerHTML = '<span class="mcp-parse-banner__text">等待 MCP 规则检查…</span>';
+    const capacityLine = document.createElement("p");
+    capacityLine.className = "mcp-parse-banner__line mcp-completion-status mcp-completion-capacity-status is-pending";
+    capacityLine.dataset.mcpParseCapacity = "";
+    capacityLine.innerHTML = '<span class="mcp-parse-banner__text">等待理论显存估算…</span>';
+    body.append(scoreLine, validationLine, capacityLine);
+    banner.append(title, body);
     return banner;
   }
 
@@ -296,15 +317,17 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     const score = document.getElementById("croPreviewName");
     const head = score?.closest(".cro-import__head");
     if (!score || !head || score.closest(".mcp-parse-banner")) return;
-    head.insertAdjacentElement("afterend", createParseBanner(score));
-
     const menuBody = document.querySelector("#croYamlMenu .cro-yaml__menu-body");
-    if (menuBody && !document.getElementById("mcpPreviewMissingPane")) {
+    if (!menuBody) return;
+    menuBody.insertBefore(createParseBanner(score), head.closest(".cro-yaml__preview"));
+    if (!document.getElementById("mcpPreviewMissingPane")) {
       menuBody.append(createMissingPane("mcpPreviewMissingPane"));
     }
     const applyButton = document.getElementById("croPreviewApply");
     ensureConfirmApplyButton(applyButton);
     ensureDirectImportButton(applyButton);
+    const pane = document.getElementById("mcpPreviewMissingPane");
+    if (sample.current && pane) renderMissingInputs(sample.current.result, sample, pane, applyButton);
   }
 
   function createMissingPane(id) {
@@ -313,21 +336,14 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     pane.className = "mcp-missing-pane";
     pane.hidden = true;
     const title = document.createElement("h3");
-    title.className = "mcp-import__pane-title cro-config-error__title";
+    title.className = "mcp-import__pane-title";
     title.dataset.mcpCompletionTitle = "";
-    title.textContent = "MCP缺口配置补齐方案";
+    title.textContent = "MCP缺口配置推荐补齐方案";
     const plans = document.createElement("div");
     plans.className = "mcp-completion-plans";
     const fields = document.createElement("div");
     fields.className = "mcp-missing-pane__fields";
-    const status = document.createElement("p");
-    status.className = "mcp-completion-status";
-    status.setAttribute("role", "status");
-    const capacityStatus = document.createElement("p");
-    capacityStatus.className = "mcp-completion-status mcp-completion-capacity-status";
-    capacityStatus.setAttribute("role", "status");
-    capacityStatus.hidden = true;
-    pane.append(title, status, capacityStatus, plans, fields);
+    pane.append(title, plans, fields);
     return pane;
   }
 
@@ -652,10 +668,11 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     resultScore.textContent = "— · 等待解析";
     resultScore.title = FILL_COVERAGE_HINT;
     const resultBanner = createParseBanner(resultScore);
+    resultBanner.hidden = true;
     codePane.append(trainingSource, modelSource);
     resultHead.append(resultTitle);
-    resultPane.append(resultHead, resultBanner, report);
-    workspace.append(codePane, resultPane, createMissingPane("mcpImportMissingPane"));
+    resultPane.append(resultHead, report);
+    workspace.append(codePane, resultBanner, resultPane, createMissingPane("mcpImportMissingPane"));
     body.append(workspace);
 
     const footer = document.createElement("footer");
@@ -725,6 +742,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     ui.apply.disabled = true;
     ui.report.innerHTML = `<p class="cro-import__empty">先提供训练配置；模型结构可选。上传文件后会立即解析，停止输入后自动解析两个输入框中的现有内容。</p>`;
     ui.score.textContent = "— · 等待解析";
+    syncParseScoreState(ui.score, null);
     setImportValidationStarted(false);
     renderMissingInputs(null, imported, document.getElementById("mcpImportMissingPane"), ui.apply);
     syncClearButton();
@@ -786,6 +804,58 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     report.querySelector(":scope > .cro-import__lede")?.remove();
   }
 
+  function parseBannerForPane(pane) {
+    return pane?.parentElement?.querySelector(":scope > .mcp-parse-banner") ?? null;
+  }
+
+  function completionStatusForPane(pane) {
+    return parseBannerForPane(pane)?.querySelector("[data-mcp-parse-validation]") ?? null;
+  }
+
+  function capacityStatusForPane(pane) {
+    return parseBannerForPane(pane)?.querySelector("[data-mcp-parse-capacity]") ?? null;
+  }
+
+  function setParseBannerMode(pane, hasCompletionPane) {
+    const title = parseBannerForPane(pane)?.querySelector(".cro-config-error__title");
+    if (title) title.textContent = hasCompletionPane ? "配置智能解析与补齐" : "配置智能解析";
+  }
+
+  function setParseBannerLine(line, state, copy) {
+    if (!line) return;
+    line.classList.remove("is-pending", "is-review", "is-valid", "is-danger");
+    if (state) line.classList.add(`is-${state}`);
+    const text = line.querySelector(".mcp-parse-banner__text");
+    if (text) text.textContent = String(copy).replace(/。$/, "");
+  }
+
+  function syncParseScoreState(score, result) {
+    const line = score?.closest(".mcp-parse-banner__line");
+    if (!line) return;
+    const required = result?.data?.required_field_count ?? 0;
+    const filled = result?.data?.filled_required_field_count
+      ?? Math.max(0, required - (result?.data?.missing_required_fields?.length ?? 0));
+    const missing = Math.max(0, required - filled);
+    const state = !result ? "pending" : (result.status === "error" ? "danger" : "valid");
+    line.classList.remove("is-pending", "is-review", "is-valid", "is-danger");
+    line.classList.add(`is-${state}`);
+    if (result?.status !== "error" && missing > 0) {
+      const copy = score.textContent ?? "";
+      const gapCopy = `缺口 ${missing} 项`;
+      const gapIndex = copy.indexOf(gapCopy);
+      if (gapIndex >= 0) {
+        const warning = document.createElement("span");
+        warning.className = "mcp-parse-banner__inline-warning";
+        warning.textContent = gapCopy;
+        score.replaceChildren(
+          document.createTextNode(copy.slice(0, gapIndex)),
+          warning,
+          document.createTextNode(copy.slice(gapIndex + gapCopy.length)),
+        );
+      }
+    }
+  }
+
   function syncApplyState(state, button) {
     if (!button) return;
     const requiresConfirmation = requiresExplicitConfirmation(state.current);
@@ -814,21 +884,13 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     pane.hidden = false;
     pane.setAttribute("aria-busy", "true");
     pane.parentElement?.classList.add("has-missing-inputs");
+    setParseBannerMode(pane, true);
     const title = pane.querySelector("[data-mcp-completion-title]");
-    if (title) title.textContent = "MCP缺口配置补齐方案";
+    if (title) title.textContent = "MCP缺口配置推荐补齐方案";
     pane.querySelector(".mcp-completion-plans")?.replaceChildren();
     pane.querySelector(".mcp-missing-pane__fields")?.replaceChildren();
-    const status = pane.querySelector(".mcp-completion-status");
-    if (status) {
-      status.className = "mcp-completion-status is-pending";
-      status.textContent = message;
-    }
-    const capacityStatus = pane.querySelector(".mcp-completion-capacity-status");
-    if (capacityStatus) {
-      capacityStatus.hidden = true;
-      capacityStatus.className = "mcp-completion-status mcp-completion-capacity-status";
-      capacityStatus.textContent = "";
-    }
+    setParseBannerLine(completionStatusForPane(pane), "pending", message);
+    setParseBannerLine(capacityStatusForPane(pane), "pending", "正在估算理论显存…");
     if (applyButton) {
       applyButton.disabled = true;
       const confirmButton = confirmApplyButtonFor(applyButton);
@@ -909,14 +971,19 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     return `${detail}，处于保守推荐范围内。`;
   }
 
-  function capacityReviewCopy(capacity) {
+  function capacityReviewCopy(capacity, subject = "原配置与补填项合并后的完整配置") {
     if (!capacity || capacity.status !== "estimated") {
-      return "理论显存暂不可判断，请核对风险。";
+      return `${subject}，理论显存暂不可判断，请核对风险。`;
     }
     if (!capacity.launch_feasible) {
-      return `理论显存预计超限（${capacityPercent(capacity)}），请核对风险。`;
+      return `${subject}，理论显存预计超限（${capacityPercent(capacity)}），请核对风险。`;
     }
-    return `理论显存占用偏高（${capacityPercent(capacity)}），请核对风险。`;
+    return `${subject}，理论显存占用偏高（${capacityPercent(capacity)}），请核对风险。`;
+  }
+
+  function capacityBannerCopy(capacity, subject = "原配置与补填项合并后的完整配置") {
+    if (capacity?.recommendation_eligible !== true) return capacityReviewCopy(capacity, subject);
+    return `${subject}，理论显存占用处于保守推荐范围内（${capacityPercent(capacity)}）。`;
   }
 
   function appendCapacityBadge(parent, capacity) {
@@ -930,8 +997,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
 
   function syncSelectedCapacityBadge(current, pane) {
     const heading = pane?.querySelector(
-      ".mcp-completion-plan.is-single > .mcp-completion-plan__card-heading, "
-        + ".mcp-completion-plan__card.is-selected > .mcp-completion-plan__card-heading",
+      ".mcp-completion-plan__card.is-selected > .mcp-completion-plan__card-heading",
     );
     if (!heading) return;
     for (const child of [...heading.children]) {
@@ -973,28 +1039,26 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     const parts = [];
 
     if (missingModelPaths.length) {
-      const missingCopy = `源文件缺少模型结构参数：${fieldList(missingModelPaths)}。`;
+      const missingCopy = "源文件缺少模型结构参数。";
       if (modelStructureMode === "upload") {
         parts.push(missingCopy + (uploadedName
           ? `已从 ${uploadedName} 读取这些模型结构字段。`
           : "请在“上传模型结构”页签上传包含这些字段的配置文件。"));
       } else {
         parts.push(missingCopy
-          + (preferred?.id === "openpangu-flash-structure"
-            ? "第三栏已按 openPangu 2.0 Flash 结构提供可编辑预填；这些值不是从源文件还原的。"
-            : "第三栏已为这些缺失项提供可编辑预填。"));
+          + "本栏已为缺失项提供可编辑候选值；候选值仅用于补齐 MCP 规则检查与理论容量估算所需输入，请按实际模型结构确认。");
       }
     }
     if (adjustedPaths.length) {
       parts.push(`以下候选值已与源文件显式值或初始推导值不同，需要额外确认：${fieldList(adjustedPaths)}。`);
     }
     if (!missingModelPaths.length && !adjustedPaths.length) {
-      parts.push("此方案包含需要人工确认的预填或修复值，具体字段和原因已列在第三栏。");
+      parts.push("此方案包含需要人工确认的预填或修复值，具体字段和原因已列在本栏。");
     }
     if (capacity?.recommendation_eligible !== true) {
       parts.push(capacityReviewCopy(capacity));
     }
-    parts.push("确认并应用后，第三栏当前值会补入配置。");
+    parts.push("确认并应用后，本栏当前值会补入配置。");
     return parts.join("");
   }
 
@@ -1022,31 +1086,32 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
   }
 
   function syncCompletionCapacityStatus(current, pane) {
-    const capacityStatus = pane?.querySelector(".mcp-completion-capacity-status");
+    const capacityStatus = capacityStatusForPane(pane);
     if (!capacityStatus || !current) return;
     const capacity = currentCapacityAssessment(current);
     const showCapacityReview = capacity?.recommendation_eligible !== true;
-    capacityStatus.hidden = !showCapacityReview;
-    capacityStatus.className = "mcp-completion-status mcp-completion-capacity-status is-review";
-    capacityStatus.textContent = showCapacityReview ? capacityReviewCopy(capacity) : "";
+    const state = capacity?.status === "estimated" && capacity.launch_feasible === false
+      ? "danger"
+      : (showCapacityReview ? "review" : "valid");
+    setParseBannerLine(
+      capacityStatus,
+      state,
+      capacityBannerCopy(capacity),
+    );
     syncSelectedCapacityBadge(current, pane);
   }
 
   function syncCompletionStatus(current, pane) {
-    const status = pane?.querySelector(".mcp-completion-status");
+    const status = completionStatusForPane(pane);
     if (!status || !current) return;
     if (current.completionValidation !== "valid") {
-      status.className = "mcp-completion-status is-review";
-      status.textContent = "MCP 已把缺失项和冲突项列在下方；请调整后重新复验。";
+      setParseBannerLine(status, "review", "MCP 已列出缺失项和冲突项；请调整后重新检查。");
     } else {
-      const planRequiresConfirmation = selectedCompletionPlan(current)?.confidence === "requires-confirmation";
-      const missingModelPaths = current.modelStructurePaths ?? [];
-      status.className = "mcp-completion-status is-valid";
-      status.textContent = planRequiresConfirmation
-        ? (missingModelPaths.length
-          ? "MCP 静态复验已通过；缺失值已预填。"
-          : "MCP 静态复验已通过；第三栏已列出需要确认的配置修复项，请核对修复值及原因。")
-        : "MCP 已对完整候选执行静态复验。";
+      setParseBannerLine(
+        status,
+        "valid",
+        "原配置与补填项合并后的完整配置，已通过 MCP 规则检查。",
+      );
     }
     syncCompletionCapacityStatus(current, pane);
   }
@@ -1273,17 +1338,10 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     current.completionToken = token;
     current.completionValidation = "pending";
     pane.setAttribute("aria-busy", "true");
-    const status = pane.querySelector(".mcp-completion-status");
-    const capacityStatus = pane.querySelector(".mcp-completion-capacity-status");
-    if (status) {
-      status.className = "mcp-completion-status is-pending";
-      status.textContent = "正在复验配置建模…";
-    }
-    if (capacityStatus) {
-      capacityStatus.hidden = false;
-      capacityStatus.className = "mcp-completion-status mcp-completion-capacity-status is-pending";
-      capacityStatus.textContent = "正在估算理论显存…";
-    }
+    const status = completionStatusForPane(pane);
+    const capacityStatus = capacityStatusForPane(pane);
+    setParseBannerLine(status, "pending", "正在检查完整配置…");
+    setParseBannerLine(capacityStatus, "pending", "正在估算理论显存…");
     syncApplyState(state, applyButton);
     try {
       const config = materializedConfig(current);
@@ -1303,8 +1361,11 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
       }
       if (!requiresExplicitConfirmation(current)) current.planConfirmed = true;
       if (!valid && status) {
-        status.className = "mcp-completion-status is-review";
-        status.textContent = `当前填写值仍需调整：${(result.errors ?? []).map((item) => item.message).join("；")}`;
+        setParseBannerLine(
+          status,
+          "review",
+          `当前填写值仍需调整：${(result.errors ?? []).map((item) => item.message).join("；")}`,
+        );
         syncCompletionCapacityStatus(current, pane);
       } else syncCompletionStatus(current, pane);
       syncCompletionConfirmation(current, pane);
@@ -1312,14 +1373,17 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
       if (state.current !== current || current.completionToken !== token) return;
       current.completionValidation = "invalid";
       if (status) {
-        status.className = "mcp-completion-status is-review";
-        status.textContent = `暂时无法完成复验，请保留当前填写项后重试：${error instanceof Error ? error.message : String(error)}`;
+        setParseBannerLine(
+          status,
+          "review",
+          `暂时无法完成复验，请保留当前填写项后重试：${error instanceof Error ? error.message : String(error)}`,
+        );
       }
-      if (capacityStatus) {
-        capacityStatus.hidden = true;
-        capacityStatus.className = "mcp-completion-status mcp-completion-capacity-status";
-        capacityStatus.textContent = "";
-      }
+      setParseBannerLine(
+        capacityStatus,
+        "danger",
+        "原配置与补填项合并后的完整配置，理论显存暂不可判断，请核对风险。",
+      );
     }
     if (state.current === current && current.completionToken === token) {
       pane.removeAttribute("aria-busy");
@@ -1361,13 +1425,16 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     const showPane = paths.length > 0 || plans.length > 1;
     pane.hidden = !showPane;
     pane.parentElement?.classList.toggle("has-missing-inputs", showPane);
+    setParseBannerMode(pane, showPane);
     const plansHost = pane.querySelector(".mcp-completion-plans");
     plansHost.replaceChildren();
     const fields = pane.querySelector(".mcp-missing-pane__fields");
     fields.replaceChildren();
     const title = pane.querySelector("[data-mcp-completion-title]");
-    if (title) title.textContent = `MCP缺口（${paths.length}）配置补齐方案`;
+    if (title) title.textContent = `MCP缺口（${paths.length}）配置推荐补齐方案`;
     if (!state.current) {
+      setParseBannerLine(completionStatusForPane(pane), "pending", "等待 MCP 规则检查…");
+      setParseBannerLine(capacityStatusForPane(pane), "pending", "等待理论显存估算…");
       syncApplyState(state, applyButton);
       return;
     }
@@ -1384,30 +1451,11 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     if (state.current.confirmedPlanId !== preferred?.id) {
       state.current.planConfirmed = !requiresConfirmation;
     }
-    if (plans.length === 1) {
-      const plan = document.createElement("div");
-      plan.className = "mcp-completion-plan is-single";
-      const caption = document.createElement("b");
-      caption.textContent = "处理方案";
-      const name = document.createElement("strong");
-      name.className = "mcp-completion-plan__name";
-      name.textContent = completionPlanLabel(preferred);
-      const heading = document.createElement("span");
-      heading.className = "mcp-completion-plan__card-heading";
-      heading.append(name);
-      appendCapacityBadge(heading, preferred?.capacity_assessment);
-      const description = document.createElement("span");
-      description.className = "mcp-completion-plan__description";
-      description.textContent = preferred?.summary ?? "";
-      plan.append(caption, heading, description);
-      plansHost.append(plan);
-    } else if (plans.length > 1) {
+    if (plans.length > 1) {
       const group = document.createElement("div");
       group.className = "mcp-completion-plan";
       group.setAttribute("role", "group");
       group.setAttribute("aria-label", "MCP 缺口与冲突处理方案");
-      const caption = document.createElement("b");
-      caption.textContent = "选择处理方案";
       const cards = document.createElement("div");
       cards.className = "mcp-completion-plan__cards";
       for (const plan of plans) {
@@ -1446,7 +1494,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
         });
         cards.append(card);
       }
-      group.append(caption, cards);
+      group.append(cards);
       plansHost.append(group);
     }
     const confirmation = document.createElement("label");
@@ -1631,6 +1679,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
   }
 
   function resetSampleCompletion() {
+    presetPreviewToken += 1;
     sample.token += 1;
     sample.current = null;
     sample.lastFile = null;
@@ -1640,6 +1689,54 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     const applyButton = document.getElementById("croPreviewApply");
     resetPreviewApplyPresentation();
     renderMissingInputs(null, sample, pane, applyButton);
+  }
+
+  async function validateConfigPresetPreview(detail) {
+    const pane = document.getElementById("mcpPreviewMissingPane");
+    const status = completionStatusForPane(pane);
+    const capacityStatus = capacityStatusForPane(pane);
+    const token = ++presetPreviewToken;
+    if (!detail?.config || !status || !capacityStatus) return;
+    setParseBannerMode(pane, false);
+    setParseBannerLine(status, "pending", "正在检查内置预设…");
+    setParseBannerLine(capacityStatus, "pending", "正在估算理论显存…");
+    try {
+      const config = pageConfigToTrainingConfig(
+        detail.config,
+        window.CroTopology,
+        pipelineSettingsForPreset(detail.presetId) ?? {},
+      );
+      const [result, capacityResult] = await Promise.all([
+        callValidateTool(config),
+        callCapacityTool(config),
+      ]);
+      if (token !== presetPreviewToken) return;
+      const valid = result.status === "valid" && !(result.errors ?? []).length;
+      setParseBannerLine(
+        status,
+        valid ? "valid" : "review",
+        valid
+          ? "当前内置预设已通过 MCP 规则检查"
+          : `当前内置预设仍需调整：${(result.errors ?? []).map((item) => item.message).join("；")}`,
+      );
+      const capacity = capacityAssessmentFromResult(capacityResult);
+      const capacityState = capacity?.status === "estimated" && capacity.launch_feasible === false
+        ? "danger"
+        : (capacity?.recommendation_eligible === true ? "valid" : "review");
+      setParseBannerLine(
+        capacityStatus,
+        capacityState,
+        capacityBannerCopy(capacity, "当前内置预设"),
+      );
+    } catch (error) {
+      if (token !== presetPreviewToken) return;
+      setParseBannerLine(
+        status,
+        "danger",
+        `当前内置预设检查失败：${error instanceof Error ? error.message : String(error)}`,
+      );
+      setParseBannerLine(capacityStatus, "danger", "当前内置预设的理论显存暂不可判断，请核对风险");
+    }
   }
 
   function appliedImportSource(current) {
@@ -1676,6 +1773,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     if (!report || !applyButton || !score || !sourceLine || !pane) return true;
 
     score.textContent = formatFillCoverageScore(current.result);
+    syncParseScoreState(score, current.result);
     score.title = FILL_COVERAGE_HINT;
     sourceLine.innerHTML = `<b>来源</b> ${escapeHtml(appliedImport.source?.label ?? "已导入配置")}`
       + "　·　已应用的导入快照；内容与补齐结果保持只读";
@@ -1756,6 +1854,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     setImportValidationStarted(true);
     ui.apply.disabled = true;
     ui.score.textContent = "解析中…";
+    syncParseScoreState(ui.score, null);
     ui.report.innerHTML = `<p class="cro-import__empty">正在调用 <code>parse_training_config</code>，不启动训练…</p>`;
     renderCompletionLoading(
       document.getElementById("mcpImportMissingPane"),
@@ -1769,12 +1868,14 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
       const partial = toPagePartial(result.data?.normalized_config);
       imported.current = { source, result, partial };
       ui.score.textContent = formatFillCoverageScore(result);
+      syncParseScoreState(ui.score, result);
       renderParseReportWithoutLede(ui.report, result);
       renderMissingInputs(result, imported, document.getElementById("mcpImportMissingPane"), ui.apply);
       ui.report.scrollTop = 0;
     } catch (error) {
       if (token !== imported.token) return;
       ui.score.textContent = "— · MCP 调用失败";
+      syncParseScoreState(ui.score, { status: "error" });
       ui.report.innerHTML = errorHtml(error);
       renderMissingInputs(null, imported, document.getElementById("mcpImportMissingPane"), ui.apply);
     }
@@ -1799,6 +1900,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     });
     apply.disabled = true;
     score.textContent = "MCP 解析中…";
+    syncParseScoreState(score, null);
     sourceLine.innerHTML = `<b>来源</b> config-test/${escapeHtml(file)} · 由 parse_training_config 解析，不启动训练`;
     report.innerHTML = `<p class="cro-import__empty">正在调用 <code>parse_training_config</code>…</p>`;
     renderCompletionLoading(
@@ -1809,6 +1911,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     if (content === undefined) {
       report.innerHTML = errorHtml(new Error(`单文件 App 中缺少内置样例 ${file}`));
       score.textContent = "— · 样例缺失";
+      syncParseScoreState(score, { status: "error" });
       renderMissingInputs(null, sample, document.getElementById("mcpPreviewMissingPane"), apply);
       return;
     }
@@ -1820,6 +1923,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
       score.textContent = result.status === "error"
         ? "— · 解析失败"
         : formatFillCoverageScore(result);
+      syncParseScoreState(score, result);
       score.title = FILL_COVERAGE_HINT;
       renderParseReportWithoutLede(report, result);
       renderMissingInputs(result, sample, document.getElementById("mcpPreviewMissingPane"), apply);
@@ -1827,6 +1931,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     } catch (error) {
       if (token !== sample.token) return;
       score.textContent = "— · MCP 调用失败";
+      syncParseScoreState(score, { status: "error" });
       report.innerHTML = errorHtml(error);
       renderMissingInputs(null, sample, document.getElementById("mcpPreviewMissingPane"), apply);
     }
@@ -2000,6 +2105,10 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     resetSampleCompletion();
   });
 
+  document.addEventListener("cro:config-preset-preview-ready", (event) => {
+    validateConfigPresetPreview(event.detail);
+  });
+
   document.addEventListener("cro:imported-config-preview-requested", (event) => {
     renderAppliedImportPreview(event);
   });
@@ -2024,6 +2133,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     const hasAnyContent = hasTraining || Boolean(ui.modelText.value.trim());
     setImportValidationStarted(hasTraining);
     ui.score.textContent = hasAnyContent ? "等待输入完成…" : "— · 等待解析";
+    syncParseScoreState(ui.score, null);
     ui.report.innerHTML = hasTraining
       ? `<p class="cro-import__empty">检测到输入变化，将联动解析训练配置与已有的模型结构内容…</p>`
       : `<p class="cro-import__empty">请先上传或粘贴训练配置；模型结构文件为可选输入。</p>`;

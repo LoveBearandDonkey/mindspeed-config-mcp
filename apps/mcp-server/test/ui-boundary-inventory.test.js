@@ -318,6 +318,11 @@ test("第 8 项删除旧顶栏入口但按验收要求保留 MindSpeed intro", (
   for (const preserved of ['id="croMindSpeedIntro"', 'id="croImportConfig"', 'id="themeToggle"']) {
     assert.ok(builtShell.includes(preserved), `MCP App 误删保留入口：${preserved}`);
   }
+  assert.match(
+    builtShell,
+    /id="croMindSpeedIntro" href="https:\/\/yinyucheng0601\.github\.io\/compute-graph-viewer\/Profiling_Insight_and_Tool\/mindspeed-intro\/mindspeed-static-config-analysis\.html"/,
+    "MindSpeed intro 未指向静态配置分析页面",
+  );
   for (const identity of [
     '<h1 class="mcp-product-title">配置校验与可视化</h1>',
     '<span class="mcp-product-tag">Powered by MindSpeed Agent</span>',
@@ -537,13 +542,17 @@ test("代码视图用用户提供的模型结构替代生成启动命令", () =>
   assert.ok(!builtShell.includes('<h2 class="cro-region__title cro-yaml__title">配置文件</h2>'));
 });
 
-test("配置下拉与导入弹窗共用单行配置解析横幅", () => {
+test("配置下拉与导入弹窗共用四行配置智能解析横幅", () => {
   const builtShell = read(builtShellFile);
   for (const marker of [
     "mcp-parse-banner",
     ".cro-config-error.mcp-parse-banner.is-mcp-invalid:not(.mcp-fixes__candidate)",
     "cro-config-error is-blocking is-guidance is-mcp-invalid",
-    "配置解析",
+    "配置智能解析",
+    "配置智能解析与补齐",
+    "mcp-parse-banner__inline-warning",
+    "mcpParseValidation",
+    "mcpParseCapacity",
     "croPreviewName",
     "mcpImportScore",
     "font-size:var(--font-size-body-sm)",
@@ -551,25 +560,81 @@ test("配置下拉与导入弹窗共用单行配置解析横幅", () => {
     assert.ok(builtShell.includes(marker), `MCP App 缺少配置解析横幅标记：${marker}`);
   }
   const sourceStyle = read(mcpShellStyleFile);
+  const shellSource = read(mcpShellEntryFile);
   assert.match(
-    sourceStyle,
-    /\.cro-config-error\.mcp-parse-banner\.is-mcp-invalid:not\(\.mcp-fixes__candidate\)\s*\{[\s\S]*?justify-content:\s*flex-start;[\s\S]*?\}/,
-    "配置解析横幅没有让标题和正文从左侧连续排列",
+    shellSource,
+    /title\.textContent = "配置智能解析"[\s\S]*?scoreLine[\s\S]*?validationLine[\s\S]*?capacityLine[\s\S]*?body\.append\(scoreLine, validationLine, capacityLine\)/,
+    "配置智能解析横幅不是标题独占一行、下方三行正文",
   );
   assert.match(
     sourceStyle,
-    /\.mcp-parse-banner__body,[\s\S]*?text-align:\s*left;[\s\S]*?\}/,
+    /\.mcp-parse-banner__line::before\s*\{[\s\S]*?content:\s*"·";/,
+    "配置智能解析的三行正文没有保留缩进点",
+  );
+  assert.match(
+    sourceStyle,
+    /\.mcp-parse-banner \.mcp-parse-banner__line\.is-valid::before\s*\{[\s\S]*?border:\s*0;[\s\S]*?content:\s*"·";[\s\S]*?transform:\s*none;/,
+    "配置智能解析的正常状态仍显示对勾而不是缩进点",
+  );
+  assert.match(
+    shellSource,
+    /text\.textContent = String\(copy\)\.replace\(\/。\$\/, ""\)/,
+    "配置智能解析状态行仍会保留句末句号",
+  );
+  assert.match(
+    shellSource,
+    /const gapCopy = `缺口 \$\{missing\} 项`[\s\S]*?mcp-parse-banner__inline-warning[\s\S]*?score\.replaceChildren/,
+    "适配统计没有只把“缺口 N 项”单独标为警告色",
+  );
+  assert.match(
+    shellSource,
+    /hasCompletionPane \? "配置智能解析与补齐" : "配置智能解析"/,
+    "配置智能解析标题没有随第三栏显隐切换",
+  );
+  assert.match(
+    sourceStyle,
+    /\.cro-config-error\.mcp-parse-banner\.is-mcp-invalid:not\(\.mcp-fixes__candidate\)\s*\{[\s\S]*?display:\s*grid;[\s\S]*?\}/,
+    "配置智能解析横幅没有按标题加三行正文排列",
+  );
+  assert.match(
+    sourceStyle,
+    /\.mcp-parse-banner__line\s*\{[\s\S]*?text-align:\s*left;[\s\S]*?\}/,
     "配置解析正文没有左对齐",
   );
   assert.match(
     sourceStyle,
-    /\.cro-yaml__preview > \.mcp-parse-banner\s*\{[\s\S]*?box-sizing:\s*border-box;[\s\S]*?max-width:\s*calc\(100% - 32px\);[\s\S]*?margin-inline:\s*16px;/,
-    "配置下拉中的解析横幅没有被第二栏宽度约束并保留左右 16px 外边距",
+    /\.cro-yaml__menu-body > \.cro-config-error\.mcp-parse-banner\.is-mcp-invalid:not\(\.mcp-fixes__candidate\)\s*\{[\s\S]*?grid-column:\s*2 \/ -1;[\s\S]*?grid-row:\s*1;[\s\S]*?width:\s*auto;[\s\S]*?max-width:\s*calc\(100% - 32px\);[\s\S]*?margin:\s*16px 16px 0;/,
+    "配置下拉中的解析横幅没有位于第二、三栏顶部，或仍会溢出、贴边",
+  );
+  assert.match(
+    sourceStyle,
+    /\.mcp-parse-banner \.cro-config-error__title\s*\{[\s\S]*?color:\s*transparent;[\s\S]*?linear-gradient\(90deg, var\(--primary\), var\(--success\)\);/,
+    "配置智能解析与补齐标题没有沿用补齐标题的渐变文字色",
+  );
+  assert.match(
+    sourceStyle,
+    /\.mcp-parse-banner \.mcp-parse-banner__line\.is-pending,[\s\S]*?\.is-valid\s*\{[\s\S]*?color:\s*var\(--foreground\);[\s\S]*?\.is-review\s*\{[\s\S]*?color:\s*var\(--warning\);[\s\S]*?\.is-danger\s*\{[\s\S]*?color:\s*var\(--danger\);/,
+    "解析横幅没有按正常白色、风险黄色、错误红色控制正文",
+  );
+  assert.match(
+    sourceStyle,
+    /\.mcp-import__workspace > \.mcp-parse-banner\s*\{[\s\S]*?grid-column:\s*2 \/ -1;[\s\S]*?grid-row:\s*1;/,
+    "导入弹窗中的解析横幅没有位于第二、三栏顶部",
   );
   assert.match(
     sourceStyle,
     /\.cro-import__report \.cro-import__from\s*\{[\s\S]*?color:\s*var\(--foreground-muted, var\(--foreground-secondary\)\);/,
     "配置下拉与导入面板第二栏的来源键和契约路径没有降为弱一级文字色",
+  );
+  assert.match(
+    sourceStyle,
+    /\.mcp-import__result-pane \.cro-import__report ul b,[\s\S]*?font-weight:\s*var\(--font-weight-regular, 400\);/,
+    "第二栏列表内容仍然使用粗体",
+  );
+  assert.match(
+    sourceStyle,
+    /\.mcp-import__box \.cro-import__head\s*\{[\s\S]*?border-bottom:\s*0;[\s\S]*?\.cro-yaml__preview \.cro-import__head\s*\{[\s\S]*?border-bottom:\s*0;/,
+    "导入弹窗或配置下拉的标题栏仍保留下划线",
   );
 });
 
@@ -581,40 +646,37 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
     "mcp-missing-field__control",
     "zoom-control-readout cro-stepper__input mcp-missing-field__input",
     "zoom-control-group cro-stepper__control mcp-missing-field__control",
-    "MCP缺口配置补齐方案",
+    "MCP缺口配置推荐补齐方案",
     "MCP缺口（",
-    "mcp-completion-plan is-single",
     "mcp-completion-plan__cards",
     "mcp-completion-plan__card",
     "mcp-completion-plan__recommended",
     "mcp-completion-plan__confirmation",
-    "已预置模型结构（openPangu 2.0 Flash）的配置",
-    "采用预置 openPangu 2.0 Flash 模型结构",
+    "已预置模型结构的配置",
+    "采用可编辑模型结构预置",
     "mcp-model-structure-tabs",
     "预填模型结构",
     "上传模型结构",
     "上传模型结构文件",
     "config.json / YAML / Shell",
-    "源文件缺少模型结构参数：",
-    "第三栏已按 openPangu 2.0 Flash 结构提供可编辑预填",
+    "源文件缺少模型结构参数。",
+    "本栏已为缺失项提供可编辑候选值；候选值仅用于补齐 MCP 规则检查与理论容量估算所需输入，请按实际模型结构确认",
     "以下候选值已与源文件显式值或初始推导值不同，需要额外确认：",
-    "确认并应用后，第三栏当前值会补入配置",
-    "第三栏已列出需要确认的配置修复项",
+    "确认并应用后，本栏当前值会补入配置",
     "理论显存预计超限",
     "候选值已调整 · 需确认",
     "静态安全兜底方案",
-    "MCP 已把缺失项和冲突项列在下方",
+    "MCP 已列出缺失项和冲突项",
     "核对并应用",
     "计算中… MCP 正在解析当前代码并求解完整候选",
     "计算中… MCP 正在解析预置配置并求解完整候选",
     "停止输入后自动解析",
     "aria-busy",
-    "MCP 静态复验已通过",
-    "缺失值已预填",
+    "原配置与补填项合并后的完整配置",
+    "已通过 MCP 规则检查",
     "mcp-completion-capacity-status",
     "mcp-completion-plan__capacity",
     "核对风险并应用",
-    "处理方案",
     "910 · 32G",
     "910B · 64G",
     "950PR · 128G",
@@ -626,6 +688,21 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
   const sourceStyle = read(mcpShellStyleFile);
   const shellSource = read(mcpShellEntryFile);
   const importSource = read(importFile);
+  assert.match(
+    sourceStyle,
+    /\.mcp-completion-plan\s*\{[\s\S]*?padding:\s*0;[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;/,
+    "补齐方案外层仍有边框或背景，形成卡片套卡片",
+  );
+  assert.match(
+    sourceStyle,
+    /\.mcp-completion-plan__card\s*\{[\s\S]*?border:\s*1px solid var\(--border-default\);[\s\S]*?background:\s*var\(--surface-1\);/,
+    "移除补齐方案外框时不应一并移除内部方案卡片",
+  );
+  assert.match(
+    shellSource,
+    /title\.className = "mcp-import__pane-title"[\s\S]*?MCP缺口配置推荐补齐方案/,
+    "第三栏标题仍继承彩色错误标题样式，或缺少“推荐”文案",
+  );
   assert.ok(!importSource.includes("模型结构来源"), "配置下拉不得把模型结构来源伪装成配置选项");
   assert.ok(!importSource.includes("cro-yaml__structure-note"), "配置下拉不得保留模型结构说明卡");
   assert.match(
@@ -678,15 +755,34 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
     /mcp-completion-plan__select/,
     "处理方案仍在使用下拉框",
   );
-  assert.match(
+  assert.doesNotMatch(
     shellSource,
-    /plans\.length === 1[\s\S]*?mcp-completion-plan is-single[\s\S]*?plans\.length > 1[\s\S]*?mcp-completion-plan__cards/,
-    "单方案纯文本与多方案卡片选择没有按方案数量分流",
+    /mcp-completion-plan is-single|caption\.textContent = "处理方案"|caption\.textContent = "选择处理方案"/,
+    "单方案摘要或处理方案标题仍在渲染",
   );
   assert.match(
     shellSource,
-    /function completionPlanLabel[\s\S]*?推荐\|需确认[\s\S]*?plans\.length === 1[\s\S]*?completionPlanLabel\(preferred\)/,
+    /if \(plans\.length > 1\)[\s\S]*?mcp-completion-plan__cards/,
+    "多方案场景没有保留可选择的方案卡片",
+  );
+  assert.match(
+    shellSource,
+    /function completionPlanLabel[\s\S]*?推荐\|需确认[\s\S]*?plans\.length > 1[\s\S]*?completionPlanLabel\(plan\)/,
     "方案名称没有移除多余的“推荐/需确认”后缀",
+  );
+  assert.match(
+    shellSource,
+    /const missingCopy = "源文件缺少模型结构参数。"/,
+    "确认文案仍重复列出补填区已有的模型结构字段",
+  );
+  const confirmationSource = shellSource.slice(
+    shellSource.indexOf("function confirmationCopy"),
+    shellSource.indexOf("function syncCompletionConfirmation"),
+  );
+  assert.doesNotMatch(confirmationSource, /第三栏/, "确认文案仍使用“第三栏”术语");
+  assert.match(
+    confirmationSource,
+    /本栏已为缺失项提供可编辑候选值；候选值仅用于补齐 MCP 规则检查与理论容量估算所需输入，请按实际模型结构确认。/,
   );
   assert.match(
     shellSource,
@@ -719,7 +815,7 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
   );
   assert.match(
     shellSource,
-    /MCP缺口（\$\{paths\.length\}）配置补齐方案/,
+    /MCP缺口（\$\{paths\.length\}）配置推荐补齐方案/,
     "第三栏标题没有显示本次解析的真实缺口数",
   );
   assert.match(
@@ -750,7 +846,7 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
   );
   assert.match(
     shellSource,
-    /function confirmationCopy\(preferred, missingModelPaths, adjustedPaths,[\s\S]*?fieldList\(missingModelPaths\)[\s\S]*?fieldList\(adjustedPaths\)/,
+    /function confirmationCopy\(preferred, missingModelPaths, adjustedPaths,[\s\S]*?if \(missingModelPaths\.length\)[\s\S]*?源文件缺少模型结构参数。[\s\S]*?if \(adjustedPaths\.length\)[\s\S]*?fieldList\(adjustedPaths\)/,
     "确认文案没有根据实际字段区分模型结构缺口与配置修复",
   );
   assert.ok(
@@ -769,7 +865,7 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
   );
   assert.match(
     shellSource,
-    /function syncCompletionCapacityStatus[\s\S]*?recommendation_eligible !== true[\s\S]*?capacityReviewCopy/,
+    /function syncCompletionCapacityStatus[\s\S]*?recommendation_eligible !== true[\s\S]*?capacityBannerCopy/,
     "配置建模状态与显存风险状态没有独立渲染",
   );
   assert.doesNotMatch(
@@ -784,8 +880,23 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
   );
   assert.match(
     shellSource,
-    /mcp-completion-plan is-single[\s\S]*?mcp-completion-plan__card-heading[\s\S]*?heading\.append\(name\)[\s\S]*?appendCapacityBadge\(heading, preferred\?\.capacity_assessment\)/,
-    "单方案的 HBM 标签没有与方案名放在同一行",
+    /if \(sample\.current && pane\) renderMissingInputs\(sample\.current\.result, sample, pane, applyButton\)/,
+    "配置下拉先完成预置解析、后挂载横幅时仍会遗留两条等待状态",
+  );
+  assert.match(
+    importSource,
+    /function previewPreset\(id\)[\s\S]*?const target = Object\.assign[\s\S]*?cro:config-preset-preview-ready[\s\S]*?presetId: id, config: target/,
+    "页面内置预设预览没有把目标配置通知给 MCP 状态横幅",
+  );
+  assert.match(
+    shellSource,
+    /async function validateConfigPresetPreview\(detail\)[\s\S]*?pageConfigToTrainingConfig[\s\S]*?pipelineSettingsForPreset[\s\S]*?Promise\.all[\s\S]*?callValidateTool\(config\)[\s\S]*?callCapacityTool\(config\)[\s\S]*?当前内置预设已通过 MCP 规则检查/,
+    "页面内置预设没有实际执行 MCP 规则检查和理论显存估算",
+  );
+  assert.match(
+    shellSource,
+    /addEventListener\("cro:config-preset-preview-ready"[\s\S]*?validateConfigPresetPreview\(event\.detail\)/,
+    "页面内置预设的计算结果没有接回配置智能解析横幅",
   );
   assert.doesNotMatch(
     sourceStyle,
@@ -796,6 +907,13 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
     !shellSource.includes("这些值无法从源文件还原。")
       && !shellSource.includes("第三栏已提供全部补齐项"),
     "黄色确认横幅仍包含重复说明",
+  );
+  const confirmationCopySource = shellSource.match(
+    /function confirmationCopy\([\s\S]*?\n  function syncCompletionConfirmation/,
+  )?.[0] ?? "";
+  assert.ok(
+    confirmationCopySource && !confirmationCopySource.includes("openPangu 2.0 Flash"),
+    "补齐确认区不应把候选值归因于特定模型结构",
   );
   assert.ok(
     !shellSource.includes("我已逐项核对第三栏中的预填值"),
@@ -937,8 +1055,8 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
   );
   assert.match(
     sourceStyle,
-    /\.mcp-parse-banner__body,[\s\S]*?-webkit-line-clamp:\s*2;/,
-    "配置解析横幅没有放宽为最多两行",
+    /\.mcp-parse-banner__body\s*\{[\s\S]*?display:\s*grid;[\s\S]*?gap:\s*2px;/,
+    "配置智能解析横幅没有保留三行正文",
   );
   assert.match(
     sourceStyle,
@@ -1647,11 +1765,15 @@ test("第 17 项资源收口不得破坏页面初始化主链路", () => {
     assert.ok(!fs.existsSync(path.join(repositoryRoot, legacyPath)), `旧 MCP UI 路径仍存在：${legacyPath}`);
   }
 
-  const baselineHash = crypto.createHash("sha256").update(fs.readFileSync(baselineHtmlFile)).digest("hex");
+  const baselineForHash = read(baselineHtmlFile).replace(
+    /(<a class="btn btn-sm cro-export-btn" id="croMindSpeedIntro" href=")[^"]+(" target="_blank")/,
+    "$1__MINDSPEED_INTRO_URL__$2",
+  );
+  const baselineHash = crypto.createHash("sha256").update(baselineForHash).digest("hex");
   assert.equal(
     baselineHash,
-    "bd4e2c0d8ff466f3414a4c8665d603b1e5e0ca36b7741df736834b46c3f5c6e1",
-    "除已确认的卡容量表单、MCP 适配度、YAML 源码保真、画布控制栏、整机内存填色、退役原型导航和 Rank 入门入口清理外，不得意外改写 4173 主页面基线",
+    "54aa9d2ac087eedd1e79f437f274221b4cbc56fff234061976e22002967cbe8d",
+    "除已确认的页面修改和单独校验的 MindSpeed intro 地址外，不得意外改写 4173 主页面基线",
   );
 });
 
