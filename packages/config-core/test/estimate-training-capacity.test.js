@@ -99,6 +99,23 @@ test("Embedding 和 LM Head 使流水线端点比中间 Stage 更重", () => {
   assert.ok(stages[3].values_gib.weight > stages[2].values_gib.weight);
 });
 
+test("容量估算按动态 PP 的显式 Stage 层数计算而不是退回均分", () => {
+  const result = estimateTrainingCapacity(denseConfig({
+    rule_profile: { framework: "mindspeed-llm-mcore", version: "master@7826e88" },
+    model: { total_layers: 8 },
+    parallel: {
+      pipeline_layer_mode: "dynamic",
+      num_layer_list: [6, 2],
+      vpp: 1,
+    },
+  }));
+
+  assert.equal(result.status, "estimated");
+  assert.deepEqual(result.data.stages.map((stage) => stage.layers), [6, 2]);
+  assert.ok(result.data.stages[0].values_gib.activation > result.data.stages[1].values_gib.activation);
+  assert.match(result.data.pipeline_layout_sources.dynamic, /MindSpeed-LLM/);
+});
+
 test("非法配置不返回容量数字", () => {
   const result = estimateTrainingCapacity(denseConfig({
     cluster: { total_ranks: 99 },

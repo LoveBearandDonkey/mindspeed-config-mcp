@@ -215,7 +215,8 @@ test("MCP App 资源可读取且为单文件 HTML", async () => {
     assert.match(response.contents[0].text, /mixtral_8x7b\.sh/);
     assert.match(response.contents[0].text, /mcp-config-import-row/);
     assert.match(response.contents[0].text, /croImportClear/);
-    assert.match(response.contents[0].text, /配置代码/);
+    assert.match(response.contents[0].text, /配置输入/);
+    assert.doesNotMatch(response.contents[0].text, /mcpImportCodeTitle/);
     assert.match(response.contents[0].text, /校验结果/);
     assert.match(response.contents[0].text, /mcpPreview/);
     assert.match(response.contents[0].text, /local-core/);
@@ -230,7 +231,11 @@ test("MCP App 资源可读取且为单文件 HTML", async () => {
     assert.match(response.contents[0].text, /核对并应用/);
     assert.match(response.contents[0].text, /计算中… MCP 正在解析当前代码并求解完整候选/);
     assert.match(response.contents[0].text, /aria-busy/);
-    assert.match(response.contents[0].text, /MCP 完整复验通过/);
+    assert.match(response.contents[0].text, /MCP 静态复验已通过/);
+    assert.match(response.contents[0].text, /缺失值已预填/);
+    assert.match(response.contents[0].text, /理论显存预计超限/);
+    assert.match(response.contents[0].text, /mcp-completion-capacity-status/);
+    assert.match(response.contents[0].text, /mcp-completion-plan__capacity/);
     assert.match(response.contents[0].text, /静态安全兜底方案/);
     assert.match(response.contents[0].text, /MCP 已把缺失项和冲突项列在下方/);
     assert.doesNotMatch(response.contents[0].text, /当前没有通过完整静态复验的候选，暂不可应用/);
@@ -529,12 +534,15 @@ test("解析结果适配到原页面字段，并在原报告结构中区分映�
       },
       mapped_fields: [
         { source_key: "num_layers", target_path: "model.total_layers", value: 32, mapping_kind: "explicit" },
+        { source_key: "hidden_size", target_path: "model.hidden_size", value: 4096, mapping_kind: "explicit" },
         { source_key: "tensor_model_parallel_size", target_path: "parallel.tp", value: 4, mapping_kind: "explicit" },
         { source_key: "world_size / parallel", target_path: "parallel.dp", value: 4, mapping_kind: "derived" },
         { source_key: "省略态", target_path: "parallel.vpp", value: 1, mapping_kind: "default" },
       ],
       unmapped_fields: [{ source_key: "custom_key", value: 1, reason: "没有已登记的字段映射" }],
-      ignored_fields: [],
+      ignored_fields: [
+        { source_key: "logging_steps", value: 10, reason: "不属于第一版统一训练配置契约" },
+      ],
       missing_required_fields: ["batch.sequence_length"],
     },
   };
@@ -553,6 +561,10 @@ test("解析结果适配到原页面字段，并在原报告结构中区分映�
   assert.match(html, /未识别 · 没有静默丢弃/);
   assert.match(html, /仍缺输入/);
   assert.match(html, /不启动训练/);
+  assert.match(html, /Hidden Size[\s\S]*← hidden_size/);
+  assert.doesNotMatch(html, /已进入统一配置，但当前页面没有对应旋钮，不自动覆盖页面。/);
+  assert.doesNotMatch(html, /没有已登记的字段映射/);
+  assert.doesNotMatch(html, /不属于第一版统一训练配置契约/);
 });
 
 test("应用结果明确区分原值落地与页面自动配平", () => {

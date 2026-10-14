@@ -106,6 +106,18 @@ const KIND_LABELS = Object.freeze({
   default: "默认 · 配置方言省略态",
 });
 
+/* 分组标题与说明已经交代过的通用原因，不再在每个配置项后重复一遍。具体的转换
+   失败、派生用途或关闭态原因仍逐项保留。配置下拉与导入面板共用这份报告。 */
+const REDUNDANT_ITEM_REASONS = new Set([
+  "没有已登记的字段映射",
+  "不属于第一版统一训练配置契约",
+]);
+
+function conciseItemReason(reason) {
+  const text = String(reason ?? "").trim();
+  return REDUNDANT_ITEM_REASONS.has(text) ? "" : text;
+}
+
 export function pageFieldForPath(path) {
   return PAGE_FIELDS[path] ?? MCP_PAGE_FIELDS[path] ?? null;
 }
@@ -281,27 +293,34 @@ export function renderParseReport(result, { adjusted = [] } = {}) {
   }
 
   for (const kind of ["explicit", "derived", "default"]) {
-    const rows = mapped.filter((item) => item.mapping_kind === kind).map((item) => {
-      const pageField = pageFieldForPath(item.target_path);
-      return `<li><b>${escapeHtml(labelForPath(item.target_path))}</b> = <b>${formatValue(item.value)}</b>`
+    const rows = mapped.filter((item) => item.mapping_kind === kind).map((item) =>
+      `<li><b>${escapeHtml(labelForPath(item.target_path))}</b> = <b>${formatValue(item.value)}</b>`
         + `<span class="cro-import__from">← ${item.source_role === "model" ? "模型结构 · " : ""}${escapeHtml(item.source_key)}</span>`
-        + (pageField ? "" : `<br><span class="cro-import__note">已进入统一配置，但当前页面没有对应旋钮，不自动覆盖页面。</span>`)
-        + `</li>`;
-    });
+        + `</li>`);
     output.push(section(KIND_LABELS[kind], rows));
   }
 
   output.push(section(
     "未识别 · 没有静默丢弃",
-    (data.unmapped_fields ?? []).map((item) => `<li><code>${item.source_role === "model" ? "模型结构 · " : ""}${escapeHtml(item.source_key)}</code> = `
-      + `<b>${formatValue(item.value)}</b><br><span class="cro-import__note">${escapeHtml(item.reason)}</span></li>`),
+    (data.unmapped_fields ?? []).map((item) => {
+      const reason = conciseItemReason(item.reason);
+      const reasonNote = reason
+        ? `<br><span class="cro-import__note">${escapeHtml(reason)}</span>` : "";
+      return `<li><code>${item.source_role === "model" ? "模型结构 · " : ""}${escapeHtml(item.source_key)}</code> = `
+        + `<b>${formatValue(item.value)}</b>${reasonNote}</li>`;
+    }),
     "这些键没有已登记映射，保留在报告中供补规则或人工判断。",
     "is-unknown",
   ));
   output.push(section(
     "已识别 · 第一版暂不建模",
-    (data.ignored_fields ?? []).map((item) => `<li><code>${item.source_role === "model" ? "模型结构 · " : ""}${escapeHtml(item.source_key)}</code>`
-      + `<span class="cro-import__from">${escapeHtml(item.reason)}</span></li>`),
+    (data.ignored_fields ?? []).map((item) => {
+      const reason = conciseItemReason(item.reason);
+      const reasonSuffix = reason
+        ? `<span class="cro-import__from">${escapeHtml(reason)}</span>` : "";
+      return `<li><code>${item.source_role === "model" ? "模型结构 · " : ""}${escapeHtml(item.source_key)}</code>`
+        + `${reasonSuffix}</li>`;
+    }),
     "训练路径、日志、优化器超参等不进入当前配置关系平面。",
     "is-skip",
   ));

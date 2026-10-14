@@ -152,8 +152,11 @@
     "remaining_model_gaps": []
   },
   "model_structure_choice": {
-    "recommended_plan": "openpangu-flash-structure",
+    "selected_plan": "openpangu-flash-structure",
+    "recommended_plan": null,
     "requires_confirmation": "requires-confirmation",
+    "capacity_level": "over",
+    "capacity_ratio": 2.963632,
     "preset_model": "openpangu-flash",
     "preset_layers": 46,
     "preset_hidden_size": 2560,
@@ -163,11 +166,13 @@
   },
   "deepseek_completion": {
     "computation": "runtime-per-parse",
-    "strategy": "evidence-plus-constraint-solver",
+    "strategy": "evidence-plus-constraint-solver-and-theoretical-capacity-gate",
+    "recommended_plan": null,
     "mode": "mindformers-offset",
     "profile": "mindformers",
     "plan_ids": ["source-faithful", "mindformers-uniform-fallback"],
     "plan_statuses": ["valid", "valid"],
+    "capacity_levels": ["over", "over"],
     "recommended_stage_layers": [8, 8, 8, 8, 8, 8, 8, 5],
     "completed_heads": 128,
     "completed_experts": 256

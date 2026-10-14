@@ -1128,6 +1128,8 @@
     let previewToken = 0; // 连续点不同卡片时，较早返回的 fetch 不得覆盖当前报告
     let activeSampleFile = null;
     let activeSampleSignature = null;
+    let activeImportedSource = null;
+    let activeImportedSignature = null;
     let applyingSample = false;
 
     const sampleValue = (file) => SAMPLE_PREFIX + file;
@@ -1139,14 +1141,14 @@
     /* observer 只知道“已经脱离预设”，配置导入层才知道它原来叫什么。把来源名留在
        select 的显示态上：后续参数手调时 observer 会用它生成“原名 已经过调整”，
        菜单卡片又直接复用该 option 文本，因此两处名称始终一致。 */
-    function setSourceConfigName(name) {
+    function setSourceConfigName(name, { adjusted = true, invalidateSignature = true } = {}) {
       if (!mergedSelect) return;
       const sourceName = String(name || "").trim();
       if (!sourceName) return;
       mergedSelect.dataset.sourceConfigName = sourceName;
-      delete mergedSelect.dataset.presetSignature;
+      if (invalidateSignature) delete mergedSelect.dataset.presetSignature;
       const customOption = mergedSelect.querySelector('option[value="__custom__"]');
-      if (customOption) customOption.textContent = `${sourceName}已经过调整`;
+      if (customOption) customOption.textContent = adjusted ? `${sourceName}已经过调整` : sourceName;
       syncMergedTrigger();
     }
 
@@ -1222,15 +1224,37 @@
       activeSampleSignature = null;
     }
 
+    function clearActiveImport({ markAdjusted = false } = {}) {
+      const source = activeImportedSource;
+      activeImportedSource = null;
+      activeImportedSignature = null;
+      if (markAdjusted && source) setSourceConfigName(source.label || source.name);
+    }
+
     /* MCP 补齐方案仍然属于用户选中的这份样例，而不是一份来历不明的“自定义”。
        适配层应用完成后通过这个入口写回样例身份；后续用户真正拨动表单时，下面的
        cro:change 监听仍会清空 activeSampleFile，让下拉如实回到自定义状态。 */
     global.croImport.selectAppliedSample = (file) => {
       const sample = sampleOf(file);
       if (!mergedSelect || !sample) return false;
+      clearActiveImport();
       activeSampleFile = file;
       activeSampleSignature = currentConfigSignature();
       setSourceConfigName(sample.label);
+      restoreMergedSelection();
+      return true;
+    };
+
+    /* 用户导入文件应用后仍是一份有来源、有解析报告的配置，而不是匿名的“自定义”。
+       这里记录它与当前表单快照的对应关系；只要用户没有继续改参数，下次打开配置
+       面板就可由 MCP 适配层恢复导入时的二、三栏。 */
+    global.croImport.selectAppliedImport = (source) => {
+      const label = String(source?.label || source?.name || "").trim();
+      if (!mergedSelect || !label) return false;
+      clearActiveSample();
+      activeImportedSource = { ...source, label };
+      activeImportedSignature = currentConfigSignature();
+      setSourceConfigName(label, { adjusted: false, invalidateSignature: false });
       restoreMergedSelection();
       return true;
     };
@@ -1439,6 +1463,11 @@
       if (!meta || !global.croObserver) return;
       if (id === "__custom__") {
         pending = null;
+        const previewRequest = new CustomEvent("cro:imported-config-preview-requested", {
+          cancelable: true,
+          detail: { source: activeImportedSource },
+        });
+        if (!doc.dispatchEvent(previewRequest)) return;
         showPreview(meta,
           `<div class="cro-import__block is-warn"><h4>当前为自定义配置</h4>`
           + `<p class="cro-import__hint">这不是一份可应用的目标预设。请选择左侧其它配置，`
@@ -1556,7 +1585,7 @@
          内置选项不拦截，仍完整走原来的 setConfigPreset 通路。 */
       mergedSelect.addEventListener("change", (event) => {
         const file = sampleFile(mergedSelect.value);
-        if (!file) { clearActiveSample(); return; }
+        if (!file) { clearActiveSample(); clearActiveImport(); return; }
         event.preventDefault();
         event.stopImmediatePropagation();
         openMenu(file);
@@ -1565,9 +1594,18 @@
       doc.addEventListener("cro:change", () => {
         if (!applyingSample && activeSampleFile
           && activeSampleSignature !== currentConfigSignature()) clearActiveSample();
+        if (activeImportedSource && activeImportedSignature !== currentConfigSignature()) {
+          clearActiveImport({ markAdjusted: true });
+        }
         global.queueMicrotask(() => {
           syncMergedOptions();
           if (activeSampleFile) mergedSelect.value = sampleValue(activeSampleFile);
+          if (activeImportedSource) {
+            setSourceConfigName(activeImportedSource.label, {
+              adjusted: false,
+              invalidateSignature: false,
+            });
+          }
           syncMergedTrigger();
         });
       });
@@ -1596,6 +1634,7 @@
       if (!pending || !global.croObserver) return;
       if (pending.kind === "preset") {
         clearActiveSample();
+        clearActiveImport();
         global.croObserver.setConfigPreset(pending.presetId);
         syncMergedOptions();
         closeMenu(true);
@@ -1605,6 +1644,7 @@
       const meta = pending.meta;
       applyingSample = Boolean(mergedSelect);
       if (mergedSelect) {
+        clearActiveImport();
         if (meta.file === DEFAULT_FILE) clearActiveSample();
         else activeSampleFile = meta.file;
       }

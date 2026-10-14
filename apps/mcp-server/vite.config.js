@@ -556,33 +556,33 @@ function connectMcpCapacity(source, assetFile) {
   );
   transformed = replaceRequired(
     transformed,
-    `      memoryLegendCaption.textContent = \`R\${selectedRank} · HBM 占用\`;`,
-    `      memoryLegendCaptionText.textContent = \`R\${selectedRank} · HBM 占用\`;
+    `      memoryLegendCaption.textContent = \`\${selectedLabel} · HBM 占用\`;`,
+    `      memoryLegendCaptionText.textContent = \`\${selectedLabel} · HBM 占用\`;
       memoryLegendRisk.hidden = cautionRatio === null || rawRatio <= cautionRatio;`,
-    "the selected Rank HBM caption",
+    "the selected Rank or node HBM caption",
   );
   transformed = replaceRequired(
     transformed,
-    `    memoryLegendCaption.textContent = "Rank HBM 占用 · 当前范围";`,
-    `    memoryLegendCaptionText.textContent = "Rank HBM 占用 · 当前范围";
+    `    memoryLegendCaption.textContent = \`\${scopeLabel} · 当前范围\`;`,
+    `    memoryLegendCaptionText.textContent = \`\${scopeLabel} · 当前范围\`;
     memoryLegendRisk.hidden = cautionRatio === null || hiRawRatio <= cautionRatio;`,
-    "the Rank HBM range risk state",
+    "the Rank or node HBM range risk state",
   );
   transformed = replaceRequired(
     transformed,
-    `      memoryLegend.title = \`Rank \${selectedRank} 的 HBM 占用为 \${Math.round(rawRatio * 100)}%\`;`,
-    `      memoryLegend.title = \`Rank \${selectedRank} 的 HBM 占用为 \${Math.round(rawRatio * 100)}%\`
+    `      memoryLegend.title = \`\${selectedLabel} 的 HBM 占用为 \${Math.round(rawRatio * 100)}%\`;`,
+    `      memoryLegend.title = \`\${selectedLabel} 的 HBM 占用为 \${Math.round(rawRatio * 100)}%\`
         + cautionNote
         + (cautionRatio !== null && rawRatio > cautionRatio ? "；OOM风险高" : "");`,
-    "the selected Rank HBM caution description",
+    "the selected Rank or node HBM caution description",
   );
   transformed = replaceRequired(
     transformed,
-    /    memoryLegend\.title = `当前 Rank HBM 占用范围 \$\{Math\.round\(loRawRatio \* 100\)\}%–\$\{Math\.round\(hiRawRatio \* 100\)\}%`\r?\n\s*\+ "；冷蓝 = 占用低，火红 = 占用高";/,
-    `    memoryLegend.title = \`当前 Rank HBM 占用范围 \${Math.round(loRawRatio * 100)}%–\${Math.round(hiRawRatio * 100)}%\`
+    /    memoryLegend\.title = `当前\$\{scopeLabel\}范围 \$\{Math\.round\(loRawRatio \* 100\)\}%–\$\{Math\.round\(hiRawRatio \* 100\)\}%`\r?\n\s*\+ "；冷蓝 = 占用低，火红 = 占用高";/,
+    `    memoryLegend.title = \`当前\${scopeLabel}范围 \${Math.round(loRawRatio * 100)}%–\${Math.round(hiRawRatio * 100)}%\`
       + "；冷蓝 = 占用低，火红 = 占用高" + cautionNote
       + (cautionRatio !== null && hiRawRatio > cautionRatio ? "；OOM风险高" : "");`,
-    "the Rank HBM range caution description",
+    "the Rank or node HBM range caution description",
   );
   return transformed;
 }

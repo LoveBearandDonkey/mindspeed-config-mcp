@@ -142,6 +142,14 @@
   min-height: 0;
 }
 
+.mcp-import__workspace.is-awaiting-validation {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.mcp-import__result-pane[hidden] {
+  display: none;
+}
+
 .mcp-import__workspace.has-missing-inputs {
   grid-template-columns: minmax(260px, 0.9fr) minmax(300px, 1.05fr) minmax(260px, 0.85fr);
 }
@@ -260,6 +268,29 @@
   line-height: 1.4;
 }
 
+.mcp-completion-plan__capacity {
+  padding: 1px 5px;
+  border: 1px solid color-mix(in srgb, var(--border-strong) 58%, transparent);
+  border-radius: 999px;
+  color: var(--foreground-secondary);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.4;
+}
+
+.mcp-completion-plan__capacity.is-tight,
+.mcp-completion-plan__capacity.is-alert {
+  border-color: color-mix(in srgb, var(--warning) 42%, transparent);
+  color: var(--warning);
+}
+
+.mcp-completion-plan__capacity.is-over,
+.mcp-completion-plan__capacity.is-unavailable {
+  border-color: color-mix(in srgb, var(--danger) 42%, transparent);
+  color: var(--danger);
+}
+
 .mcp-completion-plan__confirmation {
   display: flex;
   gap: 7px;
@@ -275,14 +306,49 @@
 }
 
 .mcp-completion-plan__confirmation input {
+  display: grid;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  place-items: center;
   margin-top: 2px;
+  appearance: none;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--warning);
+  cursor: pointer;
+}
+
+.mcp-completion-plan__confirmation input::before {
+  width: 7px;
+  height: 4px;
+  border-bottom: 2px solid var(--background);
+  border-left: 2px solid var(--background);
+  content: "";
+  transform: translateY(-1px) rotate(-45deg) scale(0);
+  transition: transform var(--duration-fast);
+}
+
+.mcp-completion-plan__confirmation input:checked {
+  border-color: var(--warning);
+  background: var(--warning);
+}
+
+.mcp-completion-plan__confirmation input:checked::before {
+  transform: translateY(-1px) rotate(-45deg) scale(1);
+}
+
+.mcp-completion-plan__confirmation input:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--warning) 50%, transparent);
+  outline-offset: 2px;
 }
 
 /* 需确认的补齐说明可能列出很多字段。复选框固定留在横幅左上角，正文最多显示
-   五行；超出的部分只在正文内部滚动，避免把第三栏的配置表单挤出视口。 */
+   四行；超出的部分只在正文内部滚动，避免把第三栏的配置表单挤出视口。 */
 .mcp-completion-plan__confirmation > span {
   min-width: 0;
-  max-height: 7em;
+  max-height: 5.6em;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -422,6 +488,10 @@
   line-height: 1.45;
 }
 
+.mcp-completion-capacity-status[hidden] {
+  display: none;
+}
+
 .mcp-completion-status.is-valid {
   display: flex;
   gap: 8px;
@@ -441,8 +511,25 @@
 }
 
 .mcp-completion-status.is-review {
+  display: flex;
+  gap: 8px;
+  align-items: center;
   color: var(--warning);
   background: color-mix(in srgb, var(--warning) 10%, transparent);
+}
+
+.mcp-completion-status.is-review::before {
+  display: grid;
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  content: "!";
+  font-size: 9px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
 }
 
 .mcp-completion-status.is-pending {
@@ -635,6 +722,11 @@
   width: auto;
   max-width: calc(100% - 32px);
   margin-inline: 16px;
+}
+
+/* 第二栏逐项尾注只承担溯源：字段名和值仍用正文色，来源键与契约路径再弱一级。 */
+.cro-import__report .cro-import__from {
+  color: var(--foreground-muted, var(--foreground-secondary));
 }
 
 .mcp-parse-banner__body,

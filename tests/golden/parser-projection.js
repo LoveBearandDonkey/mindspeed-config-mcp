@@ -178,8 +178,11 @@ model:
         .filter((path) => path.startsWith("model.")),
     },
     model_structure_choice: {
-      recommended_plan: llamaFactory.data.completion.plans[0].id,
+      selected_plan: llamaFactory.data.completion.plans[0].id,
+      recommended_plan: llamaFactory.data.completion.recommended_plan_id,
       requires_confirmation: llamaFactory.data.completion.plans[0].confidence,
+      capacity_level: llamaFactory.data.completion.plans[0].capacity_assessment.level,
+      capacity_ratio: llamaFactory.data.completion.plans[0].capacity_assessment.bottleneck_ratio,
       preset_model: llamaFactory.data.completion.plans[0].proposed_config.model.id,
       preset_layers: llamaFactory.data.completion.plans[0].proposed_config.model.total_layers,
       preset_hidden_size: llamaFactory.data.completion.plans[0].proposed_config.model.hidden_size,
@@ -190,10 +193,12 @@ model:
     deepseek_completion: {
       computation: deepseek.data.completion.computation,
       strategy: deepseek.data.completion.strategy,
+      recommended_plan: deepseek.data.completion.recommended_plan_id,
       mode: deepseek.data.normalized_config.parallel.pipeline_layer_mode,
       profile: deepseek.data.normalized_config.rule_profile.framework,
       plan_ids: deepseek.data.completion.plans.map((plan) => plan.id),
       plan_statuses: deepseek.data.completion.plans.map((plan) => plan.validation.status),
+      capacity_levels: deepseek.data.completion.plans.map((plan) => plan.capacity_assessment.level),
       recommended_stage_layers: deepseek.data.completion.plans[0].validation.status === "valid"
         ? [8, 8, 8, 8, 8, 8, 8, 5]
         : [],

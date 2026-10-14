@@ -167,13 +167,19 @@ test("锁定 pipeline_layer_offsets 时不覆盖 MindFormers offset 矩阵", () 
 
 test("导入补齐方案把动态 PP 作为明确命名且默认推荐的第一项", () => {
   const completion = planTrainingConfigCompletion(
-    createTrainingConfig({ model: { total_layers: 31 } }),
+    createTrainingConfig({
+      model: { total_layers: 31 },
+      parallel: { dp: 4, tp: 8 },
+      cluster: { total_ranks: 64, card_memory_gib: 128 },
+      memory: { shard_mode: "fsdp2", recompute_mode: "full", parameter_dtype: "bf16" },
+    }),
   );
   const recommended = completion.plans[0];
 
   assert.equal(recommended.id, "validated-fix-1");
   assert.equal(recommended.label, "切换到动态 PP");
   assert.equal(recommended.recommended, true);
+  assert.equal(recommended.capacity_assessment.recommendation_eligible, true);
   assert.match(recommended.summary, /16 \/ 15/);
   assert.equal(recommended.proposed_config.parallel.pipeline_layer_mode, "dynamic");
   assert.deepEqual(recommended.proposed_config.parallel.num_layer_list, [16, 15]);
@@ -183,7 +189,11 @@ test("导入补齐方案把动态 PP 作为明确命名且默认推荐的第一�
 });
 
 test("缺少模型结构时提供可确认的 openPangu 2.0 Flash 预置结构", () => {
-  const input = createTrainingConfig();
+  const input = createTrainingConfig({
+    parallel: { dp: 8, tp: 8 },
+    cluster: { total_ranks: 128, card_memory_gib: 128 },
+    memory: { shard_mode: "fsdp2", recompute_mode: "full", parameter_dtype: "bf16" },
+  });
   delete input.model.total_layers;
   delete input.model.hidden_size;
   delete input.model.num_attention_heads;
@@ -196,6 +206,7 @@ test("缺少模型结构时提供可确认的 openPangu 2.0 Flash 预置结构",
 
   assert.equal(preset.id, "openpangu-flash-structure");
   assert.equal(preset.recommended, true);
+  assert.equal(preset.capacity_assessment.level, "safe");
   assert.equal(preset.confidence, "requires-confirmation");
   assert.equal(preset.proposed_config.model.id, "openpangu-flash");
   assert.equal(preset.proposed_config.model.total_layers, 46);
@@ -240,9 +251,13 @@ test("动态 PP 使用错误 framework 时提供切换 MCore 规则口径的候�
   const input = createTrainingConfig({
     model: { total_layers: 31 },
     parallel: {
+      dp: 4,
+      tp: 8,
       pipeline_layer_mode: "dynamic",
       num_layer_list: [16, 15],
     },
+    cluster: { total_ranks: 64, card_memory_gib: 128 },
+    memory: { shard_mode: "fsdp2", recompute_mode: "full", parameter_dtype: "bf16" },
   });
   const result = suggestConfigFixes(input);
   const suggestion = result.data.suggestions[0];
@@ -263,6 +278,27 @@ test("动态 PP 使用错误 framework 时提供切换 MCore 规则口径的候�
   assert.ok(completion.plans[0].values.some((item) => (
     item.path === "rule_profile.framework" && item.value === "mindspeed-llm-mcore"
   )));
+});
+
+test("理论容量超过单卡上限的静态合法补齐方案不再标记为推荐", () => {
+  const input = createTrainingConfig();
+  delete input.model.total_layers;
+  delete input.model.hidden_size;
+  delete input.model.num_attention_heads;
+  const completion = planTrainingConfigCompletion(input, [
+    "model.total_layers",
+    "model.hidden_size",
+    "model.num_attention_heads",
+  ]);
+  const plan = completion.plans[0];
+
+  assert.equal(plan.validation.status, "valid");
+  assert.equal(plan.capacity_assessment.level, "over");
+  assert.equal(plan.capacity_assessment.launch_feasible, false);
+  assert.equal(plan.capacity_assessment.recommendation_eligible, false);
+  assert.equal(plan.recommended, false);
+  assert.equal(completion.launch_feasible, false);
+  assert.equal(completion.recommended_plan_id, null);
 });
 
 test("锁定总 Rank 和 EP 时通过调整未锁定字段修复 world", () => {

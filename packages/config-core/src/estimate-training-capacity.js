@@ -32,6 +32,8 @@ const RUNTIME = Object.freeze({
   fsdp_prefetch_units: 2,
 });
 const CAPACITY_SOURCE = "compute-graph-viewer-wzh:config-relation-capacity.js:114-879@1e6bb6e";
+const MINDSPEED_DYNAMIC_PP_SOURCE = "MindSpeed-LLM:mindspeed_llm/training/arguments.py@7826e88";
+const MINDFORMERS_OFFSET_SOURCE = "compute-graph-viewer-wzh:config-test/mf_pretrain_deepseek3_671b.yaml:model.model_config.offset";
 
 function precisionBytes(input) {
   const master = input.memory.parameter_dtype;
@@ -45,13 +47,45 @@ function precisionBytes(input) {
   };
 }
 
-function buildStages(totalLayers, pp) {
-  const base = Math.floor(totalLayers / pp);
-  const remainder = totalLayers % pp;
+function pipelineStageCounts(input) {
+  const { parallel, model } = input;
+  if (parallel.pipeline_layer_mode === "dynamic"
+    && Array.isArray(parallel.num_layer_list)
+    && parallel.num_layer_list.length === parallel.pp) {
+    return [...parallel.num_layer_list];
+  }
+  if (parallel.pipeline_layer_mode === "mindformers-offset"
+    && Array.isArray(parallel.pipeline_layer_offsets)
+    && parallel.pipeline_layer_offsets.length === parallel.vpp
+    && parallel.pipeline_layer_offsets.every((row) => (
+      Array.isArray(row) && row.length === parallel.pp
+    ))) {
+    const offsetSum = parallel.pipeline_layer_offsets.flat()
+      .reduce((sum, value) => sum + value, 0);
+    const base = (model.total_layers - offsetSum) / (parallel.pp * parallel.vpp);
+    if (Number.isInteger(base)) {
+      return Array.from({ length: parallel.pp }, (_, stage) => (
+        parallel.pipeline_layer_offsets.reduce(
+          (sum, row) => sum + base + row[stage],
+          0,
+        )
+      ));
+    }
+  }
+  const base = Math.floor(model.total_layers / parallel.pp);
+  const remainder = model.total_layers % parallel.pp;
+  return Array.from(
+    { length: parallel.pp },
+    (_, stage) => base + (stage < remainder ? 1 : 0),
+  );
+}
+
+function buildStages(input) {
+  const counts = pipelineStageCounts(input);
   const stages = [];
   let cursor = 0;
-  for (let stage = 0; stage < pp; stage += 1) {
-    const count = base + (stage < remainder ? 1 : 0);
+  for (let stage = 0; stage < counts.length; stage += 1) {
+    const count = counts[stage];
     stages.push({ stage, start: cursor, end: cursor + count - 1, count });
     cursor += count;
   }
@@ -181,7 +215,7 @@ export function estimateTrainingCapacity(input) {
   }
 
   const bytes = precisionBytes(input);
-  const stages = buildStages(input.model.total_layers, input.parallel.pp);
+  const stages = buildStages(input);
   const plan = shardPlan(input);
   const loraEnabled = input.memory.lora_enabled;
   const communicationDomains = [
@@ -294,6 +328,10 @@ export function estimateTrainingCapacity(input) {
       valid: true,
       thresholds: THRESHOLDS,
       threshold_policy: THRESHOLD_POLICY,
+      pipeline_layout_sources: {
+        dynamic: MINDSPEED_DYNAMIC_PP_SOURCE,
+        mindformers_offset: MINDFORMERS_OFFSET_SOURCE,
+      },
       runtime_coefficients: RUNTIME,
       bottleneck_stage: bottleneck.stage,
       bottleneck_level: bottleneck.level,

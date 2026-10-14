@@ -566,6 +566,11 @@ test("配置下拉与导入弹窗共用单行配置解析横幅", () => {
     /\.cro-yaml__preview > \.mcp-parse-banner\s*\{[\s\S]*?box-sizing:\s*border-box;[\s\S]*?max-width:\s*calc\(100% - 32px\);[\s\S]*?margin-inline:\s*16px;/,
     "配置下拉中的解析横幅没有被第二栏宽度约束并保留左右 16px 外边距",
   );
+  assert.match(
+    sourceStyle,
+    /\.cro-import__report \.cro-import__from\s*\{[\s\S]*?color:\s*var\(--foreground-muted, var\(--foreground-secondary\)\);/,
+    "配置下拉与导入面板第二栏的来源键和契约路径没有降为弱一级文字色",
+  );
 });
 
 test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏", () => {
@@ -595,6 +600,7 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
     "以下候选值已与源文件显式值或初始推导值不同，需要额外确认：",
     "确认并应用后，第三栏当前值会补入配置",
     "第三栏已列出需要确认的配置修复项",
+    "理论显存预计超限",
     "候选值已调整 · 需确认",
     "静态安全兜底方案",
     "MCP 已把缺失项和冲突项列在下方",
@@ -603,7 +609,11 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
     "计算中… MCP 正在解析预置配置并求解完整候选",
     "停止输入后自动解析",
     "aria-busy",
-    "MCP 完整复验通过",
+    "MCP 静态复验已通过",
+    "缺失值已预填",
+    "mcp-completion-capacity-status",
+    "mcp-completion-plan__capacity",
+    "核对风险并应用",
     "处理方案",
     "910 · 32G",
     "910B · 64G",
@@ -631,7 +641,7 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
   );
   assert.match(
     importSource,
-    /function setSourceConfigName\(name\)[\s\S]*?dataset\.sourceConfigName = sourceName[\s\S]*?customOption\.textContent = `\$\{sourceName\}已经过调整`[\s\S]*?addEventListener\("cro:source"/,
+    /function setSourceConfigName\(name,[\s\S]*?dataset\.sourceConfigName = sourceName[\s\S]*?customOption\.textContent = adjusted \? `\$\{sourceName\}已经过调整` : sourceName[\s\S]*?addEventListener\("cro:source"/,
     "导入配置名没有同步给下拉与选项卡片",
   );
   assert.match(
@@ -747,6 +757,41 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
     !shellSource.includes("源文件无法还原真实模型结构，MCP 只能先用占位值完成静态复验"),
     "确认文案仍在用笼统的模型结构占位说明覆盖非结构修复方案",
   );
+  assert.match(
+    shellSource,
+    /function appendCapacityBadge\(parent, capacity\)[\s\S]*?status !== "estimated" \|\| capacity\.recommendation_eligible === true\) return;[\s\S]*?mcp-completion-plan__capacity/,
+    "安全或显存不可判断的候选仍会创建 HBM 容量标签",
+  );
+  assert.match(
+    shellSource,
+    /function syncSelectedCapacityBadge\(current, pane\)[\s\S]*?mcp-completion-plan__card\.is-selected[\s\S]*?child\.remove\(\)[\s\S]*?appendCapacityBadge\(heading, currentCapacityAssessment\(current\)\)[\s\S]*?function syncCompletionCapacityStatus[\s\S]*?syncSelectedCapacityBadge\(current, pane\)/,
+    "重新估算显存后没有同步当前方案的 HBM 标签",
+  );
+  assert.match(
+    shellSource,
+    /function syncCompletionCapacityStatus[\s\S]*?recommendation_eligible !== true[\s\S]*?capacityReviewCopy/,
+    "配置建模状态与显存风险状态没有独立渲染",
+  );
+  assert.doesNotMatch(
+    shellSource,
+    /确认仅作为建模草案应用|当前候选不是可启动推荐，确认后只能作为建模草案应用/,
+    "显存风险操作仍使用建模草案文案",
+  );
+  assert.doesNotMatch(
+    shellSource,
+    /修改任一补齐值后会重新复验|个缺失的模型结构参数，请核对预填值/,
+    "绿色配置复验状态仍保留旧的冗长说明",
+  );
+  assert.match(
+    shellSource,
+    /mcp-completion-plan is-single[\s\S]*?mcp-completion-plan__card-heading[\s\S]*?heading\.append\(name\)[\s\S]*?appendCapacityBadge\(heading, preferred\?\.capacity_assessment\)/,
+    "单方案的 HBM 标签没有与方案名放在同一行",
+  );
+  assert.doesNotMatch(
+    sourceStyle,
+    /\.mcp-completion-plan__capacity\.is-safe/,
+    "安全候选仍保留容量标签样式",
+  );
   assert.ok(
     !shellSource.includes("这些值无法从源文件还原。")
       && !shellSource.includes("第三栏已提供全部补齐项"),
@@ -824,13 +869,23 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
   );
   assert.match(
     sourceStyle,
+    /\.mcp-completion-status\.is-review::before\s*\{[\s\S]*?border:\s*1\.5px solid currentColor;[\s\S]*?content:\s*"!";/,
+    "橙色审核状态没有统一的线性感叹号图标",
+  );
+  assert.match(
+    sourceStyle,
     /\.mcp-completion-plan__confirmation\s*\{[\s\S]*?var\(--warning\)/,
     "待核对内容没有保留黄色确认提示",
   );
   assert.match(
     sourceStyle,
-    /\.mcp-completion-plan__confirmation > span\s*\{[\s\S]*?max-height:\s*7em;[\s\S]*?overflow-y:\s*auto;/,
-    "第三栏的黄色确认横幅正文没有限制为五行并启用内部滚动",
+    /\.mcp-completion-plan__confirmation input\s*\{[\s\S]*?appearance:\s*none;[\s\S]*?background:\s*transparent;[\s\S]*?\.mcp-completion-plan__confirmation input:checked\s*\{[\s\S]*?background:\s*var\(--warning\);/,
+    "暗黑主题下的待核对复选框仍可能使用浏览器默认白色填充",
+  );
+  assert.match(
+    sourceStyle,
+    /\.mcp-completion-plan__confirmation > span\s*\{[\s\S]*?max-height:\s*5\.6em;[\s\S]*?overflow-y:\s*auto;/,
+    "第三栏的黄色确认横幅正文没有限制为四行并启用内部滚动",
   );
   const baseline = read(baselineHtmlFile);
   assert.match(baseline, /id="croImportApply"[^>]*>应用<\/button>/, "导入弹窗按钮没有改为“应用”");
@@ -859,6 +914,21 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
     sourceStyle,
     /\.mcp-import__workspace\.has-missing-inputs\s*\{[\s\S]*?grid-template-columns:[^;]+;[\s\S]*?\}/,
     "导入弹窗有缺项时没有切换为三栏",
+  );
+  assert.match(
+    sourceStyle,
+    /\.mcp-import__workspace\.is-awaiting-validation\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\);[\s\S]*?\.mcp-import__result-pane\[hidden\]\s*\{[\s\S]*?display:\s*none;/,
+    "导入弹窗尚未开始校验时没有隐藏结果栏并让输入栏占满宽度",
+  );
+  assert.match(
+    shellSource,
+    /function setImportValidationStarted\(started\)[\s\S]*?is-awaiting-validation[\s\S]*?resultPane\.hidden = !started[\s\S]*?function resetImported[\s\S]*?setImportValidationStarted\(false\)[\s\S]*?async function parseImported[\s\S]*?setImportValidationStarted\(true\)/,
+    "导入弹窗没有在初始态与校验态之间切换单栏和结果栏",
+  );
+  assert.doesNotMatch(
+    shellSource,
+    /mcpImportCodeTitle|codeTitle\.textContent = "配置代码"/,
+    "导入弹窗仍保留“配置代码”标题",
   );
   assert.match(
     sourceStyle,
@@ -922,7 +992,7 @@ test("配置下拉与导入弹窗提供带 Tool 影响告知的直接导入分�
   );
   assert.match(
     shellSource,
-    /mcp-import-issues__continue[\s\S]*?applyParsed\(context\.state\.current, report, \{ useCompletion: false \}\)/,
+    /mcp-import-issues__continue[\s\S]*?const appliedCurrent = context\.state\.current;[\s\S]*?applyParsed\(appliedCurrent, report, \{ useCompletion: false \}\)/,
     "继续导入没有明确绕过补齐候选",
   );
   assert.match(
@@ -1081,6 +1151,41 @@ test("补齐后的样例配置继续在配置步进器显示用户所选名称",
   );
 });
 
+test("用户导入配置应用后可从配置下拉恢复解析报告与补齐栏", () => {
+  const importSource = read(importFile);
+  const shellSource = read(mcpShellEntryFile);
+  assert.match(
+    importSource,
+    /croImport\.selectAppliedImport[\s\S]*?activeImportedSignature = currentConfigSignature\(\)[\s\S]*?adjusted: false[\s\S]*?restoreMergedSelection\(\)/,
+    "配置下拉没有保存已应用导入文件的来源身份和配置快照",
+  );
+  assert.match(
+    importSource,
+    /cro:imported-config-preview-requested[\s\S]*?cancelable: true[\s\S]*?if \(!doc\.dispatchEvent\(previewRequest\)\) return;/,
+    "自定义配置分支没有给 MCP 适配层恢复导入预览的机会",
+  );
+  assert.match(
+    shellSource,
+    /const appliedImport = \{ current: null, signature: null, adjusted: \[\], source: null \}[\s\S]*?function rememberAppliedImport[\s\S]*?selectAppliedImport/,
+    "MCP 适配层没有持久保存刚应用的导入结果",
+  );
+  assert.match(
+    shellSource,
+    /function renderAppliedImportPreview\(event\)[\s\S]*?renderParseReportWithoutLede[\s\S]*?renderMissingInputs\(current\.result, appliedImport, pane, applyButton\)[\s\S]*?is-applied-snapshot[\s\S]*?control\.disabled = true/,
+    "配置下拉没有以只读方式恢复导入时的第二栏和第三栏",
+  );
+  assert.match(
+    shellSource,
+    /preserveRenderedState[\s\S]*?new Map\(state\.current\.supplements\)[\s\S]*?preservedSupplements\?\.has\(path\)/,
+    "重新渲染已应用快照时仍会丢失用户在第三栏确认过的补齐值",
+  );
+  assert.match(
+    shellSource,
+    /const appliedCurrent = imported\.current;[\s\S]*?applyParsed\(appliedCurrent[\s\S]*?rememberAppliedImport\(appliedCurrent, adjusted\)/,
+    "导入应用成功后没有登记可从配置下拉恢复的快照",
+  );
+});
+
 test("配置选择面板保留来源说明并删除重复的解析总账", () => {
   const baseline = read(baselineHtmlFile);
   const observer = read(path.join(baselineDirectory, "config-relation-observer.html"));
@@ -1183,6 +1288,15 @@ test("第 12 项以 compute_rank_topology 快照驱动原 Rank 页面", () => {
   assert.match(planeSource,
     /memoryObservation = true;[\s\S]*?tpGroupsVisible = true;[\s\S]*?layerDetailVisible = false;/,
     "再次进入内存预估时应开启 TP 标注并保持 Stage 聚合");
+  assert.match(planeSource,
+    /const off = id === "node" && !allowed;[\s\S]*?memoryObservation && id === "rank"[\s\S]*?六段内存与 HBM 容量都按本机卡数汇总后填色/,
+    "内存预估应允许切换 Rank/整机视角，并只在物理节点边界不成立时禁用整机档");
+  assert.match(planeSource,
+    /function buildMemoryStack\(measure, cardCount = 1\)[\s\S]*?const capacity = measure\.cap \* cards;[\s\S]*?measure\.values\[key\][\s\S]*?\* cards;[\s\S]*?buildMemoryStack\(memoryMeasure, span\)/,
+    "整机内存填色应同时聚合六段占用和物理 HBM 容量，不能把首卡读数冒充整机");
+  assert.match(planeSource,
+    /const memoryScope = isNode \? `整机合计（\$\{memoryCards\} 卡）` : "单卡";[\s\S]*?m\.total \* memoryCards[\s\S]*?m\.cap \* memoryCards[\s\S]*?m\.values\.reserve \* memoryCards/,
+    "整机内存悬浮信息应按本机卡数汇总总量、容量和六段明细");
   assert.match(planeSource,
     /function fitViewport\(\)[\s\S]*?tools\.getBoundingClientRect\(\)[\s\S]*?y1: clamp\(controlsTop, v\.y0, v\.y1\)[\s\S]*?const v = fitViewport\(\);/,
     "画布适配区域应避让右下控制栏所在的整行");
@@ -1536,8 +1650,8 @@ test("第 17 项资源收口不得破坏页面初始化主链路", () => {
   const baselineHash = crypto.createHash("sha256").update(fs.readFileSync(baselineHtmlFile)).digest("hex");
   assert.equal(
     baselineHash,
-    "0033a9acc8fdf3df448606242245d9dd89330f63e71629c1631734a00262dca2",
-    "除已确认的卡容量表单、MCP 适配度、YAML 源码保真、画布控制栏、退役原型导航和 Rank 入门入口清理外，不得意外改写 4173 主页面基线",
+    "bd4e2c0d8ff466f3414a4c8665d603b1e5e0ca36b7741df736834b46c3f5c6e1",
+    "除已确认的卡容量表单、MCP 适配度、YAML 源码保真、画布控制栏、整机内存填色、退役原型导航和 Rank 入门入口清理外，不得意外改写 4173 主页面基线",
   );
 });
 

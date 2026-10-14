@@ -440,7 +440,7 @@
     + "\n前五个度量**不受**这根轴影响：那次事故改的是路由分布本身，把它一并算进"
     + "显存与耗时是另一回事，这里不替你下那个结论。";
 
-  /* 冷蓝 → 火红。六段线性插值，亮度单调上升（深色底上「越热越亮」这条不能破）。
+  /* 冷蓝 → 暖红。六段线性插值，橙色只是高位过渡，最高值固定收束到红色。
      中途绕开绿色：绿在这套色板里是「安全 / 正常」的语义色，热力图的中段出现一片
      绿会被读成一档状态，而它其实只是「不冷不热」。 */
   /* 色阶表、插值、图例渐变都在共享规则层；本页固定深色、只用默认表。 */
@@ -1330,8 +1330,8 @@
   fitBtn.type = "button";
   fitBtn.title = "把整幅平面缩放到刚好放进画布";
 
-  /* 第一段：内存预估 / 拓扑全景。拓扑全景固定打开 TP 与 Layer 标注；内存预估沿用
-     原来的 Rank 聚合显存视图。 */
+  /* 第一段：内存预估 / 拓扑全景。拓扑全景固定打开 TP 与 Layer 标注；内存预估把
+     每个 Stage 的同构单卡结果投到当前 Rank / 整机视角，整机档按本机卡数聚合。 */
   const canvasModeTabs = el("div", "segmented-control segmented-control-muted crop-tool-section crop-canvas-modes");
   canvasModeTabs.setAttribute("role", "group");
   canvasModeTabs.setAttribute("aria-label", "画布模式");
@@ -1340,7 +1340,7 @@
   memoryBtn.type = "button";
   memoryBtn.dataset.canvasMode = "memory";
   memoryBtn.setAttribute("aria-pressed", "true");
-  const memoryAvailableTitle = "每个 Rank 聚合成一个格子，按 HBM 容量显示底座、权重、梯度、优化器态、激活与预留占比";
+  const memoryAvailableTitle = "按 Rank 或整机视角显示 HBM 占用；整机档汇总本机所有卡的容量与底座、权重、梯度、优化器态、激活、预留";
   memoryBtn.title = memoryAvailableTitle;
   const topologyBtn = el("button", "btn btn-sm", "拓扑全景");
   topologyBtn.type = "button";
@@ -1953,7 +1953,7 @@
     memoryLegend.style.bottom = `${bottom}px`;
   }
 
-  function syncMemoryLegend(heatMode, measures) {
+  function syncMemoryLegend(heatMode, measures, unit) {
     memoryLegend.hidden = !heatMode;
     if (!heatMode) return;
     positionMemoryLegend();
@@ -1981,10 +1981,12 @@
          230% 都会被写成 100%，换卡之后看起来像容量没有进入计算。 */
       const rawRatio = Math.max(0, selectedMeasure.ratio);
       const ratio = clamp(rawRatio, 0, 1);
-      memoryLegendCaption.textContent = `R${selectedRank} · HBM 占用`;
+      const selectedNode = topology.coordsOfRank(selectedRank).node;
+      const selectedLabel = unit === "node" ? `整机 ${selectedNode}` : `R${selectedRank}`;
+      memoryLegendCaption.textContent = `${selectedLabel} · HBM 占用`;
       placeMemoryLegendMarker(memoryLegendRank, ratio,
-        `R${selectedRank} · ${Math.round(rawRatio * 100)}%`);
-      memoryLegend.title = `Rank ${selectedRank} 的 HBM 占用为 ${Math.round(rawRatio * 100)}%`;
+        `${selectedLabel} · ${Math.round(rawRatio * 100)}%`);
+      memoryLegend.title = `${selectedLabel} 的 HBM 占用为 ${Math.round(rawRatio * 100)}%`;
       return;
     }
 
@@ -1998,8 +2000,9 @@
     memoryLegendTrack.style.setProperty("--memory-max", `${(hiRatio * 100).toFixed(3)}%`);
     placeMemoryLegendMarker(memoryLegendMin, loRatio, `最小 ${Math.round(loRawRatio * 100)}%`);
     placeMemoryLegendMarker(memoryLegendMax, hiRatio, `最大 ${Math.round(hiRawRatio * 100)}%`);
-    memoryLegendCaption.textContent = "Rank HBM 占用 · 当前范围";
-    memoryLegend.title = `当前 Rank HBM 占用范围 ${Math.round(loRawRatio * 100)}%–${Math.round(hiRawRatio * 100)}%`
+    const scopeLabel = unit === "node" ? "整机 HBM 占用" : "Rank HBM 占用";
+    memoryLegendCaption.textContent = `${scopeLabel} · 当前范围`;
+    memoryLegend.title = `当前${scopeLabel}范围 ${Math.round(loRawRatio * 100)}%–${Math.round(hiRawRatio * 100)}%`
       + "；冷蓝 = 占用低，火红 = 占用高";
   }
 
@@ -2438,13 +2441,15 @@
       const id = btn.dataset.unit;
       btn.classList.toggle("is-selected", id === unit);
       btn.setAttribute("aria-pressed", String(id === unit));
-      const off = memoryObservation || (id === "node" && !allowed);
+      const off = id === "node" && !allowed;
       btn.disabled = off;
-      if (memoryObservation) {
-        btn.title = "内存预估固定为 Rank 视角：一格对应一张卡";
-      } else if (off) {
+      if (off) {
         btn.title = `这组配置不给整机视角：一台 ${rpn} 卡的机器会骑在两个副本之间`
           + `（每副本 ${layout ? layout.ranksPerDp : "?"} 卡，除不尽），聚出来的格子会说谎`;
+      } else if (memoryObservation && id === "rank") {
+        btn.title = "一行 = 一张卡；填色分母是这张卡的物理 HBM 容量";
+      } else if (memoryObservation) {
+        btn.title = `一行 = 一台整机（${rpn} 张卡）；六段内存与 HBM 容量都按本机卡数汇总后填色`;
       } else if (id === "rank") {
         btn.title = `${unitMode === "auto" ? "当前由缩放自动选择；" : ""}一行 = 一张卡（rank）`;
       } else {
@@ -3208,19 +3213,24 @@
     ["optim", "优化器态"], ["act", "激活"], ["reserve", "预留"],
   ];
 
-  function buildMemoryStack(measure) {
+  function buildMemoryStack(measure, cardCount = 1) {
     const stack = el("div", "crop-memory-stack");
     if (!measure || !(measure.cap > 0)) return stack;
+    const cards = Math.max(1, Number(cardCount) || 1);
+    const capacity = measure.cap * cards;
+    stack.dataset.memoryScope = cards > 1 ? "node" : "rank";
+    stack.dataset.cards = String(cards);
     let cursor = 0;
     MEMORY_SEGMENTS.forEach(([key, label]) => {
-      const value = Math.max(0, measure.values[key] || 0);
-      if (!(value > 0) || cursor >= measure.cap) return;
-      const visible = Math.min(value, measure.cap - cursor);
+      const value = Math.max(0, measure.values[key] || 0) * cards;
+      if (!(value > 0) || cursor >= capacity) return;
+      const visible = Math.min(value, capacity - cursor);
       const seg = el("span", "crop-memory-segment");
       seg.dataset.seg = key;
-      seg.style.bottom = `${(cursor / measure.cap * 100).toFixed(4)}%`;
-      seg.style.height = `${(visible / measure.cap * 100).toFixed(4)}%`;
-      seg.title = `${label} ${(value / HEAT_GIB).toFixed(1)} GB`;
+      seg.style.bottom = `${(cursor / capacity * 100).toFixed(4)}%`;
+      seg.style.height = `${(visible / capacity * 100).toFixed(4)}%`;
+      seg.title = `${label} ${(value / HEAT_GIB).toFixed(1)} GB`
+        + (cards > 1 ? `（${cards} 卡合计）` : "");
       stack.appendChild(seg);
       cursor += value;
     });
@@ -3360,7 +3370,7 @@
     const memoryByStage = memoryObservation && global.croCapacityModel
       ? global.croCapacityModel.measureAll(topology) : [];
     const memoryHeatMode = memoryObservation && memoryHeatAtScale(k);
-    syncMemoryLegend(memoryHeatMode && memoryByStage.length > 0, memoryByStage);
+    syncMemoryLegend(memoryHeatMode && memoryByStage.length > 0, memoryByStage, unit);
     /* （原先整机行顶上还压着一条「整机 N · rank a–b」的标签带。它与左边的行标
        说的是同一件事，同屏出现两次纯属重复 —— 而且那条带横贯整个 stage 块，每 8
        行来一条，把「一整套专家」那层颜色压在下面。现在整机号与 rank 区间都归左边
@@ -3603,13 +3613,14 @@
              个可点的对象，data-kind="expert" 照旧，pick() 顺着父格子取坐标。 */
           if (memoryObservation && col.type === "stage") {
             cell.classList.add("is-memory");
+            ds.memoryScope = isNode ? "node" : "rank";
             const memoryMeasure = memoryByStage[block.stage];
             if (memoryHeatMode && memoryMeasure) {
               ds.heat = "1";
               ds.memoryHeat = "1";
               cell.style.setProperty("--crop-heat", heatColor(clamp(memoryMeasure.ratio, 0, 1)));
             } else {
-              cell.appendChild(buildMemoryStack(memoryMeasure));
+              cell.appendChild(buildMemoryStack(memoryMeasure, span));
             }
           } else if (showDetail) {
             /* 铺不出编号时盒子里给区间与个数。整机档一行跨了几个 EP，区间要从首尾
@@ -3720,15 +3731,20 @@
       if (memoryObservation && global.croCapacityModel) {
         const m = global.croCapacityModel.measureAll(topology)[Number(stageNo)];
         if (m) {
+          const memoryCards = isNode ? span : 1;
+          const memoryScope = isNode ? `整机合计（${memoryCards} 卡）` : "单卡";
           const summary = `${who} · 内存预估\nPP Stage${stageNo} · Layer ${entry.lo}–${entry.hi}`
-            + `\n总占用 ${(m.total / HEAT_GIB).toFixed(1)} / ${(m.cap / HEAT_GIB).toFixed(0)} GB`
+            + `\n${memoryScope} ${(m.total * memoryCards / HEAT_GIB).toFixed(1)}`
+            + ` / ${(m.cap * memoryCards / HEAT_GIB).toFixed(0)} GB`
             + `（${Math.round(m.ratio * 100)}%）`;
           /* 100% 以下是总占用热力视角：气泡也不偷渡内部分类和占比细节。 */
           if (memoryHeatAtScale(view.k)) return summary;
           return summary
-            + `\n权重 ${(m.values.weight / HEAT_GIB).toFixed(1)} · 梯度 ${(m.values.grad / HEAT_GIB).toFixed(1)}`
-            + ` · 优化器态 ${(m.values.optim / HEAT_GIB).toFixed(1)} GB`
-            + `\n激活 ${(m.values.act / HEAT_GIB).toFixed(1)} · 预留 ${(m.values.reserve / HEAT_GIB).toFixed(1)} GB`;
+            + `\n权重 ${(m.values.weight * memoryCards / HEAT_GIB).toFixed(1)}`
+            + ` · 梯度 ${(m.values.grad * memoryCards / HEAT_GIB).toFixed(1)}`
+            + ` · 优化器态 ${(m.values.optim * memoryCards / HEAT_GIB).toFixed(1)} GB`
+            + `\n激活 ${(m.values.act * memoryCards / HEAT_GIB).toFixed(1)}`
+            + ` · 预留 ${(m.values.reserve * memoryCards / HEAT_GIB).toFixed(1)} GB`;
         }
       }
       return `${who} × PP Stage${stageNo}\nLayer ${entry.lo}–${entry.hi} 的聚合视图`

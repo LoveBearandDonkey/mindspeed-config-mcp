@@ -1160,8 +1160,9 @@ html[data-theme="dark"] .crop-ruler__corner {
   box-shadow: inset 0 0 0 var(--crop-selected-line, 1.5px) var(--primary);
 }
 
-/* 内存预估：一格就是一张 Rank 卡，段高相对物理 HBM 容量自底向上堆叠。
-   色值直接复用右栏单卡容量的语义变量，主题与口径保持一致。 */
+/* 内存预估：Rank 视角一格是一张卡；整机视角一格是一台机器，六段数值与物理
+   HBM 容量同时乘本机卡数后再自底向上堆叠。两档占用率一致，但整机悬浮读数给
+   本机合计，不拿首卡冒充整机。色值复用右栏单卡容量的语义变量。 */
 .crop-cell.is-memory {
   position: absolute;
   padding: 0;

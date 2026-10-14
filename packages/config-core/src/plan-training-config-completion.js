@@ -1,8 +1,9 @@
 import { suggestConfigFixes } from "./suggest-config-fixes.js";
+import { estimateTrainingCapacity } from "./estimate-training-capacity.js";
 import { validateParallelConfig } from "./validate-parallel-config.js";
 import { parallelWorld } from "./page-rules.js";
 
-const COMPLETION_SOURCE = "mindspeed-config-mcp:plan-training-config-completion@0.2.2";
+const COMPLETION_SOURCE = "mindspeed-config-mcp:plan-training-config-completion@0.3.0";
 const DEEPSEEK_SOURCE = "compute-graph-viewer-wzh:config-test/hf_deepseekv3_config.json";
 const OPENPANGU_SOURCE = "apps/web/config-relation-plane-baseline/training-run-twin-standalone/openPangu-2.0-Flash架构参考.md#4-关键参数全部-source-verified";
 const OPENPANGU_STRUCTURE = Object.freeze({
@@ -74,6 +75,52 @@ function deletePath(value, path) {
 
 function completion(path, value, reason, confidence = "model-informed", sourceRef = COMPLETION_SOURCE) {
   return { path, value, reason, confidence, source_ref: sourceRef };
+}
+
+function capacityAssessment(config) {
+  const result = estimateTrainingCapacity(config);
+  const stages = result.data?.stages ?? [];
+  if (result.status !== "estimated" || result.data?.valid !== true || !stages.length) {
+    return {
+      status: "unavailable",
+      confidence: "theoretical",
+      launch_feasible: false,
+      recommendation_eligible: false,
+      level: "unavailable",
+      warning_codes: (result.warnings ?? []).map((warning) => warning.code),
+    };
+  }
+  const bottleneck = stages.find((stage) => stage.stage === result.data.bottleneck_stage)
+    ?? stages.reduce((largest, current) => current.ratio > largest.ratio ? current : largest);
+  return {
+    status: "estimated",
+    confidence: result.confidence,
+    launch_feasible: bottleneck.ratio <= 1,
+    recommendation_eligible: bottleneck.ratio <= result.data.thresholds.tight,
+    level: bottleneck.level,
+    bottleneck_stage: bottleneck.stage,
+    bottleneck_ratio: Number(bottleneck.ratio.toFixed(6)),
+    estimated_gib: Number(bottleneck.total_gib.toFixed(3)),
+    capacity_gib: bottleneck.capacity_gib,
+    thresholds: { ...result.data.thresholds },
+    warning_codes: (result.warnings ?? []).map((warning) => warning.code),
+  };
+}
+
+function finalizePlans(plans) {
+  const eligible = plans.filter((candidate) => (
+    candidate.capacity_assessment.recommendation_eligible
+  ));
+  const recommended = eligible.find((candidate) => candidate.recommendation_requested) ?? null;
+  return [...plans]
+    .sort((left, right) => (
+      Number(right === recommended) - Number(left === recommended)
+    ))
+    .map((candidate) => {
+      const isRecommended = candidate === recommended;
+      const { recommendation_requested: ignored, ...output } = candidate;
+      return { ...output, recommended: isRecommended };
+    });
 }
 
 function sameValue(left, right) {
@@ -305,7 +352,7 @@ function plan(id, label, summary, config, values, recommended = false) {
     id,
     label,
     summary,
-    recommended,
+    recommendation_requested: recommended,
     confidence: values.some((item) => item.confidence === "requires-confirmation")
       ? "requires-confirmation"
       : (values.some((item) => item.confidence === "model-informed")
@@ -317,6 +364,7 @@ function plan(id, label, summary, config, values, recommended = false) {
       errors: validation.errors,
       warnings: validation.warnings,
     },
+    capacity_assessment: capacityAssessment(config),
   };
 }
 
@@ -443,7 +491,7 @@ export function planTrainingConfigCompletion(normalizedConfig, missingRequiredFi
   const needsConfirmation = values.some((item) => item.confidence === "requires-confirmation");
   const sourcePlan = plan(
     "source-faithful",
-    needsConfirmation ? "最小可校验起点（需确认）" : "保留源配置语义（推荐）",
+    needsConfirmation ? "最小可校验起点（需确认）" : "保留源配置语义",
     needsConfirmation
       ? "源代码不足以恢复真实模型结构；MCP 已即时生成静态合法的最小起点，结构占位必须由用户确认。"
       : (base.parallel.pipeline_layer_mode === "mindformers-offset"
@@ -469,7 +517,7 @@ export function planTrainingConfigCompletion(normalizedConfig, missingRequiredFi
     expanded.cluster.total_ranks = parallelWorld(expanded);
     const expandedPlan = plan(
       "preserve-parallel-expansion",
-      "保留并行切分并扩容（推荐）",
+      "保留并行切分并扩容",
       `保留 EP=${expanded.parallel.ep} 等源配置切分，把 DP 调整为 ${expanded.parallel.dp}，总 Rank 调整为 ${expanded.cluster.total_ranks}。`,
       expanded,
       completionValuesForCandidate(values, base, expanded, sourcePlan.validation.errors),
@@ -525,11 +573,16 @@ export function planTrainingConfigCompletion(normalizedConfig, missingRequiredFi
     if (fallbackPlan.validation.status === "valid") plans.push(fallbackPlan);
   }
 
+  const finalizedPlans = finalizePlans(plans);
   return {
     computation: "runtime-per-parse",
-    strategy: "evidence-plus-constraint-solver",
-    complete: plans.length > 0,
+    strategy: "evidence-plus-constraint-solver-and-theoretical-capacity-gate",
+    complete: finalizedPlans.length > 0,
+    launch_feasible: finalizedPlans.some((candidate) => (
+      candidate.capacity_assessment.launch_feasible
+    )),
+    recommended_plan_id: finalizedPlans.find((candidate) => candidate.recommended)?.id ?? null,
     unresolved_fields: [],
-    plans,
+    plans: finalizedPlans,
   };
 }

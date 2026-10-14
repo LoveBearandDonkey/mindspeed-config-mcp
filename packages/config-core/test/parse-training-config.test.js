@@ -349,9 +349,15 @@ torchrun train.py \\
 `, "shell", "unknown-megatron-command.sh"));
 
   assert.equal(result.data.completion.computation, "runtime-per-parse");
-  assert.equal(result.data.completion.strategy, "evidence-plus-constraint-solver");
+  assert.equal(
+    result.data.completion.strategy,
+    "evidence-plus-constraint-solver-and-theoretical-capacity-gate",
+  );
   assert.ok(result.data.completion.plans.length > 0);
   assert.ok(result.data.completion.plans.every((plan) => plan.validation.status === "valid"));
+  assert.ok(result.data.completion.plans.every((plan) => (
+    plan.capacity_assessment.confidence === "theoretical"
+  )));
   assert.equal(result.data.completion.plans[0].proposed_config.cluster.total_ranks, 128);
   assert.equal(result.data.completion.plans[0].proposed_config.memory.parameter_dtype, "bf16");
   assert.ok(result.data.missing_required_fields.includes("model.vocab_size"));
