@@ -137,6 +137,119 @@ test("Ulysses 和 Ring 使用各自的 CP 约束", () => {
   assert.ok(ring.errors.some((item) => item.code === "MINDSPEED_RING_SEQUENCE_DIVISIBLE_BY_2CP"));
 });
 
+test("Hybrid 与 Adaptive CP 使用锁定 MindSpeed 版本的独立约束", () => {
+  const hybrid = validateParallelConfig(createTrainingConfig({
+    parallel: {
+      cp: 8,
+      cp_mode: "hybrid",
+      ulysses_degree_in_cp: 2,
+      cp_window_size: 2,
+    },
+    cluster: { total_ranks: 128, card_model: "昇腾 910B" },
+    batch: { sequence_length: 32768 },
+  }));
+  assert.equal(hybrid.status, "valid");
+
+  const invalid = validateParallelConfig(createTrainingConfig({
+    parallel: {
+      cp: 8,
+      cp_mode: "hybrid-adaptive",
+      ulysses_degree_in_cp: 3,
+    },
+    cluster: { total_ranks: 128 },
+    batch: { sequence_length: 32770 },
+  }));
+  const codes = new Set(invalid.errors.map(({ code }) => code));
+  assert.ok(codes.has("MINDSPEED_HYBRID_CP_DEGREES_FORM_CP"));
+  assert.ok(codes.has("MINDSPEED_HYBRID_CP_HEADS_DIVISIBLE_BY_ULYSSES_TP"));
+  assert.ok(codes.has("MINDSPEED_HYBRID_ADAPTIVE_CP_SEQUENCE_DIVISIBLE_BY_CP"));
+});
+
+test("MC2/CoC、AMPipe、2D TP 与 ND MatMul 返回稳定诊断码", () => {
+  const featureCases = [
+    [
+      { model: { routed_experts: 0, top_k: 0, shared_experts: 0 }, parallel: { ep: 1 }, features: { use_ascend_mc2: true, use_ascend_coc: true } },
+      "MINDSPEED_MC2_COC_MUTUALLY_EXCLUSIVE",
+    ],
+    [
+      { features: { ampipe_degree: 2, moe_model_type: "megatron_moe" } },
+      "MINDSPEED_AMPIPE_REQUIRES_FLASH_ATTENTION",
+    ],
+    [
+      { features: { tp_2d: true, tp_x: 1, tp_y: 2 } },
+      "MINDSPEED_TP2D_INCOMPATIBLE_WITH_SEQUENCE_PARALLEL",
+    ],
+    [
+      { features: { use_nd_matmul: true, normalization: "layernorm", loading_checkpoint: true } },
+      "MINDSPEED_ND_MATMUL_INCOMPATIBLE_WITH_LAYERNORM",
+    ],
+  ];
+
+  for (const [overrides, expectedCode] of featureCases) {
+    const result = validateParallelConfig(createTrainingConfig(overrides));
+    assert.ok(result.errors.some(({ code }) => code === expectedCode), expectedCode);
+  }
+});
+
+test("MoE dispatcher overlap 校验 dispatcher、异步置换、grouped GEMM 与 TP extend EP", () => {
+  const invalid = validateParallelConfig(createTrainingConfig({
+    features: {
+      moe_token_dispatcher_type: "alltoall",
+      moe_alltoall_overlap_comm: true,
+    },
+  }));
+  const codes = new Set(invalid.errors.map(({ code }) => code));
+  assert.ok(codes.has("MINDSPEED_MOE_ALLTOALL_OVERLAP_REQUIRES_ALLTOALL_SEQ"));
+  assert.ok(codes.has("MINDSPEED_MOE_OVERLAP_REQUIRES_ASYNC_PERMUTATION"));
+  assert.ok(codes.has("MINDSPEED_MOE_OVERLAP_REQUIRES_GROUPED_GEMM"));
+  assert.ok(codes.has("MINDSPEED_MOE_ALLTOALL_OVERLAP_TP_REQUIRES_EXTEND_EP"));
+
+  const valid = validateParallelConfig(createTrainingConfig({
+    features: {
+      moe_token_dispatcher_type: "alltoall_seq",
+      moe_alltoall_overlap_comm: true,
+      moe_permutation_async_comm: true,
+      moe_grouped_gemm: true,
+      moe_tp_extend_ep: true,
+    },
+  }));
+  assert.equal(valid.status, "valid");
+});
+
+test("静态策略建议不改变合法性，并携带硬件、版本、假设和来源", () => {
+  const result = validateParallelConfig(createTrainingConfig({
+    parallel: { cp: 8 },
+    cluster: { total_ranks: 128, card_model: "昇腾 910B" },
+    batch: { sequence_length: 32768 },
+  }));
+
+  assert.equal(result.status, "valid");
+  assert.ok(result.suggestions.some(({ code }) => code === "MINDSPEED_CP_SLICE_BELOW_DEVICE_HEURISTIC"));
+  assert.ok(result.suggestions.every((item) => (
+    item.applicable_hardware.length > 0
+      && item.applicable_versions.length > 0
+      && item.assumptions.length > 0
+      && item.source_ref
+  )));
+  assert.equal(result.warnings.some(({ code }) => code.includes("CP_SLICE")), false);
+});
+
+test("未知卡型的 CP 候选明确标为合法范围而非性能推荐", () => {
+  const result = validateParallelConfig(createTrainingConfig({
+    cluster: { total_ranks: 16, card_model: "昇腾 950PR" },
+    parallel: { tp: 2, cp: 1 },
+    batch: { sequence_length: 8192 },
+  }));
+  const cpSuggestion = result.suggestions.find(({ code }) => (
+    code === "MINDSPEED_CP_DIVISIBILITY_SEARCH_SPACE"
+  ));
+
+  assert.ok(cpSuggestion);
+  assert.match(cpSuggestion.message, /CP 候选范围（非性能推荐）/);
+  assert.match(cpSuggestion.message, /无法据此判断快慢/);
+  assert.match(cpSuggestion.message, /Profiling 或实测/);
+});
+
 test("Attention Heads 必须能均分到 KV Heads", () => {
   const result = validateParallelConfig(createTrainingConfig({
     model: { num_attention_heads: 32, num_key_value_heads: 6 },

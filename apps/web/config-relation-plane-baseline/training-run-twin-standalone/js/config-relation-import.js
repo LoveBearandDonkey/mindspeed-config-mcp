@@ -902,10 +902,8 @@
 
     openBtn.addEventListener("click", open);
     el.close.addEventListener("click", close);
-    panel.addEventListener("click", (event) => { if (event.target === panel) close(); });
-    doc.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && !panel.hidden) close();
-    });
+    /* 导入内容可能尚未应用，点击遮罩或误按 Escape 都不应丢掉当前编辑状态。
+       关闭只交给明确的退出入口：基础页的关闭按钮，以及 MCP 适配层复用它的 × / 取消。 */
 
     el.text.addEventListener("input", () => syncClearButton());
     el.text.addEventListener("keydown", (event) => {

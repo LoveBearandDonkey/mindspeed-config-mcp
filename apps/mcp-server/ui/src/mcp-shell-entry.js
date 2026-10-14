@@ -23,7 +23,9 @@ import {
 import {
   installValidationAdapter,
   pageConfigToTrainingConfig,
+  parseValidationSummary,
   pipelineSettingsForPreset,
+  renderParseValidationDetails,
 } from "@mcp-bridge/mcp-validation-adapter.js";
 import { installTopologyAdapter } from "@mcp-bridge/mcp-topology-adapter.js";
 import { installFixesAdapter } from "@mcp-bridge/mcp-fixes-adapter.js";
@@ -216,7 +218,13 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     "rule_profile.framework": [["mindspeed-core", "MindSpeed Core"], ["mindspeed-llm-mcore", "MindSpeed-LLM MCore"], ["mindformers", "MindFormers"]],
     "parallel.pipeline_layer_mode": [["uniform", "均匀 PP"], ["dynamic", "动态 PP"], ["mindformers-offset", "MindFormers PP 层偏置"]],
     "parallel.ep_mode": [["split", "切分域"], ["orthogonal", "正交域"], ["mf", "MindFormers EP 域"]],
-    "parallel.cp_mode": [["ulysses", "Ulysses"], ["ring", "Ring"]],
+    "parallel.cp_mode": [
+      ["ulysses", "Ulysses"],
+      ["ring", "Ring"],
+      ["hybrid", "Hybrid"],
+      ["adaptive", "Adaptive"],
+      ["hybrid-adaptive", "Hybrid Adaptive"],
+    ],
     "memory.compute_dtype": [["bf16", "BF16"], ["fp16", "FP16"], ["fp8", "FP8"]],
     "memory.parameter_dtype": [["bf16", "BF16"], ["fp32", "FP32"]],
     "memory.recompute_mode": [["none", "不重计算"], ["selective", "选择性"], ["layers", "按层数"], ["full", "全量"]],
@@ -303,7 +311,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     scoreLine.className = "mcp-parse-banner__line";
     score.classList.add("mcp-parse-banner__text");
     scoreLine.append(score);
-    const validationLine = document.createElement("p");
+    const validationLine = document.createElement("div");
     validationLine.className = "mcp-parse-banner__line mcp-completion-status is-pending";
     validationLine.dataset.mcpParseValidation = "";
     validationLine.innerHTML = '<span class="mcp-parse-banner__text">等待 MCP 规则检查…</span>';
@@ -833,6 +841,31 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     if (state) line.classList.add(`is-${state}`);
     const text = line.querySelector(".mcp-parse-banner__text");
     if (text) text.textContent = String(copy).replace(/。$/, "");
+    if (["pending", "danger"].includes(state)) {
+      line.querySelector("[data-mcp-parse-validation-details]")?.remove();
+      line.classList.remove("has-validation-details");
+    }
+  }
+
+  function syncParseValidationDetails(line, result) {
+    if (!line) return;
+    line.querySelector("[data-mcp-parse-validation-details]")?.remove();
+    line.classList.remove("has-validation-details");
+    const errors = result?.errors ?? [];
+    const body = renderParseValidationDetails(result);
+    if (!body) return;
+    const details = document.createElement("details");
+    details.className = "mcp-parse-validation-details";
+    details.dataset.mcpParseValidationDetails = "";
+    details.open = errors.length > 0;
+    const summary = document.createElement("summary");
+    summary.textContent = parseValidationSummary(result);
+    const content = document.createElement("div");
+    content.className = "mcp-parse-validation-details__body";
+    content.innerHTML = body;
+    details.append(summary, content);
+    line.append(details);
+    line.classList.add("has-validation-details");
   }
 
   function syncParseScoreState(score, result) {
@@ -1111,7 +1144,13 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     const status = completionStatusForPane(pane);
     if (!status || !current) return;
     if (current.completionValidation !== "valid") {
-      setParseBannerLine(status, "review", "MCP 已列出缺失项和冲突项；请调整后重新检查。");
+      setParseBannerLine(
+        status,
+        "review",
+        current.completionResult
+          ? "完整候选配置尚未通过 MCP 规则检查；可展开查看静态规则问题。"
+          : "MCP 已列出缺失项和冲突项；补齐前不会执行高级静态规则与策略建议。",
+      );
     } else {
       setParseBannerLine(
         status,
@@ -1119,6 +1158,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
         "原配置与补填项合并后的完整配置，已通过 MCP 规则检查。",
       );
     }
+    syncParseValidationDetails(status, current.completionResult);
     syncCompletionCapacityStatus(current, pane);
   }
 
@@ -1358,6 +1398,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
       if (state.current !== current || current.completionToken !== token) return;
       const valid = result.status === "valid" && !(result.errors ?? []).length;
       current.completionValidation = valid ? "valid" : "invalid";
+      current.completionResult = result;
       const previousCapacity = currentCapacityAssessment(current);
       current.capacityAssessment = capacityAssessmentFromResult(capacityResult);
       if (current.capacityAssessment.recommendation_eligible !== true
@@ -1372,12 +1413,14 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
           "review",
           `当前填写值仍需调整：${(result.errors ?? []).map((item) => item.message).join("；")}`,
         );
+        syncParseValidationDetails(status, result);
         syncCompletionCapacityStatus(current, pane);
       } else syncCompletionStatus(current, pane);
       syncCompletionConfirmation(current, pane);
     } catch (error) {
       if (state.current !== current || current.completionToken !== token) return;
       current.completionValidation = "invalid";
+      current.completionResult = null;
       if (status) {
         setParseBannerLine(
           status,
@@ -1434,6 +1477,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     setParseBannerMode(pane, showPane);
     const plansHost = pane.querySelector(".mcp-completion-plans");
     plansHost.replaceChildren();
+    pane.querySelector(":scope > .mcp-completion-plan__confirmation")?.remove();
     const fields = pane.querySelector(".mcp-missing-pane__fields");
     fields.replaceChildren();
     const title = pane.querySelector("[data-mcp-completion-title]");
@@ -1522,7 +1566,9 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
       syncApplyState(state, applyButton);
     });
     confirmation.append(checkbox, text);
-    plansHost.append(confirmation);
+    /* 方案卡与补齐字段共用第三栏滚动区；确认条单独作为 pane 的直接子项，
+       到达滚动区顶部后才能在后续全部字段滚动期间持续吸附。 */
+    plansHost.insertAdjacentElement("afterend", confirmation);
     state.current.supplements = new Map();
     state.current.supplementsValid = true;
     const prefillModelValues = new Map();
@@ -1656,6 +1702,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     );
     if (!preserveRenderedState) {
       state.current.completionValidation = preferred?.validation?.status === "valid" ? "valid" : "invalid";
+      state.current.completionResult = preferred?.validation ?? null;
     }
     syncCompletionStatus(state.current, pane);
     syncCompletionConfirmation(state.current, pane);
@@ -1725,6 +1772,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
           ? "当前内置预设已通过 MCP 规则检查"
           : `当前内置预设仍需调整：${(result.errors ?? []).map((item) => item.message).join("；")}`,
       );
+      syncParseValidationDetails(status, result);
       const capacity = capacityAssessmentFromResult(capacityResult);
       const capacityState = capacity?.status === "estimated" && capacity.launch_feasible === false
         ? "danger"

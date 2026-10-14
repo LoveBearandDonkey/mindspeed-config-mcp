@@ -1,0 +1,57 @@
+{
+  "hybrid": {
+    "status": "valid",
+    "error_codes": [],
+    "suggestion_codes": [
+      "MINDSPEED_AUTO_SETTINGS_CP_SEARCH_SPACE",
+      "MINDSPEED_CP_SLICE_BELOW_DEVICE_HEURISTIC",
+      "MINDSPEED_HCCL_GROUP_BUFFER_ADAPTIVE"
+    ]
+  },
+  "compatibility": {
+    "status": "invalid",
+    "error_codes": [
+      "MINDSPEED_COC_INCOMPATIBLE_WITH_MOE",
+      "MINDSPEED_MC2_COC_MUTUALLY_EXCLUSIVE",
+      "MINDSPEED_MC2_INCOMPATIBLE_WITH_MOE",
+      "MINDSPEED_ND_MATMUL_INCOMPATIBLE_WITH_CHECKPOINT_LOAD",
+      "MINDSPEED_ND_MATMUL_INCOMPATIBLE_WITH_LAYERNORM",
+      "MINDSPEED_TP2D_FACTORS_MATCH_TP",
+      "MINDSPEED_TP2D_INCOMPATIBLE_WITH_COC",
+      "MINDSPEED_TP2D_INCOMPATIBLE_WITH_MOE",
+      "MINDSPEED_TP2D_INCOMPATIBLE_WITH_SEQUENCE_PARALLEL"
+    ],
+    "suggestion_codes": []
+  },
+  "strategy": {
+    "status": "valid",
+    "warning_codes": [],
+    "suggestion_codes": [
+      "MINDSPEED_AUTO_SETTINGS_CP_SEARCH_SPACE",
+      "MINDSPEED_CP_SLICE_BELOW_DEVICE_HEURISTIC",
+      "MINDSPEED_HCCL_GROUP_BUFFER_ADAPTIVE"
+    ],
+    "cp_search_space": {
+      "hardware_profile": "910B/A2G",
+      "minimum_sequence_per_cp": 8192,
+      "maximum_cp_from_world_and_tp": 64,
+      "divisible_cp_degrees": [1, 2, 4, 8, 16, 32, 64],
+      "eligible_cp_degrees": [1, 2, 4],
+      "current_cp_eligible": false
+    },
+    "hccl_buffer": {
+      "unit": "MiB",
+      "ep_load_imbalance_factor": 1,
+      "groups": {
+        "tp": 32,
+        "pp": 16,
+        "pp_new_stream": 16,
+        "mp": 10,
+        "mp_exp": 10,
+        "tp_cp": 10,
+        "exp": 32,
+        "cp": 16
+      }
+    }
+  }
+}

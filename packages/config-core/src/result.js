@@ -17,12 +17,44 @@ export function diagnostic(code, message, fields, source, sourceRef, formula) {
   return value;
 }
 
+export function suggestion({
+  code,
+  kind = "suggestion",
+  confidence = "theoretical",
+  message,
+  fields = [],
+  applicableHardware = [],
+  applicableVersions = [],
+  assumptions = [],
+  source = "mindspeed-rule",
+  sourceRef,
+  formula,
+  data,
+}) {
+  const value = {
+    code,
+    kind,
+    confidence,
+    message,
+    fields,
+    applicable_hardware: applicableHardware,
+    applicable_versions: applicableVersions,
+    assumptions,
+    source,
+    source_ref: sourceRef,
+  };
+  if (formula) value.formula = formula;
+  if (data) value.data = data;
+  return value;
+}
+
 export function toolResult({
   tool,
   input,
   status,
   errors = [],
   warnings = [],
+  suggestions = [],
   assumptions = [],
   confidence = "deterministic",
   data = {},
@@ -35,6 +67,7 @@ export function toolResult({
     source_versions: { ...SOURCE_VERSIONS },
     errors,
     warnings,
+    suggestions,
     assumptions,
     confidence,
     data,

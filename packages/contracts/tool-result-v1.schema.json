@@ -12,6 +12,7 @@
     "source_versions",
     "errors",
     "warnings",
+    "suggestions",
     "assumptions",
     "confidence",
     "data"
@@ -50,6 +51,10 @@
       "type": "array",
       "items": { "$ref": "#/$defs/diagnostic" }
     },
+    "suggestions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/suggestion" }
+    },
     "assumptions": {
       "type": "array",
       "items": { "type": "string" }
@@ -62,6 +67,50 @@
     }
   },
   "$defs": {
+    "suggestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "kind",
+        "confidence",
+        "message",
+        "fields",
+        "applicable_hardware",
+        "applicable_versions",
+        "assumptions",
+        "source",
+        "source_ref"
+      ],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["advisory", "suggestion"] },
+        "confidence": { "enum": ["theoretical", "model-informed", "calibrated"] },
+        "message": { "type": "string", "minLength": 1 },
+        "fields": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "applicable_hardware": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "applicable_versions": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "assumptions": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "source": {
+          "enum": ["page-rule", "mindspeed-rule", "megatron-rule", "parser-rule", "compatibility-gap"]
+        },
+        "source_ref": { "type": "string", "minLength": 1 },
+        "formula": { "type": "string" },
+        "data": { "type": "object" }
+      }
+    },
     "diagnostic": {
       "type": "object",
       "additionalProperties": false,

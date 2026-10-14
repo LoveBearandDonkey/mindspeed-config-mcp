@@ -32,8 +32,10 @@ import {
   createPagePresetContextTracker,
   isDismissibleValidationState,
   pageConfigToTrainingConfig,
+  parseValidationSummary,
   pipelineSettingsForPreset,
   renderValidationConclusion,
+  renderParseValidationDetails,
   validationMarks,
 } from "../ui/src/mcp-validation-adapter.js";
 
@@ -404,6 +406,13 @@ test("原页面表单可转换为校验 Tool 输入，结论包含公式并定�
   assert.equal(dynamic.rule_profile.framework, "mindspeed-llm-mcore");
   assert.deepEqual(dynamic.parallel.num_layer_list, [12, 12, 11, 11]);
 
+  const advancedCp = pageConfigToTrainingConfig(
+    { ...pageConfig, cpMode: "hybrid-adaptive" },
+    topologyApi,
+  );
+  assert.equal(advancedCp.parallel.cp_mode, "hybrid-adaptive",
+    "导入的高级 CP 模式不得在页面适配层静默折回 Ulysses");
+
   const unfilledDynamic = pageConfigToTrainingConfig(
     { ...pageConfig, totalLayer: 46, pp: 4, dp: 2 },
     topologyApi,
@@ -464,6 +473,12 @@ test("原页面表单可转换为校验 Tool 输入，结论包含公式并定�
     status: "valid",
     errors: [],
     warnings: [],
+    suggestions: [{
+      code: "MINDSPEED_AUTO_SETTINGS_CP_SEARCH_SPACE",
+      message: "按卡型裁剪 CP 候选。",
+      applicable_hardware: ["昇腾 910B"],
+      applicable_versions: ["MindSpeed 0.12.1"],
+    }],
     assumptions: ["不代表实机运行通过。"],
     data: {
       world_size: 8,
@@ -474,8 +489,69 @@ test("原页面表单可转换为校验 Tool 输入，结论包含公式并定�
   });
   assert.doesNotMatch(validHtml, /mcp-validation__eyebrow|mcp-validation__head/);
   assert.match(validHtml, /配置合法，符合已建模的数学约束/);
+  assert.match(validHtml, /静态策略建议 · 1/);
+  assert.match(validHtml, /data-rule-code="MINDSPEED_AUTO_SETTINGS_CP_SEARCH_SPACE"/);
+  assert.match(validHtml, /适用卡型：昇腾 910B/);
+  assert.match(validHtml, /理论推导得到的建议，未含实测收益/);
+  assert.doesNotMatch(validHtml, /依据：|规则版本：|收益排序仍需 Profiling 或实测/);
   assert.doesNotMatch(validHtml, /mcp-validation__metrics|world size =|PP 分层 =|EP 口径 =/);
   assert.doesNotMatch(validHtml, /mcp-validation__offline/);
+});
+
+test("导入与预设横幅可展开同一份静态规则和策略建议", () => {
+  const html = renderParseValidationDetails({
+    errors: [{
+      message: "MC2 与 CoC 不能同时启用。",
+      formula: "!(use_ascend_mc2 && use_ascend_coc)",
+    }],
+    warnings: [{
+      message: "当前页面口径与 MindSpeed 规则存在差异。",
+      formula: "framework === mindspeed-llm-mcore",
+    }],
+    suggestions: [{
+      code: "MINDSPEED_HCCL_GROUP_BUFFER_ADAPTIVE",
+      confidence: "theoretical",
+      message: "可评估 HCCL Buffer 自适应。",
+      applicable_hardware: ["昇腾 NPU"],
+      applicable_versions: ["MindSpeed 0.12.1"],
+    }],
+  });
+
+  assert.doesNotMatch(html, /静态规则问题/);
+  assert.match(html, /MC2 与 CoC/);
+  assert.match(html, /mcp-validation__compatibility-section/);
+  assert.match(html, /当前页面口径与 MindSpeed 规则存在差异/);
+  assert.doesNotMatch(html, /<b>兼容性提醒<\/b>/);
+  assert.doesNotMatch(html, /非阻塞策略建议/);
+  assert.match(html, /data-rule-code="MINDSPEED_HCCL_GROUP_BUFFER_ADAPTIVE"/);
+  assert.match(html, /适用卡型：昇腾 NPU/);
+  assert.doesNotMatch(html, /依据：|规则版本：/);
+
+  assert.equal(
+    parseValidationSummary({ errors: [{}], warnings: [{}], suggestions: [{}, {}] }),
+    "查看 1 条静态规则问题、1 条兼容性提醒与 2 条策略建议",
+  );
+  assert.equal(
+    parseValidationSummary({ errors: [], warnings: [{}], suggestions: [] }),
+    "查看 1 条兼容性提醒",
+  );
+  assert.equal(
+    parseValidationSummary({ errors: [], warnings: [], suggestions: [{}, {}] }),
+    "静态策略建议 · 2",
+  );
+});
+
+test("合法配置的兼容性提醒只渲染黄色分点而不重复标题", () => {
+  const html = renderValidationConclusion({
+    status: "valid",
+    errors: [],
+    warnings: [{ message: "页面规则与框架规则存在差异。" }],
+    suggestions: [],
+  });
+
+  assert.match(html, /mcp-validation__warnings/);
+  assert.match(html, /页面规则与框架规则存在差异/);
+  assert.doesNotMatch(html, /<b>提醒<\/b>|<b>兼容性提醒<\/b>/);
 });
 
 test("重新校验时只清理 MCP 结论，不篡改页面自身的阻断和建议状态", () => {

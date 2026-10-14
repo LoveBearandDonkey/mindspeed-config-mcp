@@ -383,6 +383,7 @@ function plan(id, label, summary, config, values, recommended = false) {
       status: validation.status,
       errors: validation.errors,
       warnings: validation.warnings,
+      suggestions: validation.suggestions,
     },
     capacity_assessment: capacityAssessment(config),
   };

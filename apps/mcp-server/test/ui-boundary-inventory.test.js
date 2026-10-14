@@ -613,8 +613,8 @@ test("配置下拉与导入弹窗共用四行配置智能解析横幅", () => {
   );
   assert.match(
     sourceStyle,
-    /\.mcp-parse-banner \.cro-config-error__title\s*\{[\s\S]*?color:\s*transparent;[\s\S]*?linear-gradient\(90deg, var\(--primary\), var\(--success\)\);/,
-    "配置智能解析与补齐标题没有沿用补齐标题的渐变文字色",
+    /\.mcp-parse-banner \.cro-config-error__title\s*\{[\s\S]*?color:\s*transparent;[\s\S]*?linear-gradient\(90deg, var\(--primary\), var\(--success\)\);[\s\S]*?font-size:\s*12px;/,
+    "配置智能解析与补齐标题没有使用渐变文字色和 12px 字号",
   );
   assert.match(
     sourceStyle,
@@ -1009,6 +1009,21 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
     sourceStyle,
     /\.mcp-completion-plan__confirmation > span\s*\{[\s\S]*?max-height:\s*5\.6em;[\s\S]*?overflow-y:\s*auto;/,
     "第三栏的黄色确认横幅正文没有限制为四行并启用内部滚动",
+  );
+  assert.match(
+    sourceStyle,
+    /\.mcp-missing-pane\s*\{[\s\S]*?overflow-y:\s*auto;[\s\S]*?\.mcp-missing-pane__fields\s*\{[\s\S]*?overflow:\s*visible;/,
+    "第三栏的补齐方案与配置字段没有共用同一个滚动区",
+  );
+  assert.match(
+    sourceStyle,
+    /\.mcp-completion-plan__confirmation\s*\{[\s\S]*?position:\s*sticky;[\s\S]*?top:\s*0;/,
+    "第三栏的黄色确认横幅没有在滚动触顶后固定",
+  );
+  assert.match(
+    shellSource,
+    /plansHost\.insertAdjacentElement\("afterend", confirmation\)/,
+    "黄色确认横幅没有脱离方案列表，无法在字段滚动期间持续固定",
   );
   const baseline = read(baselineHtmlFile);
   assert.match(baseline, /id="croImportApply"[^>]*>应用<\/button>/, "导入弹窗按钮没有改为“应用”");
@@ -1511,8 +1526,8 @@ test("第 13 项以 suggest_config_fixes 驱动原建议区域并保留字段锁
   );
   assert.match(
     sourceStyle,
-    /\.mcp-validation__warnings\s*\{[\s\S]*?border:\s*1px solid[\s\S]*?var\(--warning\)[\s\S]*?background:\s*linear-gradient[\s\S]*?\}/,
-    "提醒内容应使用黄色警示横幅",
+    /\.mcp-validation__warnings\s*\{[\s\S]*?border:\s*1px solid[\s\S]*?var\(--warning\)[\s\S]*?background:\s*linear-gradient[\s\S]*?\}[\s\S]*?\.mcp-validation__warnings \.mcp-validation__diagnostic,[\s\S]*?color:\s*var\(--warning\);/,
+    "提醒内容与分点应使用黄色警示语义",
   );
   assert.match(
     sourceStyle,

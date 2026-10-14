@@ -25,6 +25,11 @@ Token 鉴权已经实现。生产
 纯计算入口由 `packages/config-core/src/index.js` 统一导出。当前 Rank 语义为
 `page-derived`，容量置信等级为 `theoretical`。
 
+`validate_parallel_config` 现已同时覆盖 Hybrid/Adaptive CP、MC2/CoC、AMPipe、2D TP、
+ND MatMul、MoE dispatcher/overlap 和重计算组合约束。合法配置还会在独立的
+`suggestions` 中返回卡型 CP 搜索空间、HCCL Buffer 与容量方向建议；这些 advisory
+不参与 `valid/invalid` 判定，性能排序仍需 Profiling 或实测。
+
 ## 目录
 
 ```text

@@ -44,6 +44,10 @@
       "relevant_paths": [
         "mindspeed/arguments.py",
         "mindspeed/auto_settings/config/model_config.py",
+        "mindspeed/auto_settings/module/search/stage_1_prune.py",
+        "mindspeed/core/hccl_buffer/hccl_adaptive_func.py",
+        "docs/zh/features/hccl-group-buffer-set.md",
+        "docs/zh/features/hybrid-context-parallel.md",
         "docs/zh/release_notes_core.md",
         "README.md"
       ]

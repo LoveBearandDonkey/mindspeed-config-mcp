@@ -95,6 +95,21 @@ const parameterDtype = (value) => {
   if (["bf16", "bfloat16"].includes(normalized)) return "bf16";
   throw new TypeError(`无法归一化参数精度 ${JSON.stringify(value)}`);
 };
+const cpMode = (value) => {
+  const normalized = lower(value).replaceAll("_cp_algo", "").replaceAll("-", "_");
+  if (normalized === "ulysses") return "ulysses";
+  if (["ring", "megatron"].includes(normalized)) return "ring";
+  if (normalized === "hybrid") return "hybrid";
+  if (normalized === "adaptive") return "adaptive";
+  if (normalized === "hybrid_adaptive") return "hybrid-adaptive";
+  throw new TypeError(`无法归一化 CP 算法 ${JSON.stringify(value)}`);
+};
+const normalization = (value) => {
+  const normalized = lower(value);
+  if (normalized === "layernorm") return "layernorm";
+  if (["rmsnorm", "rms_norm"].includes(normalized)) return "rmsnorm";
+  return "other";
+};
 
 const integerList = (value) => {
   const items = Array.isArray(value) ? value : String(value).split(",");
@@ -146,8 +161,9 @@ define(["pipeline-layer-mode", "pp-layer-mode"], "parallel.pipeline_layer_mode",
 define(["num-layer-list", "pipeline-stage-layers"], "parallel.num_layer_list", integerList);
 definePath(["model.model-config.offset"], "parallel.pipeline_layer_offsets", integerMatrix);
 define(["ep-mode", "expert-parallel-mode"], "parallel.ep_mode", lower);
-define(["cp-mode", "context-parallel-mode"], "parallel.cp_mode", lower);
-define(["context-parallel-algo"], "parallel.cp_mode", (value) => lower(value).includes("ulysses") ? "ulysses" : "ring");
+define(["cp-mode", "context-parallel-mode", "context-parallel-algo"], "parallel.cp_mode", cpMode);
+define(["ulysses-degree-in-cp"], "parallel.ulysses_degree_in_cp", integer);
+define(["cp-window-size"], "parallel.cp_window_size", integer);
 define(["sequence-parallel", "use-seq-parallel"], "parallel.sequence_parallel", boolean);
 define(["vocab-embedding-data-parallel", "vocab-emb-dp"], "parallel.vocab_embedding_data_parallel", boolean);
 define(["expert-tensor-parallel", "expert-tensor-parallel-size"], "parallel.expert_tensor_parallel", (value) => {
@@ -179,6 +195,41 @@ define(["use-distributed-optimizer", "parallel-optimizer"], "memory.shard_mode",
 define(["use-fsdp2", "fsdp2"], "memory.shard_mode", enabledEnum("fsdp2", "none"));
 define(["lora", "lora-enabled"], "memory.lora_enabled", boolean);
 define(["lora-rank"], "memory.lora_rank", integer);
+
+define(["use-flash-attn", "use-flash-attention"], "features.use_flash_attention", boolean);
+define(["use-ascend-mc2"], "features.use_ascend_mc2", boolean);
+define(["use-ascend-coc"], "features.use_ascend_coc", boolean);
+define(["ampipe-degree"], "features.ampipe_degree", integer);
+define(["moe-model-type"], "features.moe_model_type", lower);
+define(["add-bias-linear"], "features.add_bias_linear", boolean);
+define(["overlap-grad-reduce"], "features.overlap_grad_reduce", boolean);
+define(["overlap-param-gather"], "features.overlap_param_gather", boolean);
+define(["use-nanopipe"], "features.use_nanopipe", boolean);
+define(["recompute-in-bubble"], "features.recompute_in_bubble", boolean);
+define(["recompute-in-advance"], "features.recompute_in_advance", boolean);
+define(["adaptive-recompute-device-swap"], "features.adaptive_recompute", boolean);
+define(["adaptive-recompute-device-size"], "features.adaptive_recompute", (value) => number(value) > 0);
+define(["adaptive-memory-optimization"], "features.adaptive_memory_optimization", boolean);
+define(["tp-2d"], "features.tp_2d", boolean);
+define(["tp-x"], "features.tp_x", integer);
+define(["tp-y"], "features.tp_y", integer);
+define(["use-fused-rmsnorm"], "features.use_fused_rmsnorm", boolean);
+define(["use-nd-matmul"], "features.use_nd_matmul", boolean);
+define(["normalization"], "features.normalization", normalization);
+define(["load", "pretrained-checkpoint"], "features.loading_checkpoint", () => true);
+define(["nd1-dim1-size"], "features.nd1_dim1_size", integer);
+define(["nd2-dim1-size"], "features.nd2_dim1_size", integer);
+define(["moe-token-dispatcher-type"], "features.moe_token_dispatcher_type", lower);
+define(["moe-alltoall-overlap-comm"], "features.moe_alltoall_overlap_comm", boolean);
+define(["moe-allgather-overlap-comm"], "features.moe_allgather_overlap_comm", boolean);
+define(["moe-permutation-async-comm"], "features.moe_permutation_async_comm", boolean);
+define(["moe-grouped-gemm"], "features.moe_grouped_gemm", boolean);
+define(["moe-tp-extend-ep"], "features.moe_tp_extend_ep", boolean);
+define(["moe-adaptive-recompute-activation"], "features.moe_adaptive_recompute_activation", boolean);
+define(["moe-bmm-mc2"], "features.moe_bmm_mc2", boolean);
+define(["hccl-group-buffer-adaptive"], "features.hccl_group_buffer_adaptive", boolean);
+define(["hccl-ep-group-buffer-adaptive-factor"], "features.hccl_ep_group_buffer_adaptive_factor", number);
+define(["use-cp-send-recv-overlap"], "features.use_cp_send_recv_overlap", boolean);
 
 definePath(["zero-optimization.stage"], "memory.shard_mode", (value) => {
   const stage = integer(value);

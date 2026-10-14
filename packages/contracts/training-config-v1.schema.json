@@ -109,7 +109,11 @@
           }
         },
         "ep_mode": { "enum": ["split", "orthogonal", "mf"] },
-        "cp_mode": { "enum": ["ulysses", "ring"] },
+        "cp_mode": {
+          "enum": ["ulysses", "ring", "hybrid", "adaptive", "hybrid-adaptive"]
+        },
+        "ulysses_degree_in_cp": { "type": "integer", "minimum": 1 },
+        "cp_window_size": { "type": "integer", "minimum": 1 },
         "sequence_parallel": { "type": "boolean" },
         "vocab_embedding_data_parallel": { "type": "boolean" },
         "expert_tensor_parallel": { "type": "boolean" }
@@ -155,6 +159,50 @@
         "shard_mode": { "enum": ["none", "zero1", "fsdp2"] },
         "lora_enabled": { "type": "boolean" },
         "lora_rank": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "use_flash_attention": { "type": "boolean" },
+        "use_ascend_mc2": { "type": "boolean" },
+        "use_ascend_coc": { "type": "boolean" },
+        "ampipe_degree": { "type": "integer", "minimum": 1 },
+        "moe_model_type": { "enum": ["megatron_moe", "deepspeed_moe"] },
+        "add_bias_linear": { "type": "boolean" },
+        "overlap_grad_reduce": { "type": "boolean" },
+        "overlap_param_gather": { "type": "boolean" },
+        "use_nanopipe": { "type": "boolean" },
+        "recompute_in_bubble": { "type": "boolean" },
+        "recompute_in_advance": { "type": "boolean" },
+        "adaptive_recompute": { "type": "boolean" },
+        "adaptive_memory_optimization": { "type": "boolean" },
+        "tp_2d": { "type": "boolean" },
+        "tp_x": { "type": "integer", "minimum": 1 },
+        "tp_y": { "type": "integer", "minimum": 1 },
+        "use_fused_rmsnorm": { "type": "boolean" },
+        "use_nd_matmul": { "type": "boolean" },
+        "normalization": { "enum": ["rmsnorm", "layernorm", "other"] },
+        "loading_checkpoint": { "type": "boolean" },
+        "nd1_dim1_size": { "type": "integer", "minimum": 1 },
+        "nd2_dim1_size": { "type": "integer", "minimum": 1 },
+        "moe_token_dispatcher_type": {
+          "enum": ["allgather", "alltoall", "alltoall_seq"]
+        },
+        "moe_alltoall_overlap_comm": { "type": "boolean" },
+        "moe_allgather_overlap_comm": { "type": "boolean" },
+        "moe_permutation_async_comm": { "type": "boolean" },
+        "moe_grouped_gemm": { "type": "boolean" },
+        "moe_tp_extend_ep": { "type": "boolean" },
+        "moe_adaptive_recompute_activation": { "type": "boolean" },
+        "moe_bmm_mc2": { "type": "boolean" },
+        "hccl_group_buffer_adaptive": { "type": "boolean" },
+        "use_cp_send_recv_overlap": { "type": "boolean" },
+        "hccl_ep_group_buffer_adaptive_factor": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
       }
     },
     "policy": {

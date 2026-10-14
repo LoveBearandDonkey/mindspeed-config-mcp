@@ -124,6 +124,32 @@ torchrun pretrain_gpt.py \\
   )));
 });
 
+test("解析高级静态约束字段并保留 Hybrid Adaptive CP 语义", () => {
+  const result = parseTrainingConfig({
+    schema_version: "1.0",
+    rule_profile: { framework: "mindspeed-core", version: "0.12.1" },
+    source: {
+      format: "shell",
+      name: "advanced.sh",
+      content: "python train.py --context-parallel-algo hybrid_adaptive_cp_algo --ulysses-degree-in-cp 2 --cp-window-size 1 --use-ascend-mc2 --tp-2d --tp-x 2 --tp-y 4 --moe-token-dispatcher-type alltoall_seq --moe-alltoall-overlap-comm --hccl-group-buffer-adaptive --hccl-ep-group-buffer-adaptive-factor 1.5 --load ckpt",
+    },
+  });
+
+  assert.equal(result.data.normalized_config.parallel.cp_mode, "hybrid-adaptive");
+  assert.equal(result.data.normalized_config.parallel.ulysses_degree_in_cp, 2);
+  assert.deepEqual(result.data.normalized_config.features, {
+    use_ascend_mc2: true,
+    tp_2d: true,
+    tp_x: 2,
+    tp_y: 4,
+    moe_token_dispatcher_type: "alltoall_seq",
+    moe_alltoall_overlap_comm: true,
+    hccl_group_buffer_adaptive: true,
+    hccl_ep_group_buffer_adaptive_factor: 1.5,
+    loading_checkpoint: true,
+  });
+});
+
 test("解析嵌套 YAML 并保留来源路径", () => {
   const result = parseTrainingConfig(input(`
 model:

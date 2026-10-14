@@ -198,7 +198,9 @@ export function pageConfigToTrainingConfig(config, topologyApi, pipelineSettings
       ...(numLayerList ? { num_layer_list: numLayerList } : {}),
       ...(pipelineLayerOffsets ? { pipeline_layer_offsets: pipelineLayerOffsets } : {}),
       ep_mode: epMode,
-      cp_mode: config.cpMode === "ring" ? "ring" : "ulysses",
+      cp_mode: ["ulysses", "ring", "hybrid", "adaptive", "hybrid-adaptive"].includes(config.cpMode)
+        ? config.cpMode
+        : "ulysses",
       sequence_parallel: Boolean(config.seqParallel),
       vocab_embedding_data_parallel: Boolean(config.vocabEmbDp),
       expert_tensor_parallel: Boolean(config.expertTp),
@@ -259,10 +261,58 @@ function diagnosticItems(items) {
     + `</li>`).join("");
 }
 
+function strategyItems(items) {
+  return items.map((item) => {
+    const scope = (item.applicable_hardware ?? []).length
+      ? `适用卡型：${item.applicable_hardware.join("、")}`
+      : "";
+    return `<li class="mcp-validation__strategy-item" data-rule-code="${escapeHtml(item.code)}">`
+      + `<span>${escapeHtml(item.message)}</span>`
+      + (scope ? `<small>${escapeHtml(scope)}</small>` : "")
+      + `</li>`;
+  }).join("");
+}
+
+export function parseValidationSummary(result) {
+  const errors = result?.errors?.length ?? 0;
+  const warnings = result?.warnings?.length ?? 0;
+  const suggestions = result?.suggestions?.length ?? 0;
+  if (errors) {
+    const suffix = warnings && suggestions
+      ? `、${warnings} 条兼容性提醒与 ${suggestions} 条策略建议`
+      : (warnings
+        ? `与 ${warnings} 条兼容性提醒`
+        : (suggestions ? `与 ${suggestions} 条策略建议` : ""));
+    return `查看 ${errors} 条静态规则问题${suffix}`;
+  }
+  if (warnings) {
+    return suggestions
+      ? `查看 ${warnings} 条兼容性提醒与 ${suggestions} 条策略建议`
+      : `查看 ${warnings} 条兼容性提醒`;
+  }
+  return `静态策略建议 · ${suggestions}`;
+}
+
+export function renderParseValidationDetails(result) {
+  const errors = result?.errors ?? [];
+  const warnings = result?.warnings ?? [];
+  const suggestions = result?.suggestions ?? [];
+  return (errors.length
+    ? `<section class="mcp-validation__error-section"><ol>${diagnosticItems(errors)}</ol></section>`
+    : "")
+    + (warnings.length
+      ? `<section class="mcp-validation__compatibility-section"><ul>${diagnosticItems(warnings)}</ul></section>`
+      : "")
+    + (suggestions.length
+      ? `<section class="mcp-validation__strategy-section"><ul>${strategyItems(suggestions)}</ul></section>`
+      : "");
+}
+
 export function renderValidationConclusion(result) {
   if (!result) return "";
   const errors = result.errors ?? [];
   const warnings = result.warnings ?? [];
+  const suggestions = result.suggestions ?? [];
   const valid = result.status === "valid" && errors.length === 0;
   const title = warnings.length ? `静态校验通过 · ${warnings.length} 条提醒` : "静态校验通过";
   const state = valid ? (warnings.length ? "warning" : "valid") : "invalid";
@@ -280,7 +330,12 @@ export function renderValidationConclusion(result) {
       : "")
     + (errors.length ? `<ol class="mcp-validation__list">${diagnosticItems(errors)}</ol>` : "")
     + (warnings.length
-      ? `<div class="mcp-validation__warnings"><b>提醒</b><ul>${diagnosticItems(warnings)}</ul></div>`
+      ? `<div class="mcp-validation__warnings"><ul>${diagnosticItems(warnings)}</ul></div>`
+      : "")
+    + (valid && suggestions.length
+      ? `<details class="mcp-validation__strategies"><summary>静态策略建议 · ${suggestions.length}</summary>`
+        + `<p>理论推导得到的建议，未含实测收益</p>`
+        + `<ul>${strategyItems(suggestions)}</ul></details>`
       : "")
     + `</section>`;
 }
