@@ -26,6 +26,7 @@ import {
   toPagePartial,
 } from "../ui/src/mcp-parse-adapter.js";
 import {
+  capacityPressureFor,
   capacityModelEvidenceGaps,
   clearValidationMarks,
   clearValidationPresentation,
@@ -475,6 +476,7 @@ test("原页面表单可转换为校验 Tool 输入，结论包含公式并定�
     warnings: [],
     suggestions: [{
       code: "MINDSPEED_AUTO_SETTINGS_CP_SEARCH_SPACE",
+      kind: "advisory",
       message: "按卡型裁剪 CP 候选。",
       applicable_hardware: ["昇腾 910B"],
       applicable_versions: ["MindSpeed 0.12.1"],
@@ -489,10 +491,8 @@ test("原页面表单可转换为校验 Tool 输入，结论包含公式并定�
   });
   assert.doesNotMatch(validHtml, /mcp-validation__eyebrow|mcp-validation__head/);
   assert.match(validHtml, /配置合法，符合已建模的数学约束/);
-  assert.match(validHtml, /静态策略建议 · 1/);
-  assert.match(validHtml, /data-rule-code="MINDSPEED_AUTO_SETTINGS_CP_SEARCH_SPACE"/);
-  assert.match(validHtml, /适用卡型：昇腾 910B/);
-  assert.match(validHtml, /理论推导得到的建议，未含实测收益/);
+  assert.doesNotMatch(validHtml, /调优参考|建议处理/);
+  assert.doesNotMatch(validHtml, /data-rule-code="MINDSPEED_AUTO_SETTINGS_CP_SEARCH_SPACE"/);
   assert.doesNotMatch(validHtml, /依据：|规则版本：|收益排序仍需 Profiling 或实测/);
   assert.doesNotMatch(validHtml, /mcp-validation__metrics|world size =|PP 分层 =|EP 口径 =/);
   assert.doesNotMatch(validHtml, /mcp-validation__offline/);
@@ -510,6 +510,7 @@ test("导入与预设横幅可展开同一份静态规则和策略建议", () =>
     }],
     suggestions: [{
       code: "MINDSPEED_HCCL_GROUP_BUFFER_ADAPTIVE",
+      kind: "advisory",
       confidence: "theoretical",
       message: "可评估 HCCL Buffer 自适应。",
       applicable_hardware: ["昇腾 NPU"],
@@ -523,13 +524,14 @@ test("导入与预设横幅可展开同一份静态规则和策略建议", () =>
   assert.match(html, /当前页面口径与 MindSpeed 规则存在差异/);
   assert.doesNotMatch(html, /<b>兼容性提醒<\/b>/);
   assert.doesNotMatch(html, /非阻塞策略建议/);
-  assert.match(html, /data-rule-code="MINDSPEED_HCCL_GROUP_BUFFER_ADAPTIVE"/);
-  assert.match(html, /适用卡型：昇腾 NPU/);
+  assert.doesNotMatch(html, /data-rule-code="MINDSPEED_HCCL_GROUP_BUFFER_ADAPTIVE"/);
   assert.doesNotMatch(html, /依据：|规则版本：/);
 
   assert.equal(
-    parseValidationSummary({ errors: [{}], warnings: [{}], suggestions: [{}, {}] }),
-    "查看 1 条静态规则问题、1 条兼容性提醒与 2 条策略建议",
+    parseValidationSummary({
+      errors: [{}], warnings: [{}], suggestions: [{ kind: "suggestion" }, { kind: "advisory" }],
+    }),
+    "查看 1 条静态规则问题、1 条兼容性提醒与 1 条策略建议",
   );
   assert.equal(
     parseValidationSummary({ errors: [], warnings: [{}], suggestions: [] }),
@@ -537,8 +539,46 @@ test("导入与预设横幅可展开同一份静态规则和策略建议", () =>
   );
   assert.equal(
     parseValidationSummary({ errors: [], warnings: [], suggestions: [{}, {}] }),
-    "静态策略建议 · 2",
+    "静态校验通过",
   );
+});
+
+test("容量偏满时才把未启用的 HCCL 自适应提升为建议处理", () => {
+  const result = {
+    status: "valid",
+    errors: [],
+    warnings: [],
+    suggestions: [{
+      code: "MINDSPEED_HCCL_GROUP_BUFFER_ADAPTIVE",
+      kind: "advisory",
+      message: "仅在显存偏满时评估。",
+      data: {
+        enabled: false,
+        action: "试加 --hccl-group-buffer-adaptive。",
+        impact_if_ignored: "配置仍然合法。",
+        groups: { tp: 32, pp: 16 },
+      },
+    }],
+  };
+  const safe = renderValidationConclusion(result);
+  assert.doesNotMatch(safe, /调优参考|HCCL|200 MiB/);
+  assert.doesNotMatch(safe, /建议处理 · 1/);
+
+  const tight = renderValidationConclusion(result, { capacityPressure: true });
+  assert.match(tight, /建议处理 · 1/);
+  assert.match(tight, /怎么做：/);
+  assert.match(tight, /不处理：/);
+  assert.match(tight, /tp 32 MiB · pp 16 MiB/);
+
+  assert.equal(capacityPressureFor({
+    THRESHOLD: { tight: 0.8 },
+    measureShown: () => ({ ratio: 0.79 }),
+    measureAll: () => [{ ratio: 0.95 }],
+  }), false);
+  assert.equal(capacityPressureFor({
+    THRESHOLD: { tight: 0.8 },
+    measureShown: () => ({ ratio: 0.81 }),
+  }), true);
 });
 
 test("合法配置的兼容性提醒只渲染黄色分点而不重复标题", () => {

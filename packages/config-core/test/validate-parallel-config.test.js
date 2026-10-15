@@ -224,7 +224,16 @@ test("静态策略建议不改变合法性，并携带硬件、版本、假设�
   }));
 
   assert.equal(result.status, "valid");
-  assert.ok(result.suggestions.some(({ code }) => code === "MINDSPEED_CP_SLICE_BELOW_DEVICE_HEURISTIC"));
+  const cpSuggestion = result.suggestions.find(({ code }) => (
+    code === "MINDSPEED_CP_SLICE_BELOW_DEVICE_HEURISTIC"
+  ));
+  const hcclReference = result.suggestions.find(({ code }) => (
+    code === "MINDSPEED_HCCL_GROUP_BUFFER_ADAPTIVE"
+  ));
+  assert.equal(cpSuggestion.kind, "suggestion");
+  assert.match(cpSuggestion.data.action, /重新配平/);
+  assert.match(cpSuggestion.data.impact_if_ignored, /配置仍然合法/);
+  assert.equal(hcclReference.kind, "advisory");
   assert.ok(result.suggestions.every((item) => (
     item.applicable_hardware.length > 0
       && item.applicable_versions.length > 0
@@ -234,20 +243,48 @@ test("静态策略建议不改变合法性，并携带硬件、版本、假设�
   assert.equal(result.warnings.some(({ code }) => code.includes("CP_SLICE")), false);
 });
 
-test("未知卡型的 CP 候选明确标为合法范围而非性能推荐", () => {
-  const result = validateParallelConfig(createTrainingConfig({
+test("当前 CP 无需修改时不返回 CP 静态建议", () => {
+  const knownCard = validateParallelConfig(createTrainingConfig({
+    cluster: { total_ranks: 16, card_model: "昇腾 910B" },
+    parallel: { tp: 2, cp: 1 },
+    batch: { sequence_length: 8192 },
+  }));
+  assert.equal(knownCard.suggestions.some(({ code }) => (
+    code === "MINDSPEED_AUTO_SETTINGS_CP_SEARCH_SPACE"
+  )), false);
+
+  const unknownCard = validateParallelConfig(createTrainingConfig({
     cluster: { total_ranks: 16, card_model: "昇腾 950PR" },
     parallel: { tp: 2, cp: 1 },
     batch: { sequence_length: 8192 },
   }));
-  const cpSuggestion = result.suggestions.find(({ code }) => (
+  const cpSuggestion = unknownCard.suggestions.find(({ code }) => (
     code === "MINDSPEED_CP_DIVISIBILITY_SEARCH_SPACE"
   ));
 
-  assert.ok(cpSuggestion);
-  assert.match(cpSuggestion.message, /CP 候选范围（非性能推荐）/);
-  assert.match(cpSuggestion.message, /无法据此判断快慢/);
-  assert.match(cpSuggestion.message, /Profiling 或实测/);
+  assert.equal(cpSuggestion, undefined);
+});
+
+test("HCCL 自适应未显式配置 EP factor 时保持 MindSpeed 的 200 MiB 默认值", () => {
+  const defaultFactor = validateParallelConfig(createTrainingConfig({
+    features: { moe_token_dispatcher_type: "alltoall_seq" },
+  })).suggestions.find(({ code }) => code === "MINDSPEED_HCCL_GROUP_BUFFER_ADAPTIVE");
+  assert.equal(defaultFactor.kind, "advisory");
+  assert.equal(defaultFactor.data.ep_load_imbalance_factor, null);
+  assert.equal(defaultFactor.data.ep_factor_configured, false);
+  assert.equal(defaultFactor.data.groups.exp, 200);
+  assert.equal(defaultFactor.data.groups.tp, 200);
+
+  const explicitFactor = validateParallelConfig(createTrainingConfig({
+    features: {
+      moe_token_dispatcher_type: "alltoall_seq",
+      hccl_ep_group_buffer_adaptive_factor: 1.5,
+    },
+  })).suggestions.find(({ code }) => code === "MINDSPEED_HCCL_GROUP_BUFFER_ADAPTIVE");
+  assert.equal(explicitFactor.data.ep_load_imbalance_factor, 1.5);
+  assert.equal(explicitFactor.data.ep_factor_configured, true);
+  assert.equal(explicitFactor.data.groups.exp, 32);
+  assert.equal(explicitFactor.data.groups.tp, 48);
 });
 
 test("Attention Heads 必须能均分到 KV Heads", () => {

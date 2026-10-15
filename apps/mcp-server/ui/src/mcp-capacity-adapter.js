@@ -508,6 +508,11 @@ export function installCapacityAdapter(callCapacityTool, trainingConfigFor) {
     measureAll() {
       return ready ? capacityMeasurements(lastResult) : [];
     },
+    measureShown() {
+      if (!ready) return null;
+      const measurements = capacityMeasurements(lastResult);
+      return measurements.find(({ stage }) => stage === selectedStage) ?? null;
+    },
   };
 
   const ensureUi = () => {
@@ -530,6 +535,7 @@ export function installCapacityAdapter(callCapacityTool, trainingConfigFor) {
       selectedStage = stage;
       selectedRank = null;
       paintResult();
+      notifyCapacityConsumers("ready");
     });
   };
 
@@ -619,6 +625,7 @@ export function installCapacityAdapter(callCapacityTool, trainingConfigFor) {
     selectedStage = selection.stage;
     selectedRank = selection.rank;
     paintResult();
+    notifyCapacityConsumers("ready");
   });
   for (const eventName of ["input", "change"]) {
     document.addEventListener(eventName, (event) => {

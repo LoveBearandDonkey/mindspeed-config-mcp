@@ -2297,32 +2297,6 @@
       "dtype", "paramsDtype", "lora", "loraRank"],
   };
 
-  /* 折叠按钮的悬浮说明：里面收着什么、为什么收在这里。按行分写 —— 两行的判据
-     本来就不是同一条。 */
-  const ADVANCED_TITLE = {
-    parallel: "VPP / CP 口径 / 序列并行 SP / 词表走 DP / 权重分片\n\n"
-      + "收在这里的判据只有一条：**拨了 Total Rank 一张卡都不变**。"
-      + "所以外面留下的五枚恰好是 world 乘积的因子（DP×PP×TP×CP）加模型自身的层数。\n"
-      + "这几枚不占卡，却各自改着别的东西：\n"
-      + "· VPP —— 把每个 stage 的层再拆成几段轮流跑，气泡变小、在飞激活变多\n"
-      + "· CP 口径 —— CP > 1 时换掉一条硬校验（Ulysses 拦 TP×CP 整除注意力头，"
-      + "Ring 拦序列长度整除 2×CP）\n"
-      + "· SP / 词表走 DP / 权重分片 —— 三种不额外占卡的切法",
-    batch: "Node / micro_batch_num / 重计算 / 重算层数 / 精度两档 / LoRA 那一对\n\n"
-      + "行里留下的只有 Global Batch 与 [B, S, H] —— 这一步吃多少样本，"
-      + "以及摊到这张卡上那个张量长什么样。别的都在这里：\n"
-      + "· Node —— Total Rank ÷ 整机卡数，算得出来，拨不动（只读读数）\n"
-      + "· micro_batch_num —— 这个 [B,S,H] 一步之内跑几遍（Megatron 的 num_microbatches / "
-      + "HF·DeepSpeed 的 gradient_accumulation_steps）。它仍是 Global Batch 的第三个因子，"
-      + "PP > 1 时还夹着在飞份数，只是它不是形状的一维\n"
-      + "· 重计算 / 重算层数 —— 激活留不留：四档一刀不切，只决定每份留多少；"
-      + "「按层数」那一档才按重算层数算（拨到那一档时这个折叠会自动掀开）\n"
-      + "· 计算精度 / 主权重精度 —— 换算口径：不改「装多少」，改的是「每个数占几个字节」，"
-      + "六段的高度全跟着它走，但它一年也未必动一次（升级计划行 21）\n"
-      + "· LoRA / LoRA Rank —— 冻结主干只训 adapter，梯度段与优化器段跟着 adapter 走、"
-      + "权重段一个字节不少。本页两个预设写的都是预训练配置，所以它默认关着",
-  };
-
   /* ── 建议修法 ─────────────────────────────────────────────────────────────
      手输了一个与其它字段不兼容的数之后，横幅要答出「把哪几个字段改成多少就兼容
      了」。这件事 reconcile 本来就在做，区别只是结果不落到 config 上 —— 所以直接
@@ -2792,9 +2766,6 @@
       toggle.className = "btn btn-sm btn-ghost cro-advanced-toggle";
       toggle.id = baseId + "Toggle";
       toggle.setAttribute("aria-controls", baseId);
-      /* 这一枚不长问号：它自己就是一块写着「高级选项」的按钮，整块当触发面积比在
-         空着的标签行上吊一个孤零零的问号好读。走的仍是同一个气泡（data-hint）。 */
-      setHint(toggle, ADVANCED_TITLE[group] || "");
       const text = document.createElement("span");
       text.textContent = "高级选项";
       const caret = document.createElement("span");

@@ -33,7 +33,7 @@ function projection() {
     batch: { sequence_length: 32768 },
   }));
   const cpSuggestion = strategy.suggestions.find(({ code }) => (
-    code === "MINDSPEED_AUTO_SETTINGS_CP_SEARCH_SPACE"
+    code === "MINDSPEED_CP_SLICE_BELOW_DEVICE_HEURISTIC"
   ));
   const hcclSuggestion = strategy.suggestions.find(({ code }) => (
     code === "MINDSPEED_HCCL_GROUP_BUFFER_ADAPTIVE"

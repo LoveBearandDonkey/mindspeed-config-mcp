@@ -1,0 +1,26 @@
+# 放入现有 HTTPS server 块；证书和 443 监听继续复用宿主机已有配置。
+# proxy_pass 末尾不带 /，确保 /mindspeed-config/ 前缀原样传给 Node 服务。
+location = /mindspeed-config {
+    return 308 /mindspeed-config/;
+}
+
+location ^~ /mindspeed-config/ {
+    limit_req zone=mcp_per_ip burst=30 nodelay;
+    limit_conn mcp_conn_per_ip 20;
+    limit_except GET POST DELETE { deny all; }
+
+    proxy_pass http://127.0.0.1:3002;
+    proxy_http_version 1.1;
+    proxy_buffering off;
+    proxy_request_buffering off;
+    proxy_cache off;
+    client_max_body_size 2m;
+    proxy_read_timeout 130s;
+    proxy_send_timeout 130s;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Connection "";
+}

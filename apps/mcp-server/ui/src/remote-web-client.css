@@ -1,0 +1,92 @@
+/* 公网浏览器入口只负责交互；访问码换成 HttpOnly 会话后，计算统一走腾讯云 API。 */
+.mcp-web-access {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 38%),
+    color-mix(in srgb, var(--background) 88%, transparent);
+  backdrop-filter: blur(18px) saturate(.82);
+}
+
+.mcp-web-access[hidden] {
+  display: none;
+}
+
+.mcp-web-access__card {
+  width: min(440px, 100%);
+  padding: 28px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  background: var(--surface-2);
+  box-shadow: 0 24px 72px rgb(0 0 0 / 34%);
+}
+
+.mcp-web-access__eyebrow {
+  margin: 0 0 8px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+
+.mcp-web-access__card h1 {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 22px;
+}
+
+.mcp-web-access__description,
+.mcp-web-access__privacy {
+  color: var(--foreground-secondary);
+  line-height: 1.65;
+}
+
+.mcp-web-access__description {
+  margin: 12px 0 20px;
+}
+
+.mcp-web-access__label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.mcp-web-access__input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  outline: none;
+  background: var(--surface-1);
+  color: var(--foreground);
+}
+
+.mcp-web-access__input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.mcp-web-access__feedback {
+  min-height: 20px;
+  margin: 7px 0;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.mcp-web-access__submit {
+  width: 100%;
+  justify-content: center;
+}
+
+.mcp-web-access__privacy {
+  margin: 14px 0 0;
+  font-size: 11px;
+}

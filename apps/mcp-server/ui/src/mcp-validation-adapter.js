@@ -261,6 +261,14 @@ function diagnosticItems(items) {
     + `</li>`).join("");
 }
 
+function hcclGroups(item) {
+  const groups = Object.entries(item.data?.groups ?? {});
+  if (!groups.length) return "";
+  return `<details class="mcp-validation__buffer-groups"><summary>通信域静态估算</summary>`
+    + `<code>${groups.map(([name, size]) => `${escapeHtml(name)} ${escapeHtml(size)} MiB`).join(" · ")}</code>`
+    + `</details>`;
+}
+
 function strategyItems(items) {
   return items.map((item) => {
     const scope = (item.applicable_hardware ?? []).length
@@ -268,15 +276,42 @@ function strategyItems(items) {
       : "";
     return `<li class="mcp-validation__strategy-item" data-rule-code="${escapeHtml(item.code)}">`
       + `<span>${escapeHtml(item.message)}</span>`
+      + (item.data?.action
+        ? `<small class="mcp-validation__action"><b>怎么做：</b>${escapeHtml(item.data.action)}</small>`
+        : "")
+      + (item.data?.impact_if_ignored
+        ? `<small class="mcp-validation__impact"><b>不处理：</b>${escapeHtml(item.data.impact_if_ignored)}</small>`
+        : "")
+      + hcclGroups(item)
       + (scope ? `<small>${escapeHtml(scope)}</small>` : "")
       + `</li>`;
   }).join("");
 }
 
+function strategyGroups(items, { capacityPressure = false } = {}) {
+  const actionable = [];
+  const advisory = [];
+  for (const item of items ?? []) {
+    const promoteHccl = capacityPressure
+      && item.code === "MINDSPEED_HCCL_GROUP_BUFFER_ADAPTIVE"
+      && item.data?.enabled === false;
+    (item.kind === "suggestion" || promoteHccl ? actionable : advisory).push(item);
+  }
+  return { actionable, advisory };
+}
+
+export function capacityPressureFor(model) {
+  const tight = Number(model?.THRESHOLD?.tight);
+  if (!Number.isFinite(tight)) return false;
+  const shown = model.measureShown?.();
+  return Number(shown?.ratio) > tight;
+}
+
 export function parseValidationSummary(result) {
   const errors = result?.errors?.length ?? 0;
   const warnings = result?.warnings?.length ?? 0;
-  const suggestions = result?.suggestions?.length ?? 0;
+  const { actionable } = strategyGroups(result?.suggestions);
+  const suggestions = actionable.length;
   if (errors) {
     const suffix = warnings && suggestions
       ? `、${warnings} 条兼容性提醒与 ${suggestions} 条策略建议`
@@ -290,29 +325,30 @@ export function parseValidationSummary(result) {
       ? `查看 ${warnings} 条兼容性提醒与 ${suggestions} 条策略建议`
       : `查看 ${warnings} 条兼容性提醒`;
   }
-  return `静态策略建议 · ${suggestions}`;
+  if (suggestions) return `建议处理 · ${suggestions}`;
+  return "静态校验通过";
 }
 
 export function renderParseValidationDetails(result) {
   const errors = result?.errors ?? [];
   const warnings = result?.warnings ?? [];
-  const suggestions = result?.suggestions ?? [];
+  const { actionable } = strategyGroups(result?.suggestions);
   return (errors.length
     ? `<section class="mcp-validation__error-section"><ol>${diagnosticItems(errors)}</ol></section>`
     : "")
     + (warnings.length
       ? `<section class="mcp-validation__compatibility-section"><ul>${diagnosticItems(warnings)}</ul></section>`
       : "")
-    + (suggestions.length
-      ? `<section class="mcp-validation__strategy-section"><ul>${strategyItems(suggestions)}</ul></section>`
+    + (actionable.length
+      ? `<section class="mcp-validation__strategy-section"><b>建议处理</b><ul>${strategyItems(actionable)}</ul></section>`
       : "");
 }
 
-export function renderValidationConclusion(result) {
+export function renderValidationConclusion(result, options = {}) {
   if (!result) return "";
   const errors = result.errors ?? [];
   const warnings = result.warnings ?? [];
-  const suggestions = result.suggestions ?? [];
+  const { actionable } = strategyGroups(result.suggestions, options);
   const valid = result.status === "valid" && errors.length === 0;
   const title = warnings.length ? `静态校验通过 · ${warnings.length} 条提醒` : "静态校验通过";
   const state = valid ? (warnings.length ? "warning" : "valid") : "invalid";
@@ -332,10 +368,10 @@ export function renderValidationConclusion(result) {
     + (warnings.length
       ? `<div class="mcp-validation__warnings"><ul>${diagnosticItems(warnings)}</ul></div>`
       : "")
-    + (valid && suggestions.length
-      ? `<details class="mcp-validation__strategies"><summary>静态策略建议 · ${suggestions.length}</summary>`
-        + `<p>理论推导得到的建议，未含实测收益</p>`
-        + `<ul>${strategyItems(suggestions)}</ul></details>`
+    + (valid && actionable.length
+      ? `<details class="mcp-validation__strategies" open><summary>建议处理 · ${actionable.length}</summary>`
+        + `<p>非阻塞调优建议；配置仍然合法，收益需要 Profiling 或实测确认。</p>`
+        + `<ul>${strategyItems(actionable)}</ul></details>`
       : "")
     + `</section>`;
 }
@@ -421,6 +457,7 @@ export function installValidationAdapter(callValidateTool) {
   let token = 0;
   let debounceTimer = 0;
   let pendingTimer = 0;
+  let lastValidationResult = null;
   const pipelineSettings = {
     mode: null,
     numLayerList: null,
@@ -442,6 +479,20 @@ export function installValidationAdapter(callValidateTool) {
     },
   };
   window.__mcpPipelinePolicy = pipelinePolicy;
+
+  function capacityPressure() {
+    return capacityPressureFor(window.croCapacityModel);
+  }
+
+  function paintValidationResult(container, result) {
+    const state = result.status === "valid"
+      ? ((result.warnings ?? []).length ? "warning" : "valid")
+      : "invalid";
+    appendResult(container, renderValidationConclusion(result, {
+      capacityPressure: capacityPressure(),
+    }), state);
+    applyMarks(result);
+  }
 
   function resetImportedContext() {
     supplementOverrides = {};
@@ -671,11 +722,8 @@ export function installValidationAdapter(callValidateTool) {
       const result = await callValidateTool(input);
       if (currentToken !== token) return;
       clearTimeout(pendingTimer);
-      const state = result.status === "valid"
-        ? ((result.warnings ?? []).length ? "warning" : "valid")
-        : "invalid";
-      appendResult(container, renderValidationConclusion(result), state);
-      applyMarks(result);
+      lastValidationResult = result;
+      paintValidationResult(container, result);
     } catch (error) {
       if (currentToken !== token) return;
       clearTimeout(pendingTimer);
@@ -691,6 +739,7 @@ export function installValidationAdapter(callValidateTool) {
 
   function schedule(delay = 90) {
     token += 1;
+    lastValidationResult = null;
     clearTimeout(debounceTimer);
     clearTimeout(pendingTimer);
     const container = document.getElementById("croConfigError");
@@ -752,6 +801,12 @@ export function installValidationAdapter(callValidateTool) {
   });
   document.addEventListener("mcp:retry-requested", (event) => {
     if (event.detail?.tool === "validate_parallel_config") schedule(0);
+  });
+  document.addEventListener("mcp:capacity-result", (event) => {
+    if (event.detail?.state !== "ready" || !lastValidationResult) return;
+    const container = document.getElementById("croConfigError");
+    if (!container?.querySelector("#mcpValidationConclusion")) return;
+    paintValidationResult(container, lastValidationResult);
   });
   document.addEventListener("input", (event) => {
     if (relevantControl(event)) schedule();

@@ -85,6 +85,11 @@ export function actionableLockFields(suggestions) {
     (suggestion.changes ?? []).map((change) => change.path)));
 }
 
+export function shouldRenderLockPolicy(suggestions, lockedFields) {
+  if (new Set(lockedFields ?? []).size > 0) return true;
+  return actionableLockFields(suggestions).size > 1;
+}
+
 function element(tag, className = "", text = "") {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -272,14 +277,16 @@ export function installFixesAdapter(callFixesTool, trainingConfigFor, applyPipel
     }
     if (suggestions.length > 1) {
       renderObjectiveControl(host, objective, changeObjective);
-      renderLockPolicy(
-        host,
-        lockedFields,
-        suggestions,
-        changeLock,
-        lockPolicyOpen,
-        (open) => { lockPolicyOpen = open; },
-      );
+      if (shouldRenderLockPolicy(suggestions, lockedFields)) {
+        renderLockPolicy(
+          host,
+          lockedFields,
+          suggestions,
+          changeLock,
+          lockPolicyOpen,
+          (open) => { lockPolicyOpen = open; },
+        );
+      }
     }
     const cards = element("div", "mcp-fixes__candidates");
     for (const suggestion of suggestions.slice(0, 3)) {

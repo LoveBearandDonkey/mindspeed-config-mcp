@@ -196,10 +196,10 @@ function objectKeys(source, name) {
   return Array.from(source.slice(start, end).matchAll(/^    ([A-Za-z][A-Za-z0-9]*):/gm), ([, key]) => key);
 }
 
-test("本地预览与 MCP 宿主都接通 PP 分层修复回填", () => {
+test("本地预览、腾讯云浏览器与 MCP 宿主都接通 PP 分层修复回填", () => {
   const shellSource = read(mcpShellEntryFile);
   const calls = shellSource.match(/installFixesAdapter\([\s\S]*?applyPipelineSettings\(settings\)[\s\S]*?\);/g) ?? [];
-  assert.equal(calls.length, 2, "preview 与 MCP host 两个分支都必须传入 applyPipelineSettings");
+  assert.equal(calls.length, 3, "preview、remote web 与 MCP host 三个分支都必须传入 applyPipelineSettings");
   const fixesSource = read(mcpFixesAdapterFile);
   assert.doesNotMatch(fixesSource, /找不到可用的 PP 分层控件/, "不得把适配器接线失败误报成 DOM 控件缺失");
   assert.match(fixesSource, /PP 分层设置应用通道不可用/, "接线异常必须显示准确的故障提示");

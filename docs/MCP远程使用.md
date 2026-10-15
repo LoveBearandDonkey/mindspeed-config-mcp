@@ -55,8 +55,10 @@ npm run start:http
 监听 `0.0.0.0` 或 `::` 时，如果未设置 `MCP_ALLOWED_HOSTS`，服务会拒绝启动。允许列表
 只填写主机名或 IP，不填写协议和端口。
 
-若浏览器环境会直接连接 `/mcp`，可另外设置逗号分隔的 `MCP_ALLOWED_ORIGINS`。普通
-桌面或服务器 MCP 客户端通常不发送 `Origin`，无需配置这一项。
+若浏览器环境会直接连接 `/mcp`，可另外设置逗号分隔的 `MCP_ALLOWED_ORIGINS`；这里填写
+允许的 Origin **主机名**，不带协议和端口。普通桌面或服务器 MCP 客户端通常不发送
+`Origin`，无需配置这一项。腾讯云浏览器工作台会根据 `MCP_BROWSER_PUBLIC_ORIGIN`
+自动把对应主机名加入服务端 Origin 允许列表。
 
 ## 客户端参数
 
@@ -69,11 +71,29 @@ npm run start:http
 支持 MCP Apps 的客户端会读取 `ui://mindspeed-config/result-view.html` 并渲染界面；
 不支持界面的客户端仍可使用文本和 `structuredContent`。
 
+## 腾讯云浏览器工作台
+
+无需 Codex 或其他 MCP 客户端时，直接访问：
+
+```text
+https://42.192.111.92/mindspeed-config/
+```
+
+浏览器入口不是本地静态计算包。页面只负责输入与展示，五项计算通过同源 HTTPS API
+发送到腾讯云服务端，并与 MCP Tool 共用 `packages/config-core/`。首次打开需输入
+`MCP_BROWSER_ACCESS_TOKEN`；若部署时未单独设置，则使用 `MCP_BEARER_TOKEN`。验证成功后
+服务端只下发 `HttpOnly + Secure + SameSite=Strict` 会话 Cookie，长期访问码不会写入
+页面脚本、`localStorage` 或 URL。
+
+浏览器和 MCP 的公网端点都由现有 443 反向代理转发到宿主机
+`127.0.0.1:3002`，不开放 3002 公网端口。
+
 ## 生产安全边界
 
 - 不要把真实 Token 写入 `.env.example`、Git、镜像层或部署日志；
 - 公网或跨主机访问必须在反向代理处启用 HTTPS；
 - 当前是单一静态 Token，适合第一版受控内部部署，不等同于多用户 OAuth；
+- 浏览器访问码不得嵌入 HTML、前端 JavaScript、URL 查询参数或构建产物；
 - Token 泄露后应立即轮换并重启进程；
 - `/health` 可以公开给探活系统，`/mcp` 不允许匿名访问；
 - 服务只解析请求中显式提交的配置文本，不根据用户路径读取服务器文件。

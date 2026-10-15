@@ -61,7 +61,10 @@ function hcclBufferEstimate(input) {
   const ep = parallel.ep;
   const topK = model.top_k;
   const dispatcher = features.moe_token_dispatcher_type;
-  const factor = features.hccl_ep_group_buffer_adaptive_factor ?? 1;
+  const configuredFactor = features.hccl_ep_group_buffer_adaptive_factor;
+  const factor = Number.isFinite(configuredFactor) && configuredFactor > 0
+    ? configuredFactor
+    : null;
   const base = sequence / cp * microBatch * hidden / MIB;
   const groups = {
     tp: ceilDouble(base) * (parallel.sequence_parallel ? 1 : 2),
@@ -73,12 +76,14 @@ function hcclBufferEstimate(input) {
   };
 
   if (model.routed_experts > 0) {
-    groups.exp = ceilDouble(base / tp * topK);
+    // 锁定版本只用 factor 是否为正数决定 exp 域是否进入自适应；exp 公式本身不乘 factor。
+    groups.exp = factor === null ? 200 : ceilDouble(base / tp * topK);
     if (dispatcher === "alltoall_seq") {
-      groups.tp = Math.max(groups.tp, ceilDouble(factor * base / tp * topK));
-      if (features.moe_tp_extend_ep) groups.tp_exp = ceilDouble(factor * base / tp * topK);
+      const moeBuffer = factor === null ? 200 : ceilDouble(factor * base / tp * topK);
+      groups.tp = Math.max(groups.tp, moeBuffer);
+      if (features.moe_tp_extend_ep) groups.tp_exp = moeBuffer;
     } else if (dispatcher === "allgather") {
-      groups.tp_exp = ceilDouble(factor * base * ep);
+      groups.tp_exp = factor === null ? 200 : ceilDouble(factor * base * ep);
     }
   }
 
@@ -104,6 +109,8 @@ function hcclBufferEstimate(input) {
   return {
     unit: "MiB",
     ep_load_imbalance_factor: factor,
+    ep_factor_configured: factor !== null,
+    enabled: features.hccl_group_buffer_adaptive === true,
     groups,
   };
 }
@@ -114,36 +121,12 @@ export function staticStrategySuggestions(input) {
   const hardware = hardwareProfile(input.cluster.card_model);
   const applicableHardware = [hardware?.label ?? input.cluster.card_model];
 
-  output.push(suggestion({
-    code: hardware
-      ? "MINDSPEED_AUTO_SETTINGS_CP_SEARCH_SPACE"
-      : "MINDSPEED_CP_DIVISIBILITY_SEARCH_SPACE",
-    kind: "advisory",
-    confidence: hardware ? "model-informed" : "theoretical",
-    message: hardware
-      ? `${hardware.label} 按每个 CP 分片至少 ${hardware.minimumSequencePerCp} tokens 的自动搜索启发式，可保留 CP 候选：${cpSpace.eligible_cp_degrees.join("、")}。`
-      : `CP 候选范围（非性能推荐）：当前没有 ${input.cluster.card_model} 的实测性能阈值。仅按“序列长度可被 CP 整除”且“CP 不超过总 Rank/TP”筛选，CP 可取 ${cpSpace.eligible_cp_degrees.join("、")}；这些候选无法据此判断快慢，仍需通过 Profiling 或实测选择。`,
-    fields: ["cluster.card_model", "cluster.total_ranks", "parallel.tp", "parallel.cp", "batch.sequence_length"],
-    applicableHardware,
-    applicableVersions: [MINDSPEED_VERSION],
-    assumptions: [
-      "候选裁剪复用 MindSpeed auto_settings 的第一阶段启发式，不代表候选间的最终性能排序。",
-      "最终 TP/PP/DP/EP 组合仍需满足静态合法性约束，并使用 Profiling 或实测数据排序。",
-    ],
-    source: "mindspeed-rule",
-    sourceRef: AUTO_SETTINGS_CP,
-    formula: hardware
-      ? `cp === 1 || sequence_length / cp >= ${hardware.minimumSequencePerCp}`
-      : "sequence_length % cp === 0 && cp <= floor(total_ranks / tp)",
-    data: cpSpace,
-  }));
-
   if (hardware && !cpSpace.current_cp_eligible) {
     output.push(suggestion({
       code: "MINDSPEED_CP_SLICE_BELOW_DEVICE_HEURISTIC",
       kind: "suggestion",
       confidence: "model-informed",
-      message: `当前 CP=${input.parallel.cp} 使每个分片只有 ${input.batch.sequence_length / input.parallel.cp} tokens，低于 ${hardware.label} 自动搜索使用的 ${hardware.minimumSequencePerCp} tokens 下限；建议从已保留候选中降低 CP。`,
+      message: `当前 CP=${input.parallel.cp} 使每个分片只有 ${input.batch.sequence_length / input.parallel.cp} tokens，低于 ${hardware.label} 自动搜索使用的 ${hardware.minimumSequencePerCp} tokens 下限。`,
       fields: ["parallel.cp", "batch.sequence_length", "cluster.card_model"],
       applicableHardware,
       applicableVersions: [MINDSPEED_VERSION],
@@ -151,17 +134,21 @@ export function staticStrategySuggestions(input) {
       source: "mindspeed-rule",
       sourceRef: AUTO_SETTINGS_CP,
       formula: `sequence_length / cp >= ${hardware.minimumSequencePerCp}`,
-      data: { eligible_cp_degrees: cpSpace.eligible_cp_degrees },
+      data: {
+        ...cpSpace,
+        action: `优先从 ${cpSpace.eligible_cp_degrees.join("、")} 中选择更低 CP，并重新配平其余并行度后做 Profiling。`,
+        impact_if_ignored: "配置仍然合法，但可能因分片过小和 CP 通信开销导致吞吐下降。",
+      },
     }));
   }
 
   const hccl = hcclBufferEstimate(input);
   output.push(suggestion({
     code: "MINDSPEED_HCCL_GROUP_BUFFER_ADAPTIVE",
-    kind: input.features?.hccl_group_buffer_adaptive ? "advisory" : "suggestion",
+    kind: "advisory",
     message: input.features?.hccl_group_buffer_adaptive
-      ? "已启用 HCCL 通信域 Buffer 自适应；下列数值按当前统一配置静态复算。"
-      : "可评估启用 --hccl-group-buffer-adaptive，按通信域而不是统一 200 MiB Buffer 配置显存。",
+      ? "已启用 HCCL 通信域 Buffer 自适应；可展开查看各通信域的静态估算。"
+      : "HCCL 通信域当前使用统一 200 MiB Buffer；仅在显存偏满或 OOM 时评估自适应。",
     fields: [
       "batch.sequence_length",
       "batch.micro_batch_size",
@@ -175,12 +162,20 @@ export function staticStrategySuggestions(input) {
     applicableVersions: [MINDSPEED_VERSION, "TorchNPU FrameworkPTAdapter >= 7.0.RC1.B020"],
     assumptions: [
       "Buffer 数值单位为 MiB，并按 MindSpeed 锁定版本中的自适应公式计算。",
-      `MoE EP 负载不均衡系数暂按 ${hccl.ep_load_imbalance_factor}；实际值过大可能引起 OOM。`,
+      hccl.ep_factor_configured
+        ? `MoE EP 负载不均衡系数按显式配置 ${hccl.ep_load_imbalance_factor} 计算；实际值过大可能引起 OOM。`
+        : "未显式配置 MoE EP 负载不均衡系数；按 MindSpeed 默认行为将 EP 相关通信域保留为 200 MiB。",
       "该建议只描述静态配置方向，不代表性能收益已经通过 Profiling 校准。",
     ],
     source: "mindspeed-rule",
     sourceRef: `${HCCL_ADAPTIVE_DOC}; ${HCCL_ADAPTIVE_FORMULA}`,
-    data: hccl,
+    data: {
+      ...hccl,
+      action: input.features?.hccl_group_buffer_adaptive
+        ? "无需操作；用 Profiling 核对峰值显存和吞吐即可。"
+        : "仅当理论容量偏满、实测显存紧张或发生 OOM 时，确认版本兼容后试加 --hccl-group-buffer-adaptive，并对比峰值显存与吞吐。",
+      impact_if_ignored: "配置和训练正确性不受影响；显存紧张时可能错失通信 Buffer 的节省空间。",
+    },
   }));
 
   const localSequence = input.batch.sequence_length / input.parallel.cp;

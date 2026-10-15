@@ -7,6 +7,8 @@ import { APP_RESOURCE_META } from "../src/app-resource.js";
 import { createHttpApp, loadHttpConfig } from "../src/http.js";
 
 const TOKEN = "test-token-with-at-least-thirty-two-characters";
+const BROWSER_TOKEN = "browser-access-code-with-at-least-thirty-two-characters";
+const PUBLIC_ORIGIN = "https://mcp.example.com";
 const FETCH_FORBIDDEN_PORTS = new Set([
   1, 7, 9, 11, 13, 15, 17, 19, 20, 21, 22, 23, 25, 37, 42, 43, 53, 69, 77, 79,
   87, 95, 101, 102, 103, 104, 109, 110, 111, 113, 115, 117, 119, 123, 135, 137,
@@ -45,12 +47,16 @@ test("HTTP 配置缺少 Token 或公网 Host 白名单时拒绝启动", () => {
     MCP_HTTP_HOST: "0.0.0.0",
     MCP_HTTP_PORT: "4100",
     MCP_ALLOWED_HOSTS: "mcp.example.com,127.0.0.1",
+    MCP_BROWSER_PUBLIC_ORIGIN: "https://mcp.example.com",
   }), {
     host: "0.0.0.0",
     port: 4100,
     token: TOKEN,
     allowedHosts: ["mcp.example.com", "127.0.0.1"],
     allowedOrigins: undefined,
+    browserAccessToken: TOKEN,
+    browserBasePath: "/mindspeed-config",
+    browserPublicOrigin: "https://mcp.example.com",
   });
 });
 
@@ -81,10 +87,86 @@ test("健康检查无需 Token，但 MCP 端点拒绝无 Token 请求", async ()
   }
 });
 
+test("浏览器入口使用访问码换取 HttpOnly 会话，并由腾讯云 HTTP 服务执行计算", async () => {
+  const server = await listen(createHttpApp({
+    token: TOKEN,
+    browserAccessToken: BROWSER_TOKEN,
+    browserPublicOrigin: PUBLIC_ORIGIN,
+  }));
+  const { port } = server.address();
+  const base = `http://127.0.0.1:${port}`;
+  const browserBase = `${base}/mindspeed-config`;
+  try {
+    const page = await fetch(`${browserBase}/`);
+    assert.equal(page.status, 200);
+    assert.match(page.headers.get("content-type"), /^text\/html/);
+    assert.match(page.headers.get("content-security-policy"), /connect-src 'self'/);
+    const html = await page.text();
+    assert.match(html, /__MINDSPEED_WEB_SERVICE__/);
+    assert.match(html, /mindspeed-config\/api/);
+    assert.doesNotMatch(html, new RegExp(TOKEN));
+    assert.doesNotMatch(html, new RegExp(BROWSER_TOKEN));
+
+    const unauthenticated = await fetch(`${browserBase}/api/tools/parse_training_config`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: PUBLIC_ORIGIN },
+      body: "{}",
+    });
+    assert.equal(unauthenticated.status, 401);
+
+    const crossOrigin = await fetch(`${browserBase}/api/session`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://evil.example" },
+      body: JSON.stringify({ access_token: TOKEN }),
+    });
+    assert.equal(crossOrigin.status, 403);
+
+    const rejected = await fetch(`${browserBase}/api/session`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: PUBLIC_ORIGIN },
+      body: JSON.stringify({ access_token: TOKEN }),
+    });
+    assert.equal(rejected.status, 401);
+
+    const login = await fetch(`${browserBase}/api/session`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: PUBLIC_ORIGIN },
+      body: JSON.stringify({ access_token: BROWSER_TOKEN }),
+    });
+    assert.equal(login.status, 200);
+    const cookie = login.headers.get("set-cookie");
+    assert.match(cookie, /^mindspeed_config_session=/);
+    assert.match(cookie, /HttpOnly/);
+    assert.match(cookie, /SameSite=Strict/);
+    assert.match(cookie, /Secure/);
+    assert.match(cookie, /Path=\/mindspeed-config\//);
+
+    const parsed = await fetch(`${browserBase}/api/tools/parse_training_config`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie,
+        origin: PUBLIC_ORIGIN,
+      },
+      body: JSON.stringify({
+        schema_version: "1.0",
+        rule_profile: { framework: "mindspeed-llm-mcore", version: "0.12.1" },
+        source: { format: "shell", content: "python train.py --num-layers 32 --unknown-flag 1" },
+      }),
+    });
+    assert.equal(parsed.status, 200);
+    const body = await parsed.json();
+    assert.equal(body.structuredContent.tool, "parse_training_config");
+    assert.equal(body.structuredContent.data.unmapped_count, 1);
+  } finally {
+    await close(server);
+  }
+});
+
 test("携带 Bearer Token 的 Streamable HTTP 客户端可调用 Tool 并读取中文工作台界面", async () => {
   const server = await listen(createHttpApp({ token: TOKEN }));
   const { port } = server.address();
-  const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${port}/mcp`), {
+  const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${port}/mindspeed-config/mcp`), {
     requestInit: { headers: { Authorization: `Bearer ${TOKEN}` } },
   });
   const client = new Client({ name: "mindspeed-config-http-test", version: "0.1.0" });

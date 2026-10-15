@@ -31,9 +31,13 @@ import { installTopologyAdapter } from "@mcp-bridge/mcp-topology-adapter.js";
 import { installFixesAdapter } from "@mcp-bridge/mcp-fixes-adapter.js";
 import { installCapacityAdapter } from "@mcp-bridge/mcp-capacity-adapter.js";
 import { createMcpHostInteraction } from "@mcp-bridge/mcp-host-interaction.js";
+import { createRemoteWebClient } from "@mcp-bridge/remote-web-client.js";
 
 const staticDemoMode = __MCP_STATIC_DEMO__;
-const previewMode = staticDemoMode || new URLSearchParams(window.location.search).has("preview");
+const remoteServiceConfig = globalThis.__MINDSPEED_WEB_SERVICE__ ?? null;
+const remoteServiceMode = Boolean(remoteServiceConfig?.apiBase);
+const previewMode = !remoteServiceMode
+  && (staticDemoMode || new URLSearchParams(window.location.search).has("preview"));
 const BUILTIN_SOURCES = __MCP_BUILTIN_SOURCES__;
 const FILL_COVERAGE_HINT = "文件总项按源配置统计；MCP 校验必填项表示后续规则检查所需的固定输入，存在缺口时必须先补齐。";
 
@@ -91,7 +95,53 @@ function parseInput(source) {
   return input;
 }
 
-if (previewMode) {
+if (remoteServiceMode) {
+  document.documentElement.dataset.mcpDistribution = "tencent-cloud";
+  document.documentElement.dataset.mcpWorkbench = "remote-connecting";
+  const hostInteraction = createMcpHostInteraction();
+  const remoteClient = createRemoteWebClient(remoteServiceConfig);
+  let validationAdapter = null;
+  let topologyAdapter = null;
+  let fixesAdapter = null;
+  let capacityAdapter = null;
+
+  async function callServerTool(name, args) {
+    return hostInteraction.run(name, () => remoteClient.callTool(name, args));
+  }
+
+  hostInteraction.beginConnection();
+  remoteClient.connect().then(() => {
+    installParseAdapter(
+      async (source) => callServerTool("parse_training_config", parseInput(source)),
+      async (input) => callServerTool("validate_parallel_config", input),
+      async (input) => callServerTool("estimate_training_capacity", input),
+    );
+    validationAdapter = installValidationAdapter(
+      async (input) => callServerTool("validate_parallel_config", input),
+    );
+    fixesAdapter = installFixesAdapter(
+      async (input) => callServerTool("suggest_config_fixes", input),
+      (config) => validationAdapter.trainingConfigFor(config, "suggest_config_fixes"),
+      (settings) => validationAdapter.applyPipelineSettings(settings),
+    );
+    topologyAdapter = installTopologyAdapter(
+      async (input) => callServerTool("compute_rank_topology", input),
+      (config) => validationAdapter.trainingConfigFor(config, "compute_rank_topology"),
+    );
+    capacityAdapter = installCapacityAdapter(
+      async (input) => callServerTool("estimate_training_capacity", input),
+      (config) => validationAdapter.capacityConfigFor(config),
+    );
+    hostInteraction.connected();
+    validationAdapter.refresh();
+    topologyAdapter.refresh();
+    fixesAdapter.refresh();
+    capacityAdapter.refresh();
+  }).catch((error) => {
+    hostInteraction.report(error);
+    console.error("MindSpeed Config Web Service:", error);
+  });
+} else if (previewMode) {
   document.documentElement.dataset.mcpPreview = "local-core";
   installParseAdapter(
     async (source) => parseTrainingConfig(parseInput(source)),

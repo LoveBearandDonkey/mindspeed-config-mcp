@@ -97,8 +97,10 @@ const LAUNCHER_DEFINITIONS = Object.freeze([
 
 function summaryOf(result) {
   if (result.tool === "validate_parallel_config") {
+    const actionable = result.suggestions.filter(({ kind }) => kind === "suggestion").length;
+    const strategySummary = actionable ? `${actionable} 条建议处理` : "";
     return result.data.valid
-      ? `配置合法，符合已建模的数学约束；world size = ${result.data.world_size}，另有 ${result.suggestions.length} 条非阻塞策略建议。这不代表目标环境已经实机运行通过。`
+      ? `配置合法，符合已建模的数学约束；world size = ${result.data.world_size}${strategySummary ? `，另有 ${strategySummary}` : ""}。这不代表目标环境已经实机运行通过。`
       : `配置未通过静态校验，共发现 ${result.errors.length} 个问题：${result.errors.map((item) => item.code).join("、")}。`;
   }
   if (result.tool === "compute_rank_topology") {

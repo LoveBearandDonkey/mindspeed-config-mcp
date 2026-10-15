@@ -6974,19 +6974,6 @@
     }
   }
 
-  /* 「高级选项」在这一栏里是一句可点的蓝字，不是一枚按钮 —— 悬浮气泡跟着一起撤：
-     那句气泡说的是「这个折叠里收了哪几格」，展开一看就知道，而气泡本身要靠一块
-     比字大一圈的热区才触发得到，正是要去掉的那块热区。
-     只摘 data-hint（主脚本那套气泡的唯一触发条件），按钮的展开逻辑一行没动。
-     ⚠️ 折叠是 controller.mount() 建的，而 mount 在主脚本 boot 里跑，排在本文件
-     之后，所以这件事得等到 DOMContentLoaded 之后再做。 */
-  function stripAdvancedHints() {
-    left.querySelectorAll(".cro-advanced-toggle").forEach((btn) => {
-      delete btn.dataset.hint;
-      delete btn.dataset.hintReason;
-    });
-  }
-
   /* 新配置意味着进入新的画布观察上下文：不论它来自手调、修复建议、导入配置，
      还是 PP 分层设置，只要随后拿到可用的容量内容，都从“内存预估”开始展示。
      等待容量期间若用户主动选择画布模式，按钮监听仍会把这次默认偏好撤销。 */
@@ -7060,7 +7047,6 @@
      rAF 之后按终局宽高再适配一次。 */
   doc.addEventListener("DOMContentLoaded", () => {
     if (!topology) onChange(global.croObserver && global.croObserver.topology);
-    stripAdvancedHints();
     renderDetail();
     renderComm();
     global.requestAnimationFrame(() => { fit(); scheduleRender(); });

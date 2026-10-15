@@ -15,8 +15,11 @@ services:
       NODE_ENV: production
       MCP_HTTP_HOST: 0.0.0.0
       MCP_HTTP_PORT: "3000"
-      MCP_ALLOWED_HOSTS: 127.0.0.1,localhost
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-42.192.111.92,127.0.0.1,localhost}
       MCP_BEARER_TOKEN: ${MCP_BEARER_TOKEN:?请在deploy/.env中设置至少32字符的随机Token}
+      MCP_BROWSER_ACCESS_TOKEN: ${MCP_BROWSER_ACCESS_TOKEN:-}
+      MCP_BROWSER_BASE_PATH: /mindspeed-config
+      MCP_BROWSER_PUBLIC_ORIGIN: ${MCP_BROWSER_PUBLIC_ORIGIN:-https://42.192.111.92}
     ports:
       - "127.0.0.1:${MCP_HOST_PORT:-3002}:3000"
     read_only: true

@@ -3,7 +3,6 @@
     "status": "valid",
     "error_codes": [],
     "suggestion_codes": [
-      "MINDSPEED_AUTO_SETTINGS_CP_SEARCH_SPACE",
       "MINDSPEED_CP_SLICE_BELOW_DEVICE_HEURISTIC",
       "MINDSPEED_HCCL_GROUP_BUFFER_ADAPTIVE"
     ]
@@ -27,7 +26,6 @@
     "status": "valid",
     "warning_codes": [],
     "suggestion_codes": [
-      "MINDSPEED_AUTO_SETTINGS_CP_SEARCH_SPACE",
       "MINDSPEED_CP_SLICE_BELOW_DEVICE_HEURISTIC",
       "MINDSPEED_HCCL_GROUP_BUFFER_ADAPTIVE"
     ],
@@ -37,11 +35,15 @@
       "maximum_cp_from_world_and_tp": 64,
       "divisible_cp_degrees": [1, 2, 4, 8, 16, 32, 64],
       "eligible_cp_degrees": [1, 2, 4],
-      "current_cp_eligible": false
+      "current_cp_eligible": false,
+      "action": "优先从 1、2、4 中选择更低 CP，并重新配平其余并行度后做 Profiling。",
+      "impact_if_ignored": "配置仍然合法，但可能因分片过小和 CP 通信开销导致吞吐下降。"
     },
     "hccl_buffer": {
       "unit": "MiB",
-      "ep_load_imbalance_factor": 1,
+      "ep_load_imbalance_factor": null,
+      "ep_factor_configured": false,
+      "enabled": false,
       "groups": {
         "tp": 32,
         "pp": 16,
@@ -49,9 +51,11 @@
         "mp": 10,
         "mp_exp": 10,
         "tp_cp": 10,
-        "exp": 32,
+        "exp": 200,
         "cp": 16
-      }
+      },
+      "action": "仅当理论容量偏满、实测显存紧张或发生 OOM 时，确认版本兼容后试加 --hccl-group-buffer-adaptive，并对比峰值显存与吞吐。",
+      "impact_if_ignored": "配置和训练正确性不受影响；显存紧张时可能错失通信 Buffer 的节省空间。"
     }
   }
 }

@@ -650,14 +650,18 @@
 }
 
 .mcp-parse-banner .mcp-validation__strategy-section,
+.mcp-parse-banner .mcp-validation__reference-section,
 .mcp-parse-banner .mcp-parse-validation-details > summary,
 .mcp-parse-banner .mcp-validation__strategy-section li,
-.mcp-parse-banner .mcp-validation__strategy-section li::marker {
+.mcp-parse-banner .mcp-validation__strategy-section li::marker,
+.mcp-parse-banner .mcp-validation__reference-section li,
+.mcp-parse-banner .mcp-validation__reference-section li::marker {
   color: #fff;
   font-weight: var(--font-weight-regular, 400);
 }
 
-.mcp-parse-banner .mcp-validation__strategy-section small {
+.mcp-parse-banner .mcp-validation__strategy-section small,
+.mcp-parse-banner .mcp-validation__reference-section small {
   color: color-mix(in srgb, #fff 45%, transparent);
   font-weight: var(--font-weight-regular, 400);
 }
@@ -1593,13 +1597,19 @@
   border-top: 0.5px solid color-mix(in srgb, var(--line-soft, #d8dee9) 32%, transparent);
 }
 
-.mcp-validation__strategies summary {
+.mcp-validation__strategies > summary {
   display: flex;
   gap: 6px;
   align-items: center;
   cursor: pointer;
   font-weight: 700;
   list-style: none;
+}
+
+.mcp-validation__buffer-groups > summary {
+  display: list-item;
+  cursor: pointer;
+  font-weight: 700;
 }
 
 .mcp-validation__strategies > p {
@@ -1623,6 +1633,23 @@
 .mcp-validation__strategy-item small {
   margin-top: 2px;
   color: var(--text-muted, #667085);
+}
+
+.mcp-validation__strategy-item .mcp-validation__action b,
+.mcp-validation__strategy-item .mcp-validation__impact b {
+  color: var(--foreground);
+}
+
+.mcp-validation__buffer-groups {
+  margin-top: 4px;
+  color: var(--text-muted, #667085);
+  font-size: 10px;
+}
+
+.mcp-validation__buffer-groups code {
+  display: block;
+  margin-top: 4px;
+  white-space: normal;
 }
 
 .mcp-validation__warnings .mcp-validation__formula {

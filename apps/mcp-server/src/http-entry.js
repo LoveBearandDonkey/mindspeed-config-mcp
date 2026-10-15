@@ -5,6 +5,7 @@ const httpServer = await startHttpServer(config);
 
 console.log(`MindSpeed Config MCP listening on http://${config.host}:${config.port}/mcp`);
 console.log(`Health check: http://${config.host}:${config.port}/health`);
+console.log(`Browser workbench: http://${config.host}:${config.port}${config.browserBasePath}/`);
 
 let shuttingDown = false;
 function shutdown(signal) {

@@ -8,6 +8,7 @@ import {
   changesLockedBySuggestion,
   fixesResultAlreadyValid,
   hasSuggestionScore,
+  shouldRenderLockPolicy,
   suggestionPagePartial,
   suggestionPipelineSettings,
   withLockedFields,
@@ -161,6 +162,25 @@ test("只有当前候选会修改的字段可新增锁定，已锁字段仍可�
   ]);
   assert.deepEqual([...actionable].sort(), ["parallel.dp", "parallel.pp", "parallel.tp"]);
   assert.equal(actionable.has("parallel.ep"), false);
+});
+
+test("所有候选都只修改同一字段时不显示锁定策略", () => {
+  const sameFieldSuggestions = [
+    { changes: [{ path: "parallel.dp", new_value: 2 }] },
+    { changes: [{ path: "parallel.dp", new_value: 4 }] },
+  ];
+  assert.equal(shouldRenderLockPolicy(sameFieldSuggestions, []), false);
+  assert.equal(shouldRenderLockPolicy(sameFieldSuggestions, new Set()), false);
+});
+
+test("候选涉及多个字段或已有锁定时保留锁定策略", () => {
+  const multipleFields = [
+    { changes: [{ path: "parallel.dp" }] },
+    { changes: [{ path: "parallel.tp" }] },
+  ];
+  const sameField = [{ changes: [{ path: "parallel.dp" }] }];
+  assert.equal(shouldRenderLockPolicy(multipleFields, []), true);
+  assert.equal(shouldRenderLockPolicy(sameField, ["parallel.ep"]), true);
 });
 
 test("有效零分保留显示，缺失或无效评分不显示", () => {
