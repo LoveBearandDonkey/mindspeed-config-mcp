@@ -114,6 +114,11 @@ try {
     $imageLabels = (Remote ("sudo docker image inspect --format " + (Quote-Sh '{{json .Config.Labels}}') + " " + (Quote-Sh $builtImage))) | ConvertFrom-Json
     $revision = [string]$imageLabels.'org.opencontainers.image.revision'
     if ($revision -ne $commit) { throw "V2 image revision label mismatch." }
+    $dialogueCheck = Remote ("cd " + (Quote-Sh $release) + " && sudo docker exec -i " + (Quote-Sh $container) + " node --input-type=module < deploy/verify-v2-cloud.mjs")
+    $dialogue = $dialogueCheck | ConvertFrom-Json
+    if (-not $dialogue.short_answer -or -not $dialogue.source_snapshot -or $dialogue.review -ne "valid") {
+        throw "V2 dialogue verification did not complete."
+    }
     $v1ImageAfter = Remote-Image $liveContainer
     if ($liveImage -ne $v1ImageAfter) { throw "V1 container image changed during V2 deployment." }
     if (((Remote "curl -fsS http://127.0.0.1:3002/health") | ConvertFrom-Json).status -ne "ok") { throw "V1 health check failed after deployment." }
@@ -146,6 +151,7 @@ try {
         health = ($health | ConvertFrom-Json).status
         tool_count = ($health | ConvertFrom-Json).tools
         unauthenticated_mcp_status = [int]$unauthorized
+        dialogue_verification = $dialogue.review
         v1_image_unchanged = $true
     }
 } catch {
