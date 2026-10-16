@@ -18,9 +18,17 @@ $startedNewContainer = $false
 
 function Quote-Sh([string]$value) { return "'" + $value.Replace("'", "'`"'`"'") + "'" }
 function Run([string]$command, [string[]]$arguments) {
-    $output = @(& $command @arguments 2>&1)
-    if ($LASTEXITCODE -ne 0) {
-        throw "$command failed ($LASTEXITCODE): $($output -join [Environment]::NewLine)"
+    $priorPreference = $ErrorActionPreference
+    try {
+        # Windows PowerShell treats successful native stderr (git fetch/bundle) as ErrorRecord.
+        $ErrorActionPreference = "Continue"
+        $output = @(& $command @arguments 2>&1)
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $priorPreference
+    }
+    if ($exitCode -ne 0) {
+        throw "$command failed ($exitCode): $($output -join [Environment]::NewLine)"
     }
     return (($output | ForEach-Object { $_.ToString() }) -join "`n").Trim()
 }

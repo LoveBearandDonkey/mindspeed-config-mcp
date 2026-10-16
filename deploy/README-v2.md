@@ -9,7 +9,7 @@ V2 在 `main` 开发，腾讯云上单独运行：容器 `mindspeed-config-mcp-v
 ```powershell
 npm test
 npm run smoke:http
-powershell -NoProfile -ExecutionPolicy Bypass -File deploy/deploy-v2.ps1
+powershell -ExecutionPolicy Bypass -File deploy/deploy-v2.ps1
 ```
 
 脚本只接受已推送的精确提交，用 Git bundle 在服务器创建独立发布目录，构建 V2 镜像后才切换 V2 容器；构建期间旧 V2 和现行 V1 继续运行。首次安装从现行服务的服务器端 `.env` 复制凭据，后续更新沿用 V2 自己的 `.env.v2`；凭据始终留在服务器，不进入 Git、镜像或脚本输出。若需要单独轮换 V2 凭据，只修改服务器当前 V2 发布目录的 `deploy/.env.v2`，不要改现行 V1 的 `.env`。脚本校验镜像提交标签、V2 健康检查、未授权访问返回 401、V1 镜像不变，并为已有 V2 镜像保留回退标签。
