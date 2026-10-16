@@ -1,18 +1,19 @@
 # MCP Server
 
-第一版使用官方 MCP TypeScript SDK v2 和 MCP Apps 扩展，通过 stdio 暴露五个只读 Tool：
+服务使用官方 MCP TypeScript SDK v2 和 MCP Apps 扩展，通过 stdio 暴露六个只读 Tool：
 
 - `validate_parallel_config`
 - `compute_rank_topology`
 - `suggest_config_fixes`
 - `parse_training_config`
 - `estimate_training_capacity`
+- `review_config_change`
 
-五个计算 Tool 保留完整 `inputSchema`，供模型、普通 MCP 客户端和 MCP App 调用。另注册
+六个计算 Tool 保留完整 `inputSchema`，供模型和普通 MCP 客户端调用。另注册
 六个零参数界面入口：统一工作台以及五个分析页入口。支持 MCP Apps 的客户端通过这些入口
 打开 `ui://mindspeed-config/result-view.html`，在自定义中文输入区中填写或导入配置，再由
 App 调用对应计算 Tool；用户无需操作宿主自动生成的 JSON Schema 表单。不支持界面的客户端
-仍可直接调用五个计算 Tool，获取文本说明和 `structuredContent`。
+仍可直接调用六个计算 Tool，获取文本说明和 `structuredContent`。修改复查 Tool 仅供模型调用，不另设页面；它接收调用方读取的修改前后文件文本，不按路径读取或写入文件。
 
 启动：
 

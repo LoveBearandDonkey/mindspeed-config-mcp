@@ -15,6 +15,7 @@
     "suggestions",
     "assumptions",
     "confidence",
+    "quick_assessment",
     "data"
   ],
   "properties": {
@@ -25,6 +26,7 @@
         "compute_rank_topology",
         "suggest_config_fixes",
         "parse_training_config",
+        "review_config_change",
         "estimate_training_capacity"
       ]
     },
@@ -61,6 +63,32 @@
     },
     "confidence": {
       "enum": ["deterministic", "theoretical", "model-informed", "calibrated"]
+    },
+    "quick_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "conclusion", "evidence", "next_step", "limitation"],
+      "properties": {
+        "state": { "enum": ["blocked", "needs_input", "review", "ready", "passed", "estimated"] },
+        "conclusion": { "type": "string", "minLength": 1 },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["code", "message", "fields", "source", "source_ref"],
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" },
+              "fields": { "type": "array", "items": { "type": "string" } },
+              "source": { "type": "string" },
+              "source_ref": { "type": "string" }
+            }
+          }
+        },
+        "next_step": { "type": "string", "minLength": 1 },
+        "limitation": { "type": "string", "minLength": 1 }
+      }
     },
     "data": {
       "type": "object"

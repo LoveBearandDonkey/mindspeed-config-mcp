@@ -4,23 +4,26 @@
 
 ## 当前状态
 
-项目处于第一阶段：`集成分析.md` 表中第 1、2、3、4、6 项已经形成第一版并通过
-单元测试。stdio MCP Server 已注册五个只读计算 Tool，并提供六个无需填写宿主 JSON 的
+V1 基线已归档为 `v1.0.8`；V2 正在 `main` 开发。`集成分析.md` 表中第 1、2、3、4、6 项已形成 V1 并通过
+单元测试。stdio MCP Server 当前已注册六个只读计算 Tool，并提供六个无需填写宿主 JSON 的
 自定义中文界面入口；远程 Streamable HTTP、健康检查和静态 Bearer
 Token 鉴权已经实现。生产
 服务器的 TLS、反向代理和进程托管仍待按目标环境落地。
 
-第一版范围：
+当前计算入口：
 
 1. `validate_parallel_config`
 2. `compute_rank_topology`
 3. `suggest_config_fixes`
 4. `parse_training_config`
 5. `estimate_training_capacity`（对应分析表第 6 项）
+6. `review_config_change`（修改后的源文件差异与静态复查，仅供 Agent 直接调用）
 
 面向用户的入口包括统一工作台 `open_config_workbench` 和五个 `open_<分析 Tool>` 页面：
 可选择、拖入或直接填写 YAML、JSON、Shell 配置，在统一中文表单中核对并补齐缺项，再调用
-上述五项分析能力。底层计算 Tool 继续用同一份 `inputSchema` 做协议校验。
+上述五项分析能力。第六项用于 Agent 修改源文件后的复查，不另设页面。底层计算 Tool 继续用各自的 `inputSchema` 做协议校验。
+
+计算 Tool 的文本结果先给结论、首要依据和下一步；`structuredContent.quick_assessment` 保留同一摘要及完整结构化结果。解析结果包含源文本 SHA-256；修复候选保留字段级 `changes`，`review_config_change` 可根据修改前后文本、锁定字段与候选差异复查实际修改。
 
 纯计算入口由 `packages/config-core/src/index.js` 统一导出。当前 Rank 语义为
 `page-derived`，容量置信等级为 `theoretical`。
@@ -37,7 +40,7 @@ apps/
   mcp-server/       # MCP 协议适配与可嵌入结果界面
   web/              # 工具矩阵页面适配层
 packages/
-  config-core/      # 五项能力的唯一计算实现
+  config-core/      # 计算规则与修改复查的唯一实现
   contracts/        # 输入输出 JSON Schema
 docs/               # 来源映射、验收矩阵和架构决策
 tests/              # fixtures、golden 与兼容性测试

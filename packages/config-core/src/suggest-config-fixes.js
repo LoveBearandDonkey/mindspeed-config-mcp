@@ -598,6 +598,7 @@ export function suggestConfigFixes(input) {
   const suggestions = solutions.map((solution, index) => ({
     rank: index + 1,
     ...solution,
+    proposed_config: (({ source_snapshot: ignored, ...config }) => config)(solution.proposed_config),
   }));
 
   return toolResult({

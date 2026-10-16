@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 
@@ -18,7 +18,7 @@ const APP_LAUNCHERS = [
   "open_config_workbench",
   ...EXPECTED_TOOLS.map((name) => `open_${name}`),
 ];
-const REGISTERED_TOOLS = [...EXPECTED_TOOLS, ...APP_LAUNCHERS];
+const REGISTERED_TOOLS = [...EXPECTED_TOOLS, "review_config_change", ...APP_LAUNCHERS];
 const FETCH_FORBIDDEN_PORTS = new Set([
   1, 7, 9, 11, 13, 15, 17, 19, 20, 21, 22, 23, 25, 37, 42, 43, 53, 69, 77, 79,
   87, 95, 101, 102, 103, 104, 109, 110, 111, 113, 115, 117, 119, 123, 135, 137,
@@ -68,7 +68,7 @@ try {
   await client.connect(transport);
   const listed = await client.listTools();
   assert.deepEqual(listed.tools.map(({ name }) => name).sort(), [...REGISTERED_TOOLS].sort());
-  checks.push({ check: "MCP 握手与枚举", result: "通过", detail: "五个 Schema Tool 和六个自定义界面入口已注册" });
+  checks.push({ check: "MCP 握手与枚举", result: "通过", detail: "六个计算 Tool 和六个自定义界面入口已注册" });
 
   const workbench = await client.callTool({ name: "open_config_workbench", arguments: {} });
   assert.equal(workbench.structuredContent?.status, "ready");
@@ -78,6 +78,30 @@ try {
     const launcher = await client.callTool({ name: `open_${name}`, arguments: {} });
     assert.equal(launcher.structuredContent?.data?.target_tool, name);
   }
+
+  const { schema_version: ignoredSchema, rule_profile: ignoredProfile, policy: ignoredPolicy, ...raw } = createTrainingConfig();
+  delete raw.model.id;
+  raw.model_name = "smoke-model";
+  raw.first_k_dense_layers = 0;
+  raw.parallel.tp = 3;
+  const beforeContent = JSON.stringify(raw);
+  const afterContent = JSON.stringify({ ...raw, parallel: { ...raw.parallel, tp: 2 } });
+  const review = await client.callTool({
+    name: "review_config_change",
+    arguments: {
+      schema_version: "1.0",
+      rule_profile: createTrainingConfig().rule_profile,
+      before: { source: { format: "json", name: "train.json", content: beforeContent } },
+      after: { source: { format: "json", name: "train.json", content: afterContent } },
+      expected_before_sha256: createHash("sha256").update(beforeContent).digest("hex"),
+      locked_fields: ["cluster.total_ranks", "parallel.ep"],
+      expected_changes: [{ path: "parallel.tp", old_value: 3, new_value: 2 }],
+    },
+  });
+  assert.notEqual(review.isError, true);
+  assert.equal(review.structuredContent?.status, "valid");
+  assert.equal(review.structuredContent?.data?.candidate_match, true);
+  checks.push({ check: "review_config_change", result: "通过", detail: review.content[0].text });
   checks.push({ check: "五个分析页面入口", result: "通过", detail: "全部为零输入自定义界面" });
 
   for (const name of EXPECTED_TOOLS) {

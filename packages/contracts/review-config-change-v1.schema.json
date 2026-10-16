@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mindspeed.example/schemas/review-config-change-v1.schema.json",
+  "title": "Review Training Configuration Change Input V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "rule_profile", "before", "after"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "rule_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["framework", "version"],
+      "properties": {
+        "framework": { "enum": ["mindspeed-core", "mindspeed-llm-mcore", "mindspeed-llm-fsdp2", "mindspeed-bridge", "mindformers", "generic"] },
+        "version": { "type": "string", "minLength": 1 },
+        "source_commit": { "type": "string" }
+      }
+    },
+    "before": { "$ref": "#/$defs/source_set" },
+    "after": { "$ref": "#/$defs/source_set" },
+    "expected_before_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "expected_before_model_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "locked_fields": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "expected_changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "old_value": {},
+          "new_value": {}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "source_set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source"],
+      "properties": {
+        "source": { "$ref": "#/$defs/source" },
+        "model_source": { "$ref": "#/$defs/source" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "content"],
+      "properties": {
+        "format": { "enum": ["auto", "yaml", "json", "shell"] },
+        "content": { "type": "string", "minLength": 1, "maxLength": 1048576 },
+        "name": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

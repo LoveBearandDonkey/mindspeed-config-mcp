@@ -19,6 +19,7 @@ export {
 } from "./page-rules.js";
 export { validateParallelConfig } from "./validate-parallel-config.js";
 export { suggestConfigFixes } from "./suggest-config-fixes.js";
+export { reviewConfigChange } from "./review-config-change.js";
 export { staticStrategySuggestions } from "./static-strategy-suggestions.js";
 export {
   TOOL_READINESS_SOURCE,
@@ -33,5 +34,6 @@ export const CONFIG_CORE_STATUS = Object.freeze({
     "suggest_config_fixes",
     "parse_training_config",
     "estimate_training_capacity",
+    "review_config_change",
   ],
 });

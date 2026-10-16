@@ -2,20 +2,21 @@
 
 ## 当前能力
 
-同一个 `mindspeed-config-mcp` Server 提供五个只读分析 Tool：
+同一个 `mindspeed-config-mcp` Server 提供六个只读计算 Tool：
 
 1. `validate_parallel_config`
 2. `compute_rank_topology`
 3. `suggest_config_fixes`
 4. `parse_training_config`
 5. `estimate_training_capacity`
+6. `review_config_change`
 
-五个 Tool 都不会启动训练、连接远端或修改输入文件。解析工具接收配置文本，不根据
+六个 Tool 都不会启动训练、连接远端或修改输入文件。解析和复查工具接收配置文本，不根据
 用户给出的路径读取服务器文件。
 
 此外还有六个零参数界面入口：`open_config_workbench` 和五个 `open_<分析 Tool>` 入口。
 它们不增加新的计算规则，只负责以统一中文界面组织文件导入、表单填写、缺项补充和上述
-五个计算 Tool 的调用。计算 Tool 的 `inputSchema` 仍是协议校验和普通 MCP 客户端表单的
+五个分析 Tool 的调用；`review_config_change` 由 Agent 在修改源文件后直接调用。计算 Tool 的 `inputSchema` 仍是协议校验和普通 MCP 客户端表单的
 事实来源；支持 MCP Apps 的客户端优先打开零参数界面入口，用户不需要操作宿主 JSON 表单。
 
 ## 启动
@@ -62,8 +63,9 @@ HTTP 入口；不要通过自行转发 stdio 来模拟网络服务。
 - “总卡数不能变、EP 也不能变，给我最小修复方案。”
 - “解析这段启动脚本，告诉我哪些参数已映射、哪些没看懂。”
 - “为什么最后一个 Stage 更容易 OOM？把六段理论显存列出来。”
+- “按刚才的建议改文件；总卡数和 EP 不动。改完重新读取文件并复查。”
 
-返回值同时包含一句面向人的解释和完整 `structuredContent`。Rank 拓扑使用
+返回值包含结论、首要依据和下一步，以及完整 `structuredContent`。`parse_training_config` 返回源文本 SHA-256；`suggest_config_fixes` 的候选 `changes` 是拟修改字段；Agent 修改并重新读取源文件后，用 `review_config_change` 的 `before`、`after`、`locked_fields`、`expected_before_sha256` 和可选 `expected_changes` 复查。Rank 拓扑使用
 `page-derived` 标记；容量估算使用 `theoretical` 标记。
 
 ## 验证
@@ -72,5 +74,5 @@ HTTP 入口；不要通过自行转发 stdio 来模拟网络服务。
 npm run test:mcp
 ```
 
-测试会先构建 MCP App，通过内存传输调用五个计算 Tool 和六个零参数界面入口、读取 `ui://`
+测试会先构建 MCP App，通过内存传输调用六个计算 Tool 和六个零参数界面入口、读取 `ui://`
 界面资源，再真实启动 stdio 子进程完成握手和工具枚举。

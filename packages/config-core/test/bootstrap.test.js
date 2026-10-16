@@ -11,5 +11,6 @@ test("config-core starts without registering MCP tools", () => {
     "suggest_config_fixes",
     "parse_training_config",
     "estimate_training_capacity",
+    "review_config_change",
   ]);
 });

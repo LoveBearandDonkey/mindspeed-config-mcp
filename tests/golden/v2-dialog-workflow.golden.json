@@ -1,0 +1,43 @@
+{
+  "validation": {
+    "state": "blocked",
+    "first_code": "PAGE_HEADS_DIVISIBLE_BY_TP",
+    "source_ref": "compute-graph-viewer-wzh:config-relation-observer.js:1519@1e6bb6e",
+    "next_step": "先处理所列静态问题，再用修改后的配置重新校验。"
+  },
+  "parse": {
+    "complete": true,
+    "source_sha256": "c4b05e7e5306c232c3054dd72923136dd57a207f96bf1abd655bd7949aa8505f",
+    "state": "ready"
+  },
+  "fix": {
+    "solved": true,
+    "state": "review",
+    "locked_fields": [
+      "cluster.total_ranks",
+      "parallel.ep"
+    ],
+    "first_changes": [
+      {
+        "path": "parallel.tp",
+        "old_value": 3,
+        "new_value": 2
+      }
+    ]
+  },
+  "review": {
+    "status": "valid",
+    "source_changed": true,
+    "after_sha256": "0bb24af36d3601eb1da07afbd132e3807a93fceef02548fb8ab9044f6d68390f",
+    "locked_field_changes": [],
+    "changes": [
+      {
+        "path": "parallel.tp",
+        "old_value": 3,
+        "new_value": 2
+      }
+    ],
+    "validation_status": "valid",
+    "state": "passed"
+  }
+}

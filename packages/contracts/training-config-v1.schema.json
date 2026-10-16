@@ -17,6 +17,15 @@
     "schema_version": {
       "const": "1.0"
     },
+    "source_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source"],
+      "properties": {
+        "source": { "$ref": "#/$defs/source_digest" },
+        "model_source": { "$ref": "#/$defs/source_digest" }
+      }
+    },
     "rule_profile": {
       "type": "object",
       "additionalProperties": false,
@@ -226,6 +235,17 @@
             "balanced"
           ]
         }
+      }
+    }
+  },
+  "$defs": {
+    "source_digest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "sha256"],
+      "properties": {
+        "name": { "type": ["string", "null"] },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
       }
     }
   }

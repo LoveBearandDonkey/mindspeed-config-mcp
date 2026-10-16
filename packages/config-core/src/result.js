@@ -1,3 +1,6 @@
+import { quickAssessment } from "./quick-assessment.js";
+import { sha256Utf8 } from "./sha256.js";
+
 export const SOURCE_VERSIONS = Object.freeze({
   tool_matrix_ui: "1e6bb6eabe60f75b2486188b3b08b59f65d33621",
   plane_ui_reference: "485d5206ce4c0cd4719f5d28dd5cbbeb04680be1",
@@ -59,7 +62,9 @@ export function toolResult({
   confidence = "deterministic",
   data = {},
 }) {
-  return {
+  const sourceSnapshot = tool === "parse_training_config" ? sourceSnapshotFor(input) : input.source_snapshot;
+  const completeData = sourceSnapshot ? { ...data, source_snapshot: sourceSnapshot } : data;
+  const result = {
     schema_version: "1.0",
     tool,
     status,
@@ -70,7 +75,21 @@ export function toolResult({
     suggestions,
     assumptions,
     confidence,
-    data,
+    data: completeData,
+  };
+  result.quick_assessment = quickAssessment(result);
+  return result;
+}
+
+export function sourceSnapshotFor(input) {
+  if (!input.source?.content) return null;
+  const entry = (source) => ({
+    name: source.name ?? null,
+    sha256: sha256Utf8(source.content),
+  });
+  return {
+    source: entry(input.source),
+    ...(input.model_source ? { model_source: entry(input.model_source) } : {}),
   };
 }
 

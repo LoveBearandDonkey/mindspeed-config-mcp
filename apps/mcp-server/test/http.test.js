@@ -72,7 +72,7 @@ test("健康检查无需 Token，但 MCP 端点拒绝无 Token 请求", async ()
     assert.equal(healthBody.service, "mindspeed-config-mcp");
     assert.equal(healthBody.version, "0.1.0");
     assert.equal(healthBody.transport, "streamable-http");
-    assert.equal(healthBody.tools, 11);
+    assert.equal(healthBody.tools, 12);
     assert.ok(Number.isInteger(healthBody.uptime_seconds));
 
     const unauthorized = await fetch(`${base}/mcp`, {
@@ -184,6 +184,7 @@ test("携带 Bearer Token 的 Streamable HTTP 客户端可调用 Tool 并读取�
       "open_suggest_config_fixes",
       "open_validate_parallel_config",
       "parse_training_config",
+      "review_config_change",
       "suggest_config_fixes",
       "validate_parallel_config",
     ]);

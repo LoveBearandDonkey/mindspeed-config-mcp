@@ -15,7 +15,7 @@
     "preview:baseline-ui": "vite apps/web/config-relation-plane-baseline --host 127.0.0.1 --port 4173 --strictPort --open /training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html",
     "test": "npm run build:ui && node --test",
     "test:contracts": "node --test packages/contracts/test/contracts.test.js",
-    "test:golden": "node --test tests/golden/acceptance-golden.test.js tests/golden/parse-training-config.golden.test.js tests/golden/static-capabilities.golden.test.js",
+    "test:golden": "node --test tests/golden/acceptance-golden.test.js tests/golden/parse-training-config.golden.test.js tests/golden/static-capabilities.golden.test.js tests/golden/v2-dialog-workflow.golden.test.js",
     "test:mcp": "npm run build:ui && node --test apps/mcp-server/test/server.test.js",
     "test:http": "npm run build:ui && node --test apps/mcp-server/test/http.test.js",
     "smoke:http": "npm run build:ui && node tools/smoke-http.mjs",

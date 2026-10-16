@@ -5,12 +5,14 @@ import {
   computeRankTopology,
   estimateTrainingCapacity,
   parseTrainingConfig,
+  reviewConfigChange,
   suggestConfigFixes,
   validateParallelConfig,
 } from "../../config-core/src/index.js";
 import {
   assertToolResult,
   validateParseTrainingConfig,
+  validateReviewConfigChange,
   validateToolResult,
   validateTrainingConfig,
 } from "../src/index.js";
@@ -39,6 +41,12 @@ test("五个纯计算接口的成功与失败结果都符合统一返回 Schema"
     }),
     estimateTrainingCapacity(ACCEPTANCE_SCENARIOS.A12),
     estimateTrainingCapacity(invalid),
+    reviewConfigChange({
+      schema_version: "1.0",
+      rule_profile: valid.rule_profile,
+      before: { source: { format: "json", content: "{\"model_name\":\"before\"}" } },
+      after: { source: { format: "json", content: "{\"model_name\":\"after\"}" } },
+    }),
   ];
 
   for (const result of results) {
@@ -63,6 +71,20 @@ test("待解析文件使用独立输入 Schema", () => {
   }), { valid: true, errors: [] });
   assert.equal(validateParseTrainingConfig(invalid).valid, false);
   assert.equal(validateParseTrainingConfig({ ...valid, model_source: { format: "json" } }).valid, false);
+});
+
+test("修改复查输入要求两份文本并校验源摘要格式", () => {
+  const input = {
+    schema_version: "1.0",
+    rule_profile: ACCEPTANCE_SCENARIOS.A01.rule_profile,
+    before: { source: { format: "shell", name: "train.sh", content: "python train.py --num-layers 32" } },
+    after: { source: { format: "shell", name: "train.sh", content: "python train.py --num-layers 48" } },
+    expected_before_sha256: "a".repeat(64),
+    locked_fields: ["parallel.ep"],
+  };
+  assert.equal(validateReviewConfigChange(input).valid, true);
+  assert.equal(validateReviewConfigChange({ ...input, after: undefined }).valid, false);
+  assert.equal(validateReviewConfigChange({ ...input, expected_before_sha256: "stale" }).valid, false);
 });
 
 test("缺字段和未知字段会被输入 Schema 拒绝", () => {

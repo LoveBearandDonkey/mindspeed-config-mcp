@@ -6,14 +6,17 @@ import {
   computeRankTopology,
   estimateTrainingCapacity,
   parseTrainingConfig,
+  reviewConfigChange,
   suggestConfigFixes,
   validateParallelConfig,
 } from "@mindspeed-config/config-core";
 import {
   assertToolResult,
   assertParseTrainingConfig,
+  assertReviewConfigChange,
   assertTrainingConfig,
   parseTrainingConfigSchema,
+  reviewConfigChangeSchema,
   toolResultSchema,
   trainingConfigSchema,
 } from "@mindspeed-config/contracts";
@@ -26,6 +29,7 @@ import {
 
 const trainingInputSchema = z.fromJSONSchema(trainingConfigSchema);
 const parseInputSchema = z.fromJSONSchema(parseTrainingConfigSchema);
+const reviewInputSchema = z.fromJSONSchema(reviewConfigChangeSchema);
 const outputSchema = z.fromJSONSchema(toolResultSchema);
 const workbenchOutputSchema = z.object({
   tool: z.literal("open_config_workbench"),
@@ -78,7 +82,18 @@ const TOOL_DEFINITIONS = Object.freeze([
     assertInput: assertTrainingConfig,
     run: estimateTrainingCapacity,
   },
+  {
+    name: "review_config_change",
+    title: "复查源配置修改",
+    description: "比较修改前后实际读取的训练配置文本摘要和已映射字段，检查 locked_fields 与预期候选差异，并按修改后内容重新静态校验。不读取服务器文件、不写文件、不启动训练。",
+    inputSchema: reviewInputSchema,
+    assertInput: assertReviewConfigChange,
+    run: reviewConfigChange,
+    modelOnly: true,
+  },
 ]);
+
+const UI_TOOL_DEFINITIONS = TOOL_DEFINITIONS.filter(({ modelOnly }) => !modelOnly);
 
 const LAUNCHER_DEFINITIONS = Object.freeze([
   {
@@ -87,7 +102,7 @@ const LAUNCHER_DEFINITIONS = Object.freeze([
     description: "打开统一中文工作台，自主导入、填写和分析训练配置。无需填写宿主生成的 JSON 表单。",
     targetTool: null,
   },
-  ...TOOL_DEFINITIONS.map((definition) => ({
+  ...UI_TOOL_DEFINITIONS.map((definition) => ({
     name: `open_${definition.name}`,
     title: `打开${definition.title}`,
     description: `打开自定义中文输入界面，再调用 ${definition.name}。无需填写宿主生成的 JSON 表单。`,
@@ -96,36 +111,13 @@ const LAUNCHER_DEFINITIONS = Object.freeze([
 ]);
 
 function summaryOf(result) {
-  if (result.tool === "validate_parallel_config") {
-    const actionable = result.suggestions.filter(({ kind }) => kind === "suggestion").length;
-    const strategySummary = actionable ? `${actionable} 条建议处理` : "";
-    return result.data.valid
-      ? `配置合法，符合已建模的数学约束；world size = ${result.data.world_size}${strategySummary ? `，另有 ${strategySummary}` : ""}。这不代表目标环境已经实机运行通过。`
-      : `配置未通过静态校验，共发现 ${result.errors.length} 个问题：${result.errors.map((item) => item.code).join("、")}。`;
-  }
-  if (result.tool === "compute_rank_topology") {
-    return result.data.valid
-      ? `已按 page-derived 口径生成 ${result.data.ranks.length} 个 Rank 和 ${result.data.stages.length} 个 PP Stage。`
-      : "配置未通过静态校验，因此没有生成貌似可信的 Rank 矩阵。";
-  }
-  if (result.tool === "suggest_config_fixes") {
-    if (result.data.already_valid) return "当前配置已经合法，不需要修改。";
-    return result.data.solved
-      ? `找到 ${result.data.suggestions.length} 个经过复验的修复方案，未修改 locked_fields。`
-      : "在最多修改两个未锁定字段的搜索范围内没有找到合法方案。";
-  }
-  if (result.tool === "estimate_training_capacity") {
-    if (!result.data.valid) return "配置未通过静态校验，因此没有生成容量数字。";
-    const stage = result.data.stages[result.data.bottleneck_stage];
-    return `理论瓶颈位于 Stage ${stage.stage}，估算 ${stage.total_gib.toFixed(1)} GiB，等级为 ${stage.level}；这不是实测峰值。`;
-  }
-  if (result.tool === "parse_training_config") {
-    if (result.status === "error") return result.errors[0]?.message ?? "配置内容解析失败。";
-    const planCount = result.data.completion?.plans?.length ?? 0;
-    const recommended = result.data.completion?.recommended_plan_id;
-    return `原文映射 ${result.data.explicit_mapped_count} 个字段，同文件推导 ${result.data.derived_count} 个，省略态默认 ${result.data.defaulted_count} 个；未识别 ${result.data.unmapped_count} 个，未被静默丢弃；生成 ${planCount} 个经过完整静态复验与理论容量门禁的补齐方案${recommended ? `，推荐 ${recommended}` : "，当前没有落入保守容量线的推荐项"}。`;
-  }
-  return JSON.stringify(result);
+  const brief = result.quick_assessment;
+  const priority = brief.evidence[0];
+  return [brief.conclusion,
+    priority ? `首要依据：${priority.message}（${priority.code}；${priority.source_ref}）。` : "",
+    `下一步：${brief.next_step}`,
+    brief.limitation,
+  ].filter(Boolean).join(" ");
 }
 
 function runTool(definition, args) {
@@ -163,7 +155,7 @@ export function createMcpServer() {
         tool: WORKBENCH_TOOL_NAME,
         status: "ready",
         data: {
-          analysis_tools: TOOL_DEFINITIONS.map(({ name }) => name),
+          analysis_tools: UI_TOOL_DEFINITIONS.map(({ name }) => name),
           target_tool: launcher.targetTool,
         },
       },
@@ -177,7 +169,7 @@ export function createMcpServer() {
       inputSchema: definition.inputSchema,
       outputSchema,
       _meta: {
-        ui: { visibility: ["model", "app"] },
+        ui: { visibility: definition.modelOnly ? ["model"] : ["model", "app"] },
       },
       annotations: {
         readOnlyHint: true,

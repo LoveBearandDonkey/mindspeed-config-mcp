@@ -44,6 +44,7 @@ const ANALYSIS_TOOLS = [
   "compute_rank_topology",
   "estimate_training_capacity",
   "parse_training_config",
+  "review_config_change",
   "suggest_config_fixes",
   "validate_parallel_config",
 ];
@@ -106,7 +107,7 @@ async function withClient(run) {
   }
 }
 
-test("MCP Server 注册五个 Schema Tool 和六个零参数自定义界面入口", async () => {
+test("MCP Server 注册六个计算 Tool 和六个零参数自定义界面入口", async () => {
   await withClient(async (client) => {
     const response = await client.listTools();
     const names = response.tools.map((tool) => tool.name).sort();
@@ -118,24 +119,32 @@ test("MCP Server 注册五个 Schema Tool 和六个零参数自定义界面入�
       if (APP_LAUNCHERS.includes(tool.name)) assert.equal(tool._meta?.ui?.resourceUri, APP_RESOURCE_URI);
       else {
         assert.equal(tool._meta?.ui?.resourceUri, undefined);
-        assert.deepEqual(tool._meta?.ui?.visibility, ["model", "app"]);
+        assert.deepEqual(tool._meta?.ui?.visibility, tool.name === "review_config_change" ? ["model"] : ["model", "app"]);
       }
     }
   });
 });
 
-test("五个分析 Tool 都返回文本解释和结构化结果", async () => {
+test("计算 Tool 都返回简短结论和结构化结果", async () => {
   await withClient(async (client) => {
     for (const name of ANALYSIS_TOOLS) {
       const response = await client.callTool({
         name,
-        arguments: name === "parse_training_config" ? PARSE_INPUT : createTrainingConfig(),
+        arguments: name === "parse_training_config" ? PARSE_INPUT
+          : name === "review_config_change" ? {
+            schema_version: "1.0",
+            rule_profile: createTrainingConfig().rule_profile,
+            before: { source: { format: "json", content: "{\"model_name\":\"m\"}" } },
+            after: { source: { format: "json", content: "{\"model_name\":\"m2\"}" } },
+          } : createTrainingConfig(),
       });
 
       assert.notEqual(response.isError, true, name);
       assert.equal(response.structuredContent.tool, name);
       assert.equal(response.content[0].type, "text");
       assert.ok(response.content[0].text.length > 0);
+      assert.match(response.content[0].text, /下一步：/);
+      assert.ok(response.structuredContent.quick_assessment.conclusion);
     }
   });
 });
@@ -181,7 +190,7 @@ test("中文配置工作台无需输入 JSON 即可打开", async () => {
 
 test("五个分析页面入口无需宿主表单并指向对应 Schema Tool", async () => {
   await withClient(async (client) => {
-    for (const analysisTool of ANALYSIS_TOOLS) {
+    for (const analysisTool of ANALYSIS_TOOLS.filter((name) => name !== "review_config_change")) {
       const response = await client.callTool({ name: `open_${analysisTool}`, arguments: {} });
       assert.notEqual(response.isError, true, analysisTool);
       assert.equal(response.structuredContent.tool, "open_config_workbench");
