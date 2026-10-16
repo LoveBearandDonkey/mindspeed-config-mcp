@@ -77,10 +77,10 @@ npm run verify:upstream
 ## 项目文档
 
 - [完整集成分析](docs/集成分析.md)
-- [零阶段基线与已知问题](docs/零阶段基线.md)
 - [源码能力映射](docs/源码能力映射.md)
 - [验收矩阵](docs/验收矩阵.md)
 - [MCP 本地使用](docs/MCP本地使用.md)
 - [MCP 本地模拟验收](docs/MCP本地模拟验收.md)
-- [MCP 远程使用](docs/MCP远程使用.md)
-- [页面原型拷贝清单](docs/页面原型拷贝清单.md)
+- [团队成员简易 MCP 访问方式](docs/团队成员简易MCP访问方式.md)
+- [MCP 服务端配置与运维](docs/MCP服务端配置与运维.md)
+- [UI 逐项改造清单](docs/UI逐项改造清单.md)

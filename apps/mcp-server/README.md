@@ -40,4 +40,4 @@ npm run start:http
 必须携带 `Authorization: Bearer <token>`；服务不会在缺少 Token 时启动。
 
 监听所有网卡时还必须配置 `MCP_ALLOWED_HOSTS`。完整配置见
-[MCP 远程使用](../../docs/MCP远程使用.md)。
+[MCP 服务端配置与运维](../../docs/MCP服务端配置与运维.md)。

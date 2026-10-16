@@ -106,4 +106,4 @@ Authorization: Bearer <MCP_BEARER_TOKEN>
 Transport: Streamable HTTP
 ```
 
-运行参数和安全边界另见 [MCP 远程使用](../docs/MCP远程使用.md)。
+运行参数和安全边界另见 [MCP 服务端配置与运维](../docs/MCP服务端配置与运维.md)。
