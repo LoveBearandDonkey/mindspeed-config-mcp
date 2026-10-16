@@ -78,7 +78,8 @@ try {
     if (-not $stageExists -and $portOwner) { throw "Port 3003 is already occupied." }
     if ($stageExists) {
         $previousImage = Remote-Image $container
-        $previousDeployDirectory = Remote ("sudo docker inspect --format " + (Quote-Sh '{{index .Config.Labels "com.docker.compose.project.working_dir"}}') + " " + (Quote-Sh $container))
+        $containerLabels = (Remote ("sudo docker inspect --format " + (Quote-Sh '{{json .Config.Labels}}') + " " + (Quote-Sh $container))) | ConvertFrom-Json
+        $previousDeployDirectory = [string]$containerLabels.'com.docker.compose.project.working_dir'
         if ($previousDeployDirectory -notmatch '^/home/ubuntu/mindspeed-config-mcp-v2-\d{8}-\d{6}/deploy$') {
             throw "Unexpected V2 compose directory: $previousDeployDirectory"
         }
@@ -110,7 +111,8 @@ try {
     if (($health | ConvertFrom-Json).status -ne "ok") { throw "V2 health check failed." }
     $unauthorized = Remote "curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3003/mindspeed-config-v2/mcp"
     if ($unauthorized -ne "401") { throw "Unauthenticated V2 MCP returned $unauthorized, expected 401." }
-    $revision = Remote ("sudo docker image inspect --format " + (Quote-Sh '{{index .Config.Labels "org.opencontainers.image.revision"}}') + " " + (Quote-Sh $builtImage))
+    $imageLabels = (Remote ("sudo docker image inspect --format " + (Quote-Sh '{{json .Config.Labels}}') + " " + (Quote-Sh $builtImage))) | ConvertFrom-Json
+    $revision = [string]$imageLabels.'org.opencontainers.image.revision'
     if ($revision -ne $commit) { throw "V2 image revision label mismatch." }
     $v1ImageAfter = Remote-Image $liveContainer
     if ($liveImage -ne $v1ImageAfter) { throw "V1 container image changed during V2 deployment." }
