@@ -24,7 +24,20 @@ powershell -ExecutionPolicy Bypass -File deploy/deploy-v2.ps1
 | MCP Streamable HTTP | `https://42.192.111.92/mindspeed-config-v2/mcp` |
 | 健康检查 | `https://42.192.111.92/mindspeed-config-v2/health` |
 
-浏览器首次访问输入服务器上配置的浏览器访问码。首次安装复用现行服务访问码；`MCP_BROWSER_ACCESS_TOKEN` 为空时使用 Bearer Token。MCP 客户端使用服务器上的 `MCP_BEARER_TOKEN`，HTTP Header 为 `Authorization: Bearer <token>`。不要把 Token 写入聊天、配置仓库或命令行历史。现有 V1 MCP 客户端配置可以保留，另建名为 `mindspeed-config-v2` 的连接，URL 指向上述 V2 MCP 地址，并通过本机环境变量提供 Token。
+浏览器首次访问输入服务器上配置的浏览器访问码。首次安装复用现行服务访问码；`MCP_BROWSER_ACCESS_TOKEN` 为空时使用 Bearer Token。MCP 客户端使用服务器上的 `MCP_BEARER_TOKEN`，HTTP Header 为 `Authorization: Bearer <token>`。不要把 Token 写入聊天、配置仓库或命令行历史。可给 V2 单独轮换 MCP Token，并保留原浏览器访问码。直接用浏览器打开 `/mcp` 会因为没有 Bearer Token 返回 `Unauthorized`，这是鉴权生效的表现；浏览器工作台应打开上表中的 `/mindspeed-config-v2/`。
+
+### VS Code 中的 Codex
+
+Codex CLI 与 VS Code Codex 扩展共用 MCP 配置。在本机有 `codex` 命令时运行：
+
+```powershell
+codex mcp add mindspeed-config-v2 `
+  --url https://42.192.111.92/mindspeed-config-v2/mcp `
+  --bearer-token-env-var MINDSPEED_CONFIG_V2_MCP_TOKEN
+codex mcp list
+```
+
+把 V2 专用 Bearer Token 存在本机用户环境变量 `MINDSPEED_CONFIG_V2_MCP_TOKEN`；不要写进 Git 或 `config.toml`。VS Code 必须在取得该环境变量后重新启动，Codex 扩展也要重新加载 MCP 连接。Codex 的 MCP 服务器列表中应能看到 `mindspeed-config-v2`；保留原有 V1 连接即可并行对比。此配置只把工具提供给 Agent；真正的文件修改由 Codex 对本地工程执行，MCP 服务器只接受源文本并返回只读分析和复查结果。
 
 ## 验证第 1、2 项
 
