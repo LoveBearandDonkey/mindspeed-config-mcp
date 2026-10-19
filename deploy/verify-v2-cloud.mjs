@@ -47,12 +47,29 @@ const config = {
 const beforeText = JSON.stringify(config);
 const afterText = JSON.stringify({ ...config, parallel: { ...config.parallel, tp: 2 } });
 const source = (content) => ({ format: "json", name: "train.json", content });
+const expectedTools = [
+  "analyze_performance_evidence",
+  "compose_analysis_report",
+  "compute_rank_topology",
+  "estimate_training_capacity",
+  "open_compute_rank_topology",
+  "open_config_workbench",
+  "open_estimate_training_capacity",
+  "open_parse_training_config",
+  "open_plan_training_config",
+  "open_suggest_config_fixes",
+  "open_validate_parallel_config",
+  "parse_training_config",
+  "plan_training_config",
+  "review_config_change",
+  "suggest_config_fixes",
+  "validate_parallel_config",
+];
 
 try {
   await client.connect(transport);
   const tools = (await client.listTools()).tools.map(({ name }) => name);
-  assert.equal(tools.length, 12);
-  assert.ok(tools.includes("review_config_change"));
+  assert.deepEqual(tools.sort(), expectedTools.sort());
 
   const parsed = await client.callTool({ name: "parse_training_config", arguments: {
     schema_version: "1.0", rule_profile: ruleProfile, source: source(beforeText),
