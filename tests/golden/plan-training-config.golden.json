@@ -1,0 +1,70 @@
+{
+  "missing": {
+    "status": "invalid",
+    "code": "PLAN_NEEDS_CONTEXT",
+    "source_ref": "mindspeed-config-mcp:packages/config-core/src/plan-training-config.js@0.1.0",
+    "required_inputs": [
+      "rule_profile.framework",
+      "model.id",
+      "model.total_layers",
+      "model.hidden_size",
+      "model.num_attention_heads",
+      "model.ffn_hidden_size",
+      "model.vocab_size",
+      "batch.sequence_length",
+      "batch.global_batch_size",
+      "batch.micro_batch_size",
+      "memory.compute_dtype",
+      "memory.parameter_dtype",
+      "memory.shard_mode"
+    ]
+  },
+  "planned": {
+    "status": "estimated",
+    "confidence": "model-informed",
+    "policy_source": "mindspeed-config-mcp:packages/config-core/src/plan-training-config.js@0.1.0",
+    "considered": 80,
+    "valid_candidate_count": 48,
+    "candidates": [
+      {
+        "id": "tp1-pp8-ep8-dp8",
+        "level": "safe",
+        "bottleneck_gib": 26.46,
+        "change_paths": [
+          "cluster.total_ranks",
+          "parallel.tp",
+          "parallel.pp",
+          "parallel.ep",
+          "parallel.dp",
+          "batch.micro_batch_count"
+        ],
+        "rank_count": 64
+      },
+      {
+        "id": "tp1-pp8-ep4-dp8",
+        "level": "safe",
+        "bottleneck_gib": 31.97,
+        "change_paths": [
+          "cluster.total_ranks",
+          "parallel.tp",
+          "parallel.pp",
+          "parallel.ep",
+          "parallel.dp",
+          "batch.micro_batch_count"
+        ],
+        "rank_count": 64
+      },
+      {
+        "id": "tp2-pp8-ep4-dp4",
+        "level": "safe",
+        "bottleneck_gib": 34.04,
+        "change_paths": [
+          "cluster.total_ranks",
+          "parallel.pp",
+          "parallel.ep"
+        ],
+        "rank_count": 64
+      }
+    ]
+  }
+}

@@ -41,9 +41,12 @@ import {
 } from "../ui/src/mcp-validation-adapter.js";
 
 const ANALYSIS_TOOLS = [
+  "analyze_performance_evidence",
+  "compose_analysis_report",
   "compute_rank_topology",
   "estimate_training_capacity",
   "parse_training_config",
+  "plan_training_config",
   "review_config_change",
   "suggest_config_fixes",
   "validate_parallel_config",
@@ -53,6 +56,7 @@ const APP_LAUNCHERS = [
   "open_config_workbench",
   "open_estimate_training_capacity",
   "open_parse_training_config",
+  "open_plan_training_config",
   "open_suggest_config_fixes",
   "open_validate_parallel_config",
 ];
@@ -107,7 +111,7 @@ async function withClient(run) {
   }
 }
 
-test("MCP Server 注册六个计算 Tool 和六个零参数自定义界面入口", async () => {
+test("MCP Server 注册九个计算 Tool 和七个可空输入的自定义界面入口", async () => {
   await withClient(async (client) => {
     const response = await client.listTools();
     const names = response.tools.map((tool) => tool.name).sort();
@@ -119,7 +123,9 @@ test("MCP Server 注册六个计算 Tool 和六个零参数自定义界面入口
       if (APP_LAUNCHERS.includes(tool.name)) assert.equal(tool._meta?.ui?.resourceUri, APP_RESOURCE_URI);
       else {
         assert.equal(tool._meta?.ui?.resourceUri, undefined);
-        assert.deepEqual(tool._meta?.ui?.visibility, tool.name === "review_config_change" ? ["model"] : ["model", "app"]);
+        assert.deepEqual(tool._meta?.ui?.visibility,
+          ["review_config_change", "analyze_performance_evidence", "compose_analysis_report"].includes(tool.name)
+            ? ["model"] : ["model", "app"]);
       }
     }
   });
@@ -131,6 +137,13 @@ test("计算 Tool 都返回简短结论和结构化结果", async () => {
       const response = await client.callTool({
         name,
         arguments: name === "parse_training_config" ? PARSE_INPUT
+          : name === "plan_training_config" ? { schema_version: "1.0", resources: { total_ranks: 64, card_memory_gib: 64 }, goal: "memory-safe" }
+          : name === "analyze_performance_evidence" ? { schema_version: "1.0",
+            observed_config: createTrainingConfig({ model: { first_k_dense_layers: 4 } }),
+            evidence: { bottleneck: "unknown", summary: "尚未定位", source: "profile.json" } }
+          : name === "compose_analysis_report" ? { schema_version: "1.0", project: "demo",
+            source: { name: "train.sh", version_kind: "unknown" },
+            analysis: validateParallelConfig(createTrainingConfig()) }
           : name === "review_config_change" ? {
             schema_version: "1.0",
             rule_profile: createTrainingConfig().rule_profile,
@@ -188,9 +201,28 @@ test("中文配置工作台无需输入 JSON 即可打开", async () => {
   });
 });
 
-test("五个分析页面入口无需宿主表单并指向对应 Schema Tool", async () => {
+test("Agent 已读取的配置和目标能原样交给同一个 MCP App 界面", async () => {
   await withClient(async (client) => {
-    for (const analysisTool of ANALYSIS_TOOLS.filter((name) => name !== "review_config_change")) {
+    const source = {
+      name: "train.sh",
+      content: "python train.py --tensor-model-parallel-size 2",
+      model_source: { name: "config.json", content: '{"hidden_size":4096}' },
+    };
+    const response = await client.callTool({
+      name: "open_config_workbench",
+      arguments: { objective: "检查并行配置", source },
+    });
+    assert.notEqual(response.isError, true);
+    assert.equal(response.structuredContent.data.objective, "检查并行配置");
+    assert.deepEqual(response.structuredContent.data.source, source);
+    assert.equal(response.structuredContent.data.target_tool, null);
+  });
+});
+
+test("六个分析页面入口无需宿主表单并指向对应 Schema Tool", async () => {
+  await withClient(async (client) => {
+    for (const analysisTool of ANALYSIS_TOOLS.filter((name) =>
+      APP_LAUNCHERS.includes(`open_${name}`))) {
       const response = await client.callTool({ name: `open_${analysisTool}`, arguments: {} });
       assert.notEqual(response.isError, true, analysisTool);
       assert.equal(response.structuredContent.tool, "open_config_workbench");

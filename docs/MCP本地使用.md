@@ -2,7 +2,7 @@
 
 ## 当前能力
 
-同一个 `mindspeed-config-mcp` Server 提供六个只读计算 Tool：
+同一个 `mindspeed-config-mcp` Server 提供九个只读计算 Tool：
 
 1. `validate_parallel_config`
 2. `compute_rank_topology`
@@ -10,13 +10,16 @@
 4. `parse_training_config`
 5. `estimate_training_capacity`
 6. `review_config_change`
+7. `plan_training_config`
+8. `analyze_performance_evidence`
+9. `compose_analysis_report`
 
-六个 Tool 都不会启动训练、连接远端或修改输入文件。解析和复查工具接收配置文本，不根据
+九个 Tool 都不会启动训练、连接远端或修改输入文件。解析和复查工具接收配置文本，不根据
 用户给出的路径读取服务器文件。
 
-此外还有六个零参数界面入口：`open_config_workbench` 和五个 `open_<分析 Tool>` 入口。
+此外还有七个零参数界面入口：`open_config_workbench` 和六个 `open_<分析 Tool>` 入口。
 它们不增加新的计算规则，只负责以统一中文界面组织文件导入、表单填写、缺项补充和上述
-五个分析 Tool 的调用；`review_config_change` 由 Agent 在修改源文件后直接调用。计算 Tool 的 `inputSchema` 仍是协议校验和普通 MCP 客户端表单的
+六个分析 Tool 的调用；`review_config_change`、`analyze_performance_evidence` 和 `compose_analysis_report` 由 Agent 直接调用。工作台另提供报告与工程快照面板。计算 Tool 的 `inputSchema` 仍是协议校验和普通 MCP 客户端表单的
 事实来源；支持 MCP Apps 的客户端优先打开零参数界面入口，用户不需要操作宿主 JSON 表单。
 
 ## 启动
@@ -74,5 +77,5 @@ HTTP 入口；不要通过自行转发 stdio 来模拟网络服务。
 npm run test:mcp
 ```
 
-测试会先构建 MCP App，通过内存传输调用六个计算 Tool 和六个零参数界面入口、读取 `ui://`
+测试会先构建 MCP App，通过内存传输调用九个计算 Tool 和七个零参数界面入口、读取 `ui://`
 界面资源，再真实启动 stdio 子进程完成握手和工具枚举。

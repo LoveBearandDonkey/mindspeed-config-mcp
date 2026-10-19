@@ -12,13 +12,15 @@ const EXPECTED_TOOLS = [
   "compute_rank_topology",
   "suggest_config_fixes",
   "parse_training_config",
+  "plan_training_config",
   "estimate_training_capacity",
 ];
 const APP_LAUNCHERS = [
   "open_config_workbench",
   ...EXPECTED_TOOLS.map((name) => `open_${name}`),
 ];
-const REGISTERED_TOOLS = [...EXPECTED_TOOLS, "review_config_change", ...APP_LAUNCHERS];
+const REGISTERED_TOOLS = [...EXPECTED_TOOLS, "review_config_change",
+  "analyze_performance_evidence", "compose_analysis_report", ...APP_LAUNCHERS];
 const FETCH_FORBIDDEN_PORTS = new Set([
   1, 7, 9, 11, 13, 15, 17, 19, 20, 21, 22, 23, 25, 37, 42, 43, 53, 69, 77, 79,
   87, 95, 101, 102, 103, 104, 109, 110, 111, 113, 115, 117, 119, 123, 135, 137,
@@ -68,7 +70,7 @@ try {
   await client.connect(transport);
   const listed = await client.listTools();
   assert.deepEqual(listed.tools.map(({ name }) => name).sort(), [...REGISTERED_TOOLS].sort());
-  checks.push({ check: "MCP 握手与枚举", result: "通过", detail: "六个计算 Tool 和六个自定义界面入口已注册" });
+  checks.push({ check: "MCP 握手与枚举", result: "通过", detail: "九个计算 Tool 和七个自定义界面入口已注册" });
 
   const workbench = await client.callTool({ name: "open_config_workbench", arguments: {} });
   assert.equal(workbench.structuredContent?.status, "ready");
@@ -102,12 +104,25 @@ try {
   assert.equal(review.structuredContent?.status, "valid");
   assert.equal(review.structuredContent?.data?.candidate_match, true);
   checks.push({ check: "review_config_change", result: "通过", detail: review.content[0].text });
-  checks.push({ check: "五个分析页面入口", result: "通过", detail: "全部为零输入自定义界面" });
+  const performance = await client.callTool({ name: "analyze_performance_evidence", arguments: {
+    schema_version: "1.0", observed_config: createTrainingConfig({ model: { first_k_dense_layers: 4 } }),
+    evidence: { bottleneck: "data-input", summary: "数据等待较长", source: "profile.json" },
+  } });
+  assert.equal(performance.structuredContent?.data?.attribution, "unverified");
+  const report = await client.callTool({ name: "compose_analysis_report", arguments: {
+    schema_version: "1.0", project: "smoke", source: { name: "train.sh", version_kind: "unknown" },
+    analysis: performance.structuredContent,
+  } });
+  assert.match(report.structuredContent?.data?.markdown, /配置分析报告/);
+  checks.push({ check: "性能证据与报告", result: "通过", detail: "非配置原因保留，Markdown 和结构化报告可读取" });
+  checks.push({ check: "六个分析页面入口", result: "通过", detail: "全部为零输入自定义界面" });
 
   for (const name of EXPECTED_TOOLS) {
     const response = await client.callTool({
       name,
-      arguments: name === "parse_training_config" ? PARSE_INPUT : createTrainingConfig(),
+      arguments: name === "parse_training_config" ? PARSE_INPUT
+        : name === "plan_training_config" ? { schema_version: "1.0", resources: { total_ranks: 64, card_memory_gib: 64 }, goal: "memory-safe" }
+          : createTrainingConfig(),
     });
     assert.notEqual(response.isError, true, `${name} 返回了错误结果`);
     assert.equal(response.structuredContent?.tool, name);

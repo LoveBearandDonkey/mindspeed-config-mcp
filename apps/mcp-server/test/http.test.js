@@ -72,7 +72,7 @@ test("健康检查无需 Token，但 MCP 端点拒绝无 Token 请求", async ()
     assert.equal(healthBody.service, "mindspeed-config-mcp");
     assert.equal(healthBody.version, "0.1.0");
     assert.equal(healthBody.transport, "streamable-http");
-    assert.equal(healthBody.tools, 12);
+    assert.equal(healthBody.tools, 16);
     assert.ok(Number.isInteger(healthBody.uptime_seconds));
 
     const unauthorized = await fetch(`${base}/mcp`, {
@@ -163,6 +163,64 @@ test("浏览器入口使用访问码换取 HttpOnly 会话，并由腾讯云 HTT
   }
 });
 
+test("独立 Web 用登录后一次性交接接收 Agent 已读取的配置", async () => {
+  const server = await listen(createHttpApp({
+    token: TOKEN,
+    browserAccessToken: BROWSER_TOKEN,
+    browserPublicOrigin: PUBLIC_ORIGIN,
+  }));
+  const { port } = server.address();
+  const browserBase = `http://127.0.0.1:${port}/mindspeed-config`;
+  const transport = new StreamableHTTPClientTransport(new URL(`${browserBase}/mcp`), {
+    requestInit: { headers: { Authorization: `Bearer ${TOKEN}` } },
+  });
+  const client = new Client({ name: "handoff-test", version: "0.1.0" });
+  try {
+    await client.connect(transport);
+    const source = { name: "train.sh", content: "python train.py --num-layers 32" };
+    const opened = await client.callTool({
+      name: "open_config_workbench",
+      arguments: { objective: "检查训练配置", source },
+    });
+    const webUrl = opened.structuredContent.data.web_url;
+    assert.match(webUrl, /^https:\/\/mcp\.example\.com\/mindspeed-config\/#handoff=/);
+    assert.doesNotMatch(webUrl, /num-layers/);
+    const token = new URL(webUrl).hash.slice("#handoff=".length);
+
+    const unauthorized = await fetch(`${browserBase}/api/handoff`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: PUBLIC_ORIGIN },
+      body: JSON.stringify({ token }),
+    });
+    assert.equal(unauthorized.status, 401);
+    const login = await fetch(`${browserBase}/api/session`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: PUBLIC_ORIGIN },
+      body: JSON.stringify({ access_token: BROWSER_TOKEN }),
+    });
+    assert.equal(login.status, 200);
+    const headers = {
+      "content-type": "application/json",
+      origin: PUBLIC_ORIGIN,
+      cookie: login.headers.get("set-cookie"),
+    };
+    const redeemed = await fetch(`${browserBase}/api/handoff`, {
+      method: "POST", headers, body: JSON.stringify({ token }),
+    });
+    assert.equal(redeemed.status, 200);
+    assert.deepEqual((await redeemed.json()).handoff, {
+      source: { ...source, model_source: null }, objective: "检查训练配置", target_tool: null,
+    });
+    const replay = await fetch(`${browserBase}/api/handoff`, {
+      method: "POST", headers, body: JSON.stringify({ token }),
+    });
+    assert.equal(replay.status, 404);
+  } finally {
+    await client.close();
+    await close(server);
+  }
+});
+
 test("携带 Bearer Token 的 Streamable HTTP 客户端可调用 Tool 并读取中文工作台界面", async () => {
   const server = await listen(createHttpApp({ token: TOKEN }));
   const { port } = server.address();
@@ -175,15 +233,19 @@ test("携带 Bearer Token 的 Streamable HTTP 客户端可调用 Tool 并读取�
     await client.connect(transport);
     const tools = await client.listTools();
     assert.deepEqual(tools.tools.map((tool) => tool.name).sort(), [
+      "analyze_performance_evidence",
+      "compose_analysis_report",
       "compute_rank_topology",
       "estimate_training_capacity",
       "open_compute_rank_topology",
       "open_config_workbench",
       "open_estimate_training_capacity",
       "open_parse_training_config",
+      "open_plan_training_config",
       "open_suggest_config_fixes",
       "open_validate_parallel_config",
       "parse_training_config",
+      "plan_training_config",
       "review_config_change",
       "suggest_config_fixes",
       "validate_parallel_config",

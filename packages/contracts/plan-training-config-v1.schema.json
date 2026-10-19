@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mindspeed.example/schemas/plan-training-config-v1.schema.json",
+  "title": "MindSpeed Training Plan Input V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "resources", "goal"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total_ranks", "card_memory_gib"],
+      "properties": {
+        "total_ranks": { "type": "integer", "minimum": 1 },
+        "card_memory_gib": { "type": "number", "exclusiveMinimum": 0 },
+        "ranks_per_node": { "type": "integer", "minimum": 1 },
+        "card_model": { "type": "string", "minLength": 1 }
+      }
+    },
+    "goal": {
+      "enum": ["memory-safe", "pipeline-balanced", "minimal-change"]
+    },
+    "base_config": { "type": "object" },
+    "locked_fields": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

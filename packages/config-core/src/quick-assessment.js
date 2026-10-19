@@ -20,6 +20,48 @@ function assessment(state, conclusion, evidence, nextStep, limitation) {
 }
 
 export function quickAssessment({ tool, status, errors, warnings, suggestions, data }) {
+  if (tool === "compose_analysis_report") return assessment(
+    data.report.unresolved.length ? "review" : "ready",
+    `已生成 ${data.report.project} 的简明分析报告。`,
+    data.report.rule_evidence[0] ? [{ ...data.report.rule_evidence[0],
+      source: "compatibility-gap" }] : [],
+    "复制或保存 Markdown 与机器可读结果；源文件改动须按修改后内容复查。",
+    "报告汇总已有工具证据，不新增训练运行或性能验证。",
+  );
+  if (tool === "analyze_performance_evidence") {
+    const invalid = data.config_check.error_codes.length > 0;
+    const hypothesis = data.hypotheses[0];
+    return assessment(invalid ? "blocked" : "review",
+      invalid ? "本次运行配置有静态问题，性能归因需先核对配置版本。"
+        : hypothesis ? "已关联配置检查与性能瓶颈，得到待实测的调参假设。"
+          : "已检查配置；该瓶颈尚无足够依据提出配置调参假设。",
+      errors[0] ? [diagnosticEvidence(errors[0])] : hypothesis
+        ? [{ code: hypothesis.code, message: hypothesis.hypothesis, fields: hypothesis.fields,
+          source: "compatibility-gap", source_ref: hypothesis.source_ref }] : [],
+      hypothesis ? hypothesis.experiment : "继续收集 Profiling、日志和环境证据，区分非配置原因。",
+      "性能归因与调参收益未经验证；容量结果如有返回也仅为 theoretical。");
+  }
+  if (tool === "plan_training_config") {
+    if (data.required_inputs?.length) return assessment("needs_input",
+      `已有资源目标，仍需 ${data.required_inputs.length} 项模型或批量条件。`,
+      warnings[0] ? [diagnosticEvidence(warnings[0])] : [],
+      "从工程补齐模型结构、训练框架与批量目标后重新规划。",
+      "仅凭卡数和显存不能确定完整训练配置。");
+    if (!data.candidates?.length) return assessment("blocked", "当前约束下没有找到静态合法的候选。",
+      errors[0] ? [diagnosticEvidence(errors[0])] : [],
+      "核对锁定字段、模型参数和资源条件，再重新规划。",
+      "有限范围搜索不能证明不存在其他方案。");
+    const first = data.candidates[0];
+    return assessment(data.viable ? "review" : "blocked",
+      data.viable
+        ? `找到 ${data.candidates.length} 个候选，首选理论瓶颈为 ${first.capacity.bottleneck_gib.toFixed(1)} GiB。`
+        : "找到静态合法候选，但均未达到理论显存余量目标。",
+      [{ code: "PLAN_CANDIDATE", message: `首选候选 ${first.id}；${first.changes.length} 处字段变化`,
+        fields: first.changes.map(({ path }) => path), source: "compatibility-gap",
+        source_ref: data.policy_source }],
+      "审阅候选差异和取舍，由 Agent 生成源文件后复查，再在目标 NPU 上验证。",
+      "容量为 theoretical；未预测实测吞吐或保证不 OOM。");
+  }
   if (tool === "suggest_config_fixes") {
     if (data.already_valid) return assessment("passed", "当前配置通过已建模静态校验，无需修复。", [],
       "如需确认可运行性，在目标环境继续验证。", "静态通过不代表实机训练通过。");

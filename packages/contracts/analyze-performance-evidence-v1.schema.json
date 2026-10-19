@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mindspeed.example/schemas/analyze-performance-evidence-v1.schema.json",
+  "title": "MindSpeed Performance Evidence Input V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "observed_config", "evidence"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "observed_config": { "type": "object" },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bottleneck", "summary", "source"],
+      "properties": {
+        "bottleneck": { "enum": ["communication", "compute", "pipeline-bubble", "memory", "data-input", "unknown"] },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "source": { "type": "string", "minLength": 1, "maxLength": 260 },
+        "run_id": { "type": "string", "minLength": 1, "maxLength": 260 },
+        "non_config_causes": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "type": "string", "minLength": 1, "maxLength": 300 }
+        }
+      }
+    }
+  }
+}

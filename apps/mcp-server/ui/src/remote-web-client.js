@@ -135,6 +135,30 @@ export function createRemoteWebClient({ apiBase, fetchImpl = globalThis.fetch.bi
     return body.structuredContent;
   }
 
-  return { callTool: invoke, connect };
+  async function redeemHandoff(token, allowReauthentication = true) {
+    if (!authenticated) await waitForAccess();
+    const response = await fetchImpl(`${apiBase}/handoff`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    if (response.status === 401 && allowReauthentication) {
+      authenticated = false;
+      await waitForAccess();
+      return redeemHandoff(token, false);
+    }
+    if (!response.ok) {
+      throw errorWithCode(
+        response.status === 404 ? "配置交接链接已使用或过期，请由 Agent 重新打开工作台。"
+          : "无法读取配置交接内容，请检查 Web 会话。",
+        "REMOTE_HANDOFF",
+      );
+    }
+    const body = await response.json();
+    return body.handoff;
+  }
+
+  return { callTool: invoke, connect, redeemHandoff };
 }
 

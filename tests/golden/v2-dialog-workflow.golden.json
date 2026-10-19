@@ -37,6 +37,9 @@
         "new_value": 2
       }
     ],
+    "text_diff_complete": true,
+    "text_diff_has_before": true,
+    "text_diff_has_after": true,
     "validation_status": "valid",
     "state": "passed"
   }

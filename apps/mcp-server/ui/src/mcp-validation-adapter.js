@@ -724,6 +724,7 @@ export function installValidationAdapter(callValidateTool) {
       clearTimeout(pendingTimer);
       lastValidationResult = result;
       paintValidationResult(container, result);
+      document.dispatchEvent(new CustomEvent("mcp:validation-result", { detail: { result } }));
     } catch (error) {
       if (currentToken !== token) return;
       clearTimeout(pendingTimer);
@@ -734,6 +735,7 @@ export function installValidationAdapter(callValidateTool) {
           + `<div class="mcp-validation__head"><strong>暂时不可用</strong></div>`
           + `<p class="mcp-validation__assumption">${escapeHtml(message)}</p></section>`,
         "unavailable");
+      document.dispatchEvent(new CustomEvent("mcp:validation-result", { detail: { error: message } }));
     }
   }
 
@@ -745,6 +747,7 @@ export function installValidationAdapter(callValidateTool) {
     const container = document.getElementById("croConfigError");
     clearValidationPresentation(container);
     clearValidationMarks();
+    document.dispatchEvent(new CustomEvent("mcp:validation-pending"));
     debounceTimer = window.setTimeout(validateCurrent, delay);
   }
 

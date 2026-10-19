@@ -7,6 +7,7 @@ import { assertToolResult } from "@mindspeed-config/contracts";
 import { loadPackagedAppHtml } from "./app-resource.js";
 import { createBrowserSessionAuth } from "./browser-auth.js";
 import { createMcpServer, REGISTERED_TOOL_COUNT, TOOL_DEFINITIONS } from "./server.js";
+import { consumeWorkbenchHandoff } from "./workbench-handoff.js";
 
 const SERVICE_VERSION = "0.1.0";
 const DEFAULT_HOST = "127.0.0.1";
@@ -85,6 +86,8 @@ export function createHttpApp({
     basePath: browserBasePath,
     publicOrigin: browserPublicOrigin,
   });
+  const webWorkbenchUrl = browserPublicOrigin
+    ? new URL(`${browserBasePath}/`, browserPublicOrigin).href : null;
   const loginFailures = new Map();
 
   const health = (_request, response) => {
@@ -102,7 +105,7 @@ export function createHttpApp({
   app.get(`${browserBasePath}/health`, health);
 
   const handleMcp = async (request, response) => {
-    const server = createServer();
+    const server = createServer({ webWorkbenchUrl });
     const transport = new NodeStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     let closed = false;
     const close = async () => {
@@ -193,6 +196,21 @@ export function createHttpApp({
     (request, response) => {
       browserAuth.clearSessionCookie(request, response);
       response.status(200).json({ authenticated: false });
+    },
+  );
+
+  app.post(
+    `${browserBasePath}/api/handoff`,
+    browserAuth.requireOrigin,
+    browserAuth.requireSession,
+    (request, response) => {
+      response.set("Cache-Control", "no-store");
+      const handoff = consumeWorkbenchHandoff(request.body?.token);
+      if (!handoff) {
+        response.status(404).json({ error: "handoff_expired" });
+        return;
+      }
+      response.status(200).json({ handoff });
     },
   );
 

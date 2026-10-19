@@ -1,3 +1,213 @@
+/* V2 概览：同一份 Tool 结果先呈现来源、结论和下一步，图表按需展开。 */
+.mcp-overview {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 7px;
+  min-width: 0;
+  margin: 8px 8px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+}
+
+.mcp-overview__context,
+.mcp-overview__main,
+.mcp-overview__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mcp-overview__context {
+  color: var(--foreground-muted);
+  font-size: var(--font-size-label-xs);
+}
+
+.mcp-overview__source,
+.mcp-overview__objective {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mcp-overview__main { justify-content: space-between; }
+.mcp-overview__verdict { min-width: 0; }
+.mcp-overview__heading {
+  display: block;
+  color: var(--foreground);
+  font-size: 15px;
+  line-height: 1.35;
+}
+.mcp-overview__evidence {
+  margin: 3px 0 0;
+  color: var(--foreground-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.mcp-overview__next {
+  margin: 3px 0 0;
+  color: var(--foreground-muted);
+  font-size: var(--font-size-label-xs);
+  line-height: 1.35;
+}
+.mcp-overview__actions { flex: 0 0 auto; }
+.mcp-overview__primary { background: var(--primary); color: white; }
+.mcp-overview__plan { color: var(--foreground); }
+.mcp-overview__notebook { color: var(--foreground-secondary); }
+.mcp-overview__detail { color: var(--foreground-secondary); }
+.mcp-overview[data-state="invalid"] .mcp-overview__heading { color: var(--danger); }
+.mcp-overview[data-state="warning"] .mcp-overview__heading { color: var(--warning); }
+
+.mcp-plan {
+  width: min(980px, calc(100vw - 24px));
+  max-width: none;
+  max-height: min(780px, calc(100dvh - 24px));
+  padding: 20px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  color: var(--foreground);
+  box-shadow: var(--shadow-lg);
+  overflow-y: auto;
+}
+.mcp-plan::backdrop { background: rgb(0 0 0 / 72%); }
+.mcp-plan__header { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.mcp-plan__header h2 { margin: 0; font-size: 18px; }
+.mcp-plan__intro, .mcp-plan__note { color: var(--foreground-secondary); line-height: 1.5; }
+.mcp-plan__intro { margin: 8px 0 16px; font-size: 13px; }
+.mcp-plan__form { display: grid; gap: 12px; }
+.mcp-plan__inputs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.mcp-plan__field { display: grid; gap: 5px; min-width: 0; font-size: 12px; color: var(--foreground-secondary); }
+.mcp-plan__field input:not([type="checkbox"]), .mcp-plan__field select {
+  width: 100%; min-height: 34px; padding: 5px 8px;
+  border: 1px solid var(--border-default); border-radius: var(--radius-sm);
+  background: var(--surface-2); color: var(--foreground); font: inherit; font-size: 13px;
+}
+.mcp-plan__locks { display: flex; align-items: center; gap: 14px; margin: 0; padding: 8px 10px;
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); }
+.mcp-plan__locks legend { padding: 0 5px; font-size: 12px; color: var(--foreground-muted); }
+.mcp-plan__locks .mcp-plan__field { display: flex; flex-direction: row-reverse; align-items: center; gap: 5px; }
+.mcp-plan__submit { justify-self: start; background: var(--primary); color: white; }
+.mcp-plan__feedback { margin: 14px 0 8px; font-weight: 600; font-size: 13px; }
+.mcp-plan__results { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.mcp-plan__results > .mcp-plan__note, .mcp-plan__results > .mcp-plan__missing { grid-column: 1 / -1; }
+.mcp-plan__note { margin: 0; font-size: 12px; }
+.mcp-plan__candidate { min-width: 0; padding: 12px; border: 1px solid var(--border-default);
+  border-radius: var(--radius-md); background: var(--surface-2); }
+.mcp-plan__candidate:first-of-type { border-color: var(--primary); }
+.mcp-plan__candidate h3 { margin: 0 0 8px; font-size: 13px; }
+.mcp-plan__metric { margin: 0 0 6px; font-size: 13px; font-weight: 600; }
+.mcp-plan__topology { margin: 0 0 8px; font-size: 11px; color: var(--foreground-muted); }
+.mcp-plan__changes, .mcp-plan__tradeoffs, .mcp-plan__missing { margin: 8px 0 0; padding-left: 18px;
+  font-size: 11px; line-height: 1.55; overflow-wrap: anywhere; }
+.mcp-plan__tradeoffs { color: var(--foreground-secondary); }
+
+.mcp-notebook {
+  width: min(920px, calc(100vw - 24px));
+  max-width: none;
+  max-height: calc(100dvh - 24px);
+  padding: 20px;
+  overflow-y: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  color: var(--foreground);
+  box-shadow: var(--shadow-lg);
+}
+.mcp-notebook::backdrop { background: rgb(0 0 0 / 72%); }
+.mcp-notebook__header, .mcp-notebook__actions, .mcp-notebook__compare-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.mcp-notebook__header { justify-content: space-between; }
+.mcp-notebook__header h2 { margin: 0; font-size: 18px; }
+.mcp-notebook__hint { color: var(--foreground-secondary); font-size: 12px; line-height: 1.5; }
+.mcp-notebook__project { display: grid; gap: 5px; margin: 12px 0; font-size: 12px; }
+.mcp-notebook__project input, .mcp-notebook__compare-row select {
+  min-height: 34px; padding: 5px 8px; border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm); background: var(--surface-2); color: var(--foreground);
+}
+.mcp-notebook__project input { width: min(420px, 100%); }
+.mcp-notebook__primary { background: var(--primary); color: white; }
+.mcp-notebook__feedback { margin: 12px 0 6px; font-size: 12px; font-weight: 600; }
+.mcp-notebook__report {
+  width: 100%; min-height: 170px; padding: 10px; resize: vertical;
+  border: 1px solid var(--border-default); border-radius: var(--radius-sm);
+  background: var(--surface-2); color: var(--foreground); font: 12px/1.5 ui-monospace, monospace;
+}
+.mcp-notebook__history { margin-top: 16px; border-top: 1px solid var(--border-subtle); }
+.mcp-notebook__history h3 { margin: 12px 0; font-size: 14px; }
+.mcp-notebook__snapshots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.mcp-notebook__snapshot { padding: 10px; border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm); background: var(--surface-2); }
+.mcp-notebook__snapshot strong { font-size: 12px; }
+.mcp-notebook__snapshot p { margin: 5px 0; color: var(--foreground-secondary);
+  font-size: 11px; overflow-wrap: anywhere; }
+.mcp-notebook__compare-row { margin-top: 12px; font-size: 12px; }
+.mcp-notebook__compare-row select { min-width: 0; max-width: 40%; }
+.mcp-notebook__diffs { max-height: 160px; overflow-y: auto; padding-left: 20px;
+  font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+
+@media (max-width: 760px) {
+  .mcp-plan { padding: 14px; }
+  .mcp-plan__inputs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mcp-plan__results { grid-template-columns: 1fr; }
+  .mcp-notebook { padding: 14px; }
+  .mcp-notebook__snapshots { grid-template-columns: 1fr; }
+}
+
+/* The valid-only legacy banner repeats the overview without adding evidence. */
+#croConfigError.is-mcp-valid:not(:has(.mcp-validation__strategies)) {
+  display: none;
+}
+
+/* The overview owns the import action until a blocking issue makes replacement useful. */
+html:has(.mcp-overview:not([data-state="invalid"])) #croImportConfig {
+  display: none;
+}
+html:has(.mcp-overview:not([data-state="invalid"])) .mcp-config-import-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 760px) {
+  .pto-ide-frame:has(.mcp-overview) {
+    height: 100dvh;
+    min-height: 520px;
+    aspect-ratio: auto;
+  }
+  .mcp-overview { margin: 6px 6px 0; padding: 9px; }
+  .mcp-overview__main { align-items: flex-start; flex-direction: column; }
+  .mcp-overview__actions { flex-wrap: wrap; }
+  .mcp-overview__context { flex-wrap: wrap; gap: 2px 10px; }
+  .pto-ide-frame__topbar .mcp-product-tag,
+  .pto-ide-frame__topbar #croMindSpeedIntro { display: none; }
+  .cro-board.is-plane {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(400px, 60dvh) minmax(460px, auto) auto !important;
+    align-content: start;
+    overflow-y: auto;
+  }
+  .cro-board.is-plane > .crop-center {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+  .cro-board.is-plane > .crop-left {
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+    min-height: 460px;
+  }
+  .cro-board.is-plane > .crop-right:not(.is-collapsed) {
+    grid-column: 1;
+    grid-row: 3;
+    width: 100%;
+    min-height: 320px;
+  }
+  .cro-board.is-plane .cro-stepper__label { font-size: 12px; }
+}
+
 /* 第 2 项 MCP 适配层：只调整导入入口与导入弹窗，不写回基线页面。 */
 .mcp-product-identity {
   display: inline-flex;

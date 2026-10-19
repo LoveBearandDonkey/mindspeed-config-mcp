@@ -1,0 +1,39 @@
+{
+  "performance": {
+    "state": "review",
+    "attribution": "unverified",
+    "policy_source": "mindspeed-config-mcp:packages/config-core/src/analyze-performance-evidence.js@0.1.0",
+    "hypothesis_code": "PERF_PIPELINE_CONFIG_HYPOTHESIS",
+    "fields": [
+      "parallel.pp",
+      "parallel.num_layer_list",
+      "batch.micro_batch_count"
+    ],
+    "non_config_causes": [
+      "数据加载抖动"
+    ],
+    "capacity_confidence": "theoretical"
+  },
+  "report": {
+    "policy_source": "mindspeed-config-mcp:packages/config-core/src/compose-analysis-report.js@0.1.0",
+    "review_status": "未复查源文件修改",
+    "source": {
+      "name": "train.sh",
+      "version_kind": "disk",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "candidate_changes": [
+      {
+        "path": "parallel.pp",
+        "old_value": 4,
+        "new_value": 8
+      }
+    ],
+    "file_diff": [],
+    "unresolved": [
+      "源文件修改尚未通过 review_config_change 复查。",
+      "性能归因与提速收益需在目标 NPU 上实测。"
+    ],
+    "markdown_has_source": true
+  }
+}

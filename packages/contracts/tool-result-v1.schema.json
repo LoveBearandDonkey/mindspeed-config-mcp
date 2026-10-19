@@ -27,7 +27,10 @@
         "suggest_config_fixes",
         "parse_training_config",
         "review_config_change",
-        "estimate_training_capacity"
+        "estimate_training_capacity",
+        "plan_training_config",
+        "analyze_performance_evidence",
+        "compose_analysis_report"
       ]
     },
     "status": { "enum": ["valid", "invalid", "estimated", "error"] },

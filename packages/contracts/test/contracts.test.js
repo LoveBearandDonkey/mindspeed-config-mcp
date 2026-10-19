@@ -2,16 +2,22 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  analyzePerformanceEvidence,
+  composeAnalysisReport,
   computeRankTopology,
   estimateTrainingCapacity,
   parseTrainingConfig,
+  planTrainingConfig,
   reviewConfigChange,
   suggestConfigFixes,
   validateParallelConfig,
 } from "../../config-core/src/index.js";
 import {
+  validateAnalyzePerformanceEvidence,
+  validateComposeAnalysisReport,
   assertToolResult,
   validateParseTrainingConfig,
+  validatePlanTrainingConfig,
   validateReviewConfigChange,
   validateToolResult,
   validateTrainingConfig,
@@ -41,6 +47,11 @@ test("五个纯计算接口的成功与失败结果都符合统一返回 Schema"
     }),
     estimateTrainingCapacity(ACCEPTANCE_SCENARIOS.A12),
     estimateTrainingCapacity(invalid),
+    planTrainingConfig({ schema_version: "1.0", resources: { total_ranks: 64, card_memory_gib: 64 }, goal: "memory-safe" }),
+    analyzePerformanceEvidence({ schema_version: "1.0", observed_config: valid,
+      evidence: { bottleneck: "unknown", summary: "Profiling 尚未分类", source: "profile.json" } }),
+    composeAnalysisReport({ schema_version: "1.0", project: "demo",
+      source: { name: "train.sh", version_kind: "unknown" }, analysis: validateParallelConfig(valid) }),
     reviewConfigChange({
       schema_version: "1.0",
       rule_profile: valid.rule_profile,
@@ -53,6 +64,25 @@ test("五个纯计算接口的成功与失败结果都符合统一返回 Schema"
     assert.deepEqual(validateToolResult(result), { valid: true, errors: [] }, result.tool);
     assert.equal(assertToolResult(result), result);
   }
+});
+
+test("性能证据和报告输入使用独立契约并复验嵌套配置与结果", () => {
+  const observed_config = ACCEPTANCE_SCENARIOS.A01;
+  const perf = { schema_version: "1.0", observed_config,
+    evidence: { bottleneck: "memory", summary: "峰值接近容量", source: "profile.json" } };
+  assert.equal(validateAnalyzePerformanceEvidence(perf).valid, true);
+  assert.equal(validateAnalyzePerformanceEvidence({ ...perf, observed_config: {} }).valid, false);
+  const report = { schema_version: "1.0", project: "demo",
+    source: { name: "train.sh", version_kind: "disk" }, analysis: validateParallelConfig(observed_config) };
+  assert.equal(validateComposeAnalysisReport(report).valid, true);
+  assert.equal(validateComposeAnalysisReport({ ...report, analysis: {} }).valid, false);
+});
+
+test("资源规划输入校验资源、目标和已有配置", () => {
+  const input = { schema_version: "1.0", resources: { total_ranks: 64, card_memory_gib: 64 }, goal: "memory-safe" };
+  assert.deepEqual(validatePlanTrainingConfig(input), { valid: true, errors: [] });
+  assert.equal(validatePlanTrainingConfig({ ...input, goal: "unknown" }).valid, false);
+  assert.equal(validatePlanTrainingConfig({ ...input, base_config: { model: {} } }).valid, false);
 });
 
 test("待解析文件使用独立输入 Schema", () => {

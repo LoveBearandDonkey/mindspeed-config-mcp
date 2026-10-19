@@ -1,6 +1,6 @@
 # MCP Server
 
-服务使用官方 MCP TypeScript SDK v2 和 MCP Apps 扩展，通过 stdio 暴露六个只读 Tool：
+服务使用官方 MCP TypeScript SDK v2 和 MCP Apps 扩展，通过 stdio 暴露九个只读 Tool：
 
 - `validate_parallel_config`
 - `compute_rank_topology`
@@ -8,12 +8,24 @@
 - `parse_training_config`
 - `estimate_training_capacity`
 - `review_config_change`
+- `plan_training_config`
+- `analyze_performance_evidence`
+- `compose_analysis_report`
 
-六个计算 Tool 保留完整 `inputSchema`，供模型和普通 MCP 客户端调用。另注册
-六个零参数界面入口：统一工作台以及五个分析页入口。支持 MCP Apps 的客户端通过这些入口
+九个计算 Tool 保留完整 `inputSchema`，供模型和普通 MCP 客户端调用。另注册
+七个可空输入界面入口：统一工作台以及六个分析页入口。支持 MCP Apps 的客户端通过这些入口
 打开 `ui://mindspeed-config/result-view.html`，在自定义中文输入区中填写或导入配置，再由
 App 调用对应计算 Tool；用户无需操作宿主自动生成的 JSON Schema 表单。不支持界面的客户端
-仍可直接调用六个计算 Tool，获取文本说明和 `structuredContent`。修改复查 Tool 仅供模型调用，不另设页面；它接收调用方读取的修改前后文件文本，不按路径读取或写入文件。
+仍可直接调用九个计算 Tool，获取文本说明和 `structuredContent`。修改复查、性能证据关联和报告生成 Tool 仅供模型直接调用，不另设独立页面；它们接收调用方提供的文本或结构化结果，不按路径读取或写入文件。工作台的报告与快照面板可调用报告 Tool，并在浏览器中保存按工程隔离的页面方案。
+
+Agent 已读取工程文件或编辑器内容时，可向 `open_config_workbench` 传入可选的
+`source: { name, content, model_source?: { name, content } }` 与 `objective`。MCP App 会把同一份
+文本放进导入区并立即解析，用户确认补齐方案后才应用到工作台临时配置。Agent 应明确说明
+传入的是磁盘版本还是未保存编辑内容；工作台不会自动读取 IDE 文件，也不会写回源文件。
+HTTP 服务配置 `MCP_BROWSER_PUBLIC_ORIGIN` 后，界面入口还会返回独立 Web 链接。已带入的配置
+放在服务端短时内存中，URL 只含一次性随机交接码；浏览器登录后领取配置，领取后立即作废，
+10 分钟未领取自动过期。页面随即从地址栏移除交接码。未配置公网浏览器 Origin 时不生成
+此链接；静态页面没有服务端交接能力。
 
 启动：
 

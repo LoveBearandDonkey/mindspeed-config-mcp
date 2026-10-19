@@ -1,6 +1,7 @@
 import { diagnostic, sourceSnapshotFor, toolResult } from "./result.js";
 import { parseTrainingConfig } from "./parse-training-config.js";
 import { validateParallelConfig } from "./validate-parallel-config.js";
+import { sourceTextDiff } from "./source-text-diff.js";
 
 const REVIEW_SOURCE = "docs/V2版-用户使用流程.md#现行版本保留与新方案试验";
 
@@ -36,6 +37,7 @@ export function reviewConfigChange(input) {
   const after = parseTrainingConfig(afterInput);
   const beforeSnapshot = sourceSnapshotFor(beforeInput);
   const afterSnapshot = sourceSnapshotFor(afterInput);
+  const textDiff = sourceTextDiff(input.before.source.content, input.after.source.content);
   const errors = [];
   const warnings = [];
   const sourceChanged = beforeSnapshot.source.sha256 !== afterSnapshot.source.sha256
@@ -58,6 +60,7 @@ export function reviewConfigChange(input) {
     errors.push(...after.errors.map((item) => ({ ...item, fields: item.fields.map((field) => `after.${field}`) })));
     return toolResult({ tool: "review_config_change", input, status: "error", errors,
       data: { source_changed: sourceChanged, source_snapshot: { before: beforeSnapshot, after: afterSnapshot },
+        source_text_diff: textDiff,
         locked_fields: lockedFields, changes: [], after_complete: false, validation: null } });
   }
 
@@ -117,6 +120,7 @@ export function reviewConfigChange(input) {
     data: {
       source_changed: sourceChanged,
       source_snapshot: { before: beforeSnapshot, after: afterSnapshot },
+      source_text_diff: textDiff,
       locked_fields: lockedFields,
       locked_field_changes: lockedChanges,
       changes,

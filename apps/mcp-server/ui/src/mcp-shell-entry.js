@@ -1,8 +1,10 @@
 import { App } from "@modelcontextprotocol/ext-apps";
 import {
   computeRankTopology,
+  composeAnalysisReport,
   estimateTrainingCapacity,
   parseTrainingConfig,
+  planTrainingConfig,
   suggestConfigFixes,
   validateParallelConfig,
 } from "@mindspeed-config/config-core";
@@ -32,6 +34,9 @@ import { installFixesAdapter } from "@mcp-bridge/mcp-fixes-adapter.js";
 import { installCapacityAdapter } from "@mcp-bridge/mcp-capacity-adapter.js";
 import { createMcpHostInteraction } from "@mcp-bridge/mcp-host-interaction.js";
 import { createRemoteWebClient } from "@mcp-bridge/remote-web-client.js";
+import { mountWorkbenchOverview } from "@mcp-bridge/mcp-workbench-overview.js";
+import { installPlanAdapter } from "@mcp-bridge/mcp-plan-adapter.js";
+import { installAnalysisNotebook } from "@mcp-bridge/mcp-analysis-notebook.js";
 
 const staticDemoMode = __MCP_STATIC_DEMO__;
 const remoteServiceConfig = globalThis.__MINDSPEED_WEB_SERVICE__ ?? null;
@@ -74,6 +79,7 @@ function installConfigErrorViewportLimit() {
 }
 
 installConfigErrorViewportLimit();
+mountWorkbenchOverview();
 
 function parseInput(source) {
   const input = {
@@ -98,12 +104,17 @@ function parseInput(source) {
 if (remoteServiceMode) {
   document.documentElement.dataset.mcpDistribution = "tencent-cloud";
   document.documentElement.dataset.mcpWorkbench = "remote-connecting";
+  const handoffToken = new URLSearchParams(window.location.hash.slice(1)).get("handoff");
+  if (handoffToken) {
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  }
   const hostInteraction = createMcpHostInteraction();
   const remoteClient = createRemoteWebClient(remoteServiceConfig);
   let validationAdapter = null;
   let topologyAdapter = null;
   let fixesAdapter = null;
   let capacityAdapter = null;
+  let planAdapter = null;
 
   async function callServerTool(name, args) {
     return hostInteraction.run(name, () => remoteClient.callTool(name, args));
@@ -132,11 +143,25 @@ if (remoteServiceMode) {
       async (input) => callServerTool("estimate_training_capacity", input),
       (config) => validationAdapter.capacityConfigFor(config),
     );
+    planAdapter = installPlanAdapter(
+      async (input) => callServerTool("plan_training_config", input),
+      () => validationAdapter.capacityConfigFor(window.croObserver?.config),
+    );
+    installAnalysisNotebook(
+      async (input) => callServerTool("compose_analysis_report", input),
+      () => validationAdapter.trainingConfigFor(window.croObserver?.config),
+    );
     hostInteraction.connected();
     validationAdapter.refresh();
     topologyAdapter.refresh();
     fixesAdapter.refresh();
     capacityAdapter.refresh();
+    if (handoffToken) {
+      remoteClient.redeemHandoff(handoffToken).then((handoff) => {
+        if (handoff?.source) document.getElementById("croImportConfig")?.click();
+        document.dispatchEvent(new CustomEvent("mcp:workbench-handoff", { detail: handoff }));
+      }).catch((error) => hostInteraction.report(error));
+    }
   }).catch((error) => {
     hostInteraction.report(error);
     console.error("MindSpeed Config Web Service:", error);
@@ -163,6 +188,14 @@ if (remoteServiceMode) {
     async (input) => estimateTrainingCapacity(input),
     (config) => validationAdapter.capacityConfigFor(config),
   );
+  installPlanAdapter(
+    async (input) => planTrainingConfig(input),
+    () => validationAdapter.capacityConfigFor(window.croObserver?.config),
+  );
+  installAnalysisNotebook(
+    async (input) => composeAnalysisReport(input),
+    () => validationAdapter.trainingConfigFor(window.croObserver?.config),
+  );
 } else {
   const app = new App({ name: "MindSpeed Config Plane", version: "0.1.0" });
   const hostInteraction = createMcpHostInteraction();
@@ -171,6 +204,7 @@ if (remoteServiceMode) {
   let topologyAdapter = null;
   let fixesAdapter = null;
   let capacityAdapter = null;
+  let planAdapter = null;
   let connectionInFlight = null;
 
   async function callServerTool(name, args) {
@@ -190,14 +224,17 @@ if (remoteServiceMode) {
   app.ontoolresult = (response) => {
     if (response.structuredContent?.tool === "open_config_workbench") {
       document.documentElement.dataset.mcpWorkbench = "ready";
-      const targetTool = response.structuredContent.data?.target_tool;
-      if (targetTool === "parse_training_config") {
+      const handoff = response.structuredContent.data;
+      const targetTool = handoff?.target_tool;
+      if (targetTool === "parse_training_config" || handoff?.source) {
         document.getElementById("croImportConfig")?.click();
       }
+      document.dispatchEvent(new CustomEvent("mcp:workbench-handoff", { detail: handoff }));
       if (targetTool === "validate_parallel_config") validationAdapter?.reveal();
       if (targetTool === "compute_rank_topology") topologyAdapter?.reveal();
       if (targetTool === "suggest_config_fixes") fixesAdapter?.reveal();
       if (targetTool === "estimate_training_capacity") capacityAdapter?.reveal();
+      if (targetTool === "plan_training_config") planAdapter?.reveal();
     }
   };
   app.onerror = (error) => {
@@ -224,6 +261,14 @@ if (remoteServiceMode) {
   capacityAdapter = installCapacityAdapter(
     async (input) => callServerTool("estimate_training_capacity", input),
     (config) => validationAdapter.capacityConfigFor(config),
+  );
+  planAdapter = installPlanAdapter(
+    async (input) => callServerTool("plan_training_config", input),
+    () => validationAdapter.capacityConfigFor(window.croObserver?.config),
+  );
+  installAnalysisNotebook(
+    async (input) => callServerTool("compose_analysis_report", input),
+    () => validationAdapter.trainingConfigFor(window.croObserver?.config),
   );
   function connectHost() {
     if (connectionInFlight) return connectionInFlight;
@@ -2109,6 +2154,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     } }));
     document.dispatchEvent(new CustomEvent("mcp:parsed-config-applied", { detail: {
       normalizedConfig,
+      sourceSnapshot: current.result?.data?.source_snapshot,
       supplements: useCompletion ? Object.fromEntries(current.supplements ?? []) : {},
       sourceNormalizedConfig,
       userEditedPaths: useCompletion ? [...(current.userEditedPaths ?? [])] : [],
@@ -2363,6 +2409,62 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     if (event.detail?.tool !== "parse_training_config") return;
     if (lastParseKind === "sample" && sample.lastFile) parseSample(sample.lastFile, sample.lastCard);
     else if (imported.lastSource) parseImported(imported.lastSource);
+  });
+
+  document.addEventListener("mcp:workbench-handoff", (event) => {
+    const source = event.detail?.source;
+    if (!source?.content) return;
+    mountImportUi();
+    const ui = importUi();
+    ui.text.value = source.content;
+    ui.name.textContent = source.name;
+    ui.file.value = "";
+    ui.modelText.value = source.model_source?.content ?? "";
+    ui.modelName.textContent = source.model_source?.name ?? "未选择文件";
+    ui.modelFile.value = "";
+    syncClearButton();
+    parseImported({
+      name: source.name,
+      content: source.content,
+      ...(source.model_source ? { modelSource: {
+        name: source.model_source.name,
+        content: source.model_source.content,
+      } } : {}),
+    });
+  });
+
+  document.addEventListener("mcp:restore-snapshot-request", (event) => {
+    const snapshot = event.detail?.snapshot;
+    const config = snapshot?.config;
+    try {
+      if (!config?.model || !config?.parallel || !window.croObserver?.importConfig) {
+        throw new Error("快照缺少可恢复的训练配置。");
+      }
+      const partial = toPagePartial(config);
+      window.__mcpPipelinePolicy?.prepare?.(config);
+      if (config.model.id && window.CroTopology?.MODEL_PRESETS?.[config.model.id]) {
+        window.croObserver.setModel(config.model.id);
+      }
+      const applied = window.croObserver.importConfig(partial);
+      const card = CARD_OPTIONS.find(({ value }) => value === config.cluster?.card_model);
+      if (card) window.croObserver.set("card", card.id);
+      if (Number.isFinite(config.cluster?.card_memory_gib)) {
+        window.croObserver.set("customCardMemoryGB", config.cluster.card_memory_gib);
+      }
+      document.dispatchEvent(new CustomEvent("mcp:parsed-config-applied", { detail: {
+        normalizedConfig: config,
+        sourceNormalizedConfig: config,
+        sourceKind: "snapshot",
+        sourceSnapshot: snapshot.source.sha256 ? { source: snapshot.source } : null,
+      } }));
+      document.dispatchEvent(new CustomEvent("mcp:snapshot-restore-result", { detail: {
+        snapshot, adjusted: diffApplied(partial, applied.after),
+      } }));
+    } catch (error) {
+      document.dispatchEvent(new CustomEvent("mcp:snapshot-restore-result", { detail: {
+        snapshot, error: error instanceof Error ? error.message : String(error),
+      } }));
+    }
   });
 
   if (document.readyState === "loading") {
