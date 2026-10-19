@@ -245,7 +245,8 @@
       "required": ["name", "sha256"],
       "properties": {
         "name": { "type": ["string", "null"] },
-        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "hash_basis": { "const": "submitted_utf8_text" }
       }
     }
   }

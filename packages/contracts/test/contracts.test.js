@@ -103,6 +103,19 @@ test("待解析文件使用独立输入 Schema", () => {
   assert.equal(validateParseTrainingConfig({ ...valid, model_source: { format: "json" } }).valid, false);
 });
 
+test("解析来源摘要可原样传给后续计算工具", () => {
+  const config = structuredClone(ACCEPTANCE_SCENARIOS.A01);
+  const parsed = parseTrainingConfig({
+    schema_version: "1.0",
+    rule_profile: config.rule_profile,
+    source: { format: "json", name: "train.json", content: JSON.stringify(config) },
+  });
+  assert.equal(parsed.data.source_snapshot.source.hash_basis, "submitted_utf8_text");
+  config.source_snapshot = parsed.data.source_snapshot;
+  assert.deepEqual(validateTrainingConfig(config), { valid: true, errors: [] });
+  assert.equal(suggestConfigFixes(config).status, "valid");
+});
+
 test("修改复查输入要求两份文本并校验源摘要格式", () => {
   const input = {
     schema_version: "1.0",
