@@ -1,7 +1,7 @@
 {
   "name": "@mindspeed-config/mcp-server",
   "version": "0.1.0",
-  "productVersion": "1.0.8",
+  "productVersion": "1.0.9",
   "private": true,
   "type": "module",
   "scripts": {

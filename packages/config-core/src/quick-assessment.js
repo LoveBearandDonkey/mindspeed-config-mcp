@@ -97,15 +97,27 @@ export function quickAssessment({ tool, status, errors, warnings, suggestions, d
   if (tool === "parse_training_config") {
     const incomplete = warnings.find(({ code }) => code === "PARSE_INCOMPLETE");
     const conflict = warnings.find(({ code }) => code === "PARSE_SOURCE_CONFLICT");
+    const architectureReview = warnings.filter(({ code }) => (
+      code === "PARSE_CROSS_SOURCE_REVIEW" || code === "PARSE_ARCHITECTURE_FIELDS_UNCHECKED"
+    ));
     if (incomplete) return assessment(
       "needs_input", "原始配置已解析，但缺少调用完整分析所需的字段。",
-      [diagnosticEvidence(incomplete)], "补齐缺失字段并核对来源，再运行静态校验。",
-      "省略态默认值与推导值应由用户核对。",
+      [diagnosticEvidence(incomplete), ...architectureReview.slice(0, 3).map(diagnosticEvidence)],
+      "补齐真实启动命令、并行度与硬件信息；核对未覆盖字段后再运行静态校验。",
+      data.completion?.strategy === "requires-confirmed-framework-and-resources"
+        ? "通用框架不自动补造硬件或容量结论；解析成功不等于训练可运行。"
+        : "省略态默认值与推导值应由用户核对。",
     );
     if (conflict) return assessment(
       "review", "原始配置已解析，但来源文件有冲突。",
       [diagnosticEvidence(conflict)], "确认冲突字段应采用哪个文件，再运行静态校验。",
       "解析成功不等于配置通过静态校验。",
+    );
+    if (architectureReview.length) return assessment(
+      "review", "原始配置已解析，但仍有架构字段差异或未检查项。",
+      architectureReview.slice(0, 3).map(diagnosticEvidence),
+      "核对差异和目标框架版本，再运行适用的静态校验。",
+      "这些字段未经完整框架规则验证；解析成功不等于训练可运行。",
     );
     if (data.unmapped_count > 0) return assessment(
       "review", "原始配置已解析，但仍有未识别字段。",

@@ -451,6 +451,19 @@ function editableModelStructurePresetPlan(base, recommended = true) {
  * 页面只展示这里返回的 structuredContent，不自行复制补齐或修复公式。
  */
 export function planTrainingConfigCompletion(normalizedConfig, missingRequiredFields = [], context = {}) {
+  // Generic inputs have no framework or device-specific completion rules. In particular,
+  // an imported NVIDIA configuration must not inherit the MindSpeed workstation presets.
+  if (normalizedConfig.rule_profile?.framework === "generic") {
+    return {
+      computation: "runtime-per-parse",
+      strategy: "requires-confirmed-framework-and-resources",
+      complete: false,
+      launch_feasible: null,
+      recommended_plan_id: null,
+      unresolved_fields: [...missingRequiredFields],
+      plans: [],
+    };
+  }
   const base = structuredClone(normalizedConfig);
   const values = [];
   const profile = MODEL_PROFILES.find((item) => item.matches(String(base.model?.id ?? "")));

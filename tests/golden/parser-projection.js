@@ -154,6 +154,34 @@ model:
       }),
     },
   });
+  const gptOssFragment = parseTrainingConfig({
+    schema_version: "1.0",
+    rule_profile: { framework: "generic", version: "unknown" },
+    source: {
+      format: "shell",
+      name: "D:\\fixtures\\nvidia_megatron_gpt_oss_20b_model_config.sh",
+      content: `MODEL_ARGS=" \\
+--num-layers 24 --hidden-size 2880 --num-attention-heads 64 \\
+--num-query-groups 8 --num-experts 32 --moe-router-topk 4 \\
+--micro-batch-size 1 --seq-length 4096 --bf16 --sequence-parallel \\
+--max-position-embeddings 40960 --moe-aux-loss-coeff 0.0 \\
+--window-size 127,0 --window-attn-skip-freq 2 --enable-gpt-oss \\
+"`,
+    },
+    model_source: {
+      format: "json",
+      name: "gpt_oss_20b_model_config.json",
+      content: JSON.stringify({
+        model_type: "gpt_oss", num_hidden_layers: 24, hidden_size: 2880,
+        num_attention_heads: 64, num_key_value_heads: 8, num_local_experts: 32,
+        num_experts_per_tok: 4, vocab_size: 201088,
+        max_position_embeddings: 131072, router_aux_loss_coef: 0.9,
+        sliding_window: 128, layer_types: ["sliding_attention", "full_attention"],
+        rope_scaling: { rope_type: "yarn", factor: 32 },
+        quantization_config: { quant_method: "mxfp4" },
+      }),
+    },
+  });
 
   return {
     mindformers: summary(mindformers, [
@@ -177,20 +205,12 @@ model:
       remaining_model_gaps: mixtral.data.missing_required_fields
         .filter((path) => path.startsWith("model.")),
     },
-    model_structure_choice: {
-      selected_plan: llamaFactory.data.completion.plans[0].id,
+    generic_model_structure: {
+      strategy: llamaFactory.data.completion.strategy,
+      complete: llamaFactory.data.completion.complete,
       recommended_plan: llamaFactory.data.completion.recommended_plan_id,
-      requires_confirmation: llamaFactory.data.completion.plans[0].confidence,
-      capacity_level: llamaFactory.data.completion.plans[0].capacity_assessment.level,
-      capacity_ratio: llamaFactory.data.completion.plans[0].capacity_assessment.bottleneck_ratio,
-      preset_model: llamaFactory.data.completion.plans[0].proposed_config.model.id,
-      preset_layers: llamaFactory.data.completion.plans[0].proposed_config.model.total_layers,
-      preset_hidden_size: llamaFactory.data.completion.plans[0].proposed_config.model.hidden_size,
-      preset_dp: llamaFactory.data.completion.plans[0].proposed_config.parallel.dp,
-      preset_total_ranks: llamaFactory.data.completion.plans[0].proposed_config.cluster.total_ranks,
-      preset_card_model: llamaFactory.data.completion.plans[0].proposed_config.cluster.card_model,
-      preset_card_memory_gib: llamaFactory.data.completion.plans[0].proposed_config.cluster.card_memory_gib,
-      preset_source: llamaFactory.data.completion.plans[0].values[0].source_ref,
+      launch_feasible: llamaFactory.data.completion.launch_feasible,
+      plan_count: llamaFactory.data.completion.plans.length,
     },
     deepseek_completion: {
       computation: deepseek.data.completion.computation,
@@ -235,6 +255,28 @@ model:
       shared_experts: pairedSources.data.normalized_config.model.shared_experts,
       conflicts: pairedSources.data.source_conflicts.map((item) => item.path),
       warning_codes: pairedSources.warnings.map((item) => item.code),
+    },
+    gpt_oss_fragment: {
+      model_id: gptOssFragment.data.normalized_config.model.id,
+      parallel_tp: gptOssFragment.data.normalized_config.parallel?.tp ?? null,
+      parse_complete: gptOssFragment.data.complete,
+      completion: {
+        strategy: gptOssFragment.data.completion.strategy,
+        complete: gptOssFragment.data.completion.complete,
+        launch_feasible: gptOssFragment.data.completion.launch_feasible,
+        plan_count: gptOssFragment.data.completion.plans.length,
+      },
+      conflicts: gptOssFragment.data.source_conflicts.map((item) => item.path),
+      observations: gptOssFragment.data.cross_source_observations.map((item) => ({
+        label: item.label, relation: item.relation, assessment: item.assessment,
+      })),
+      unverified_fields: gptOssFragment.data.unverified_architecture_fields.map(
+        (item) => item.source_key,
+      ),
+      warning_codes: gptOssFragment.warnings.map((item) => item.code),
+      quick_state: gptOssFragment.quick_assessment.state,
+      quick_evidence_codes: gptOssFragment.quick_assessment.evidence.map((item) => item.code),
+      snapshot_hash_basis: gptOssFragment.data.source_snapshot.source.hash_basis,
     },
   };
 }

@@ -86,6 +86,7 @@ export function sourceSnapshotFor(input) {
   const entry = (source) => ({
     name: source.name ?? null,
     sha256: sha256Utf8(source.content),
+    hash_basis: "submitted_utf8_text",
   });
   return {
     source: entry(input.source),

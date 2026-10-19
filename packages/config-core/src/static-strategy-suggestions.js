@@ -116,6 +116,9 @@ function hcclBufferEstimate(input) {
 }
 
 export function staticStrategySuggestions(input) {
+  // Every strategy below is backed by MindSpeed or the MindSpeed workbench's
+  // capacity model; none is an NVIDIA Megatron recommendation.
+  if (input.rule_profile?.framework === "generic") return [];
   const output = [];
   const cpSpace = cpSearchSpace(input);
   const hardware = hardwareProfile(input.cluster.card_model);

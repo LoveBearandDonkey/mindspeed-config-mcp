@@ -16,6 +16,15 @@ test("合法配置不生成装饰性修改", () => {
   assert.deepEqual(result.data.suggestions, []);
 });
 
+test("通用框架不会收到 MindSpeed 专用 HCCL 建议", () => {
+  const result = validateParallelConfig(createTrainingConfig({
+    rule_profile: { framework: "generic", version: "unknown" },
+    cluster: { card_model: "NVIDIA H100", card_memory_gib: 80 },
+  }));
+  assert.equal(result.status, "valid");
+  assert.deepEqual(result.suggestions, []);
+});
+
 test("Attention Heads 与 KV Heads 不整除时生成可回填的模型结构修复", () => {
   const input = createTrainingConfig({
     model: { num_attention_heads: 32, num_key_value_heads: 6 },

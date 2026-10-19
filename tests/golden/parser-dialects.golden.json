@@ -26,7 +26,9 @@
       "model.vocab_size",
       "model.expert_ffn_hidden_size"
     ],
-    "warnings": ["PARSE_INCOMPLETE"]
+    "warnings": [
+      "PARSE_INCOMPLETE"
+    ]
   },
   "shell": {
     "values": {
@@ -55,7 +57,9 @@
       "model.vocab_size",
       "model.ffn_hidden_size"
     ],
-    "warnings": ["PARSE_INCOMPLETE"]
+    "warnings": [
+      "PARSE_INCOMPLETE"
+    ]
   },
   "llama_factory": {
     "values": {
@@ -100,7 +104,9 @@
       "model.vocab_size",
       "model.ffn_hidden_size"
     ],
-    "warnings": ["PARSE_INCOMPLETE"]
+    "warnings": [
+      "PARSE_INCOMPLETE"
+    ]
   },
   "deepspeed_zero3": {
     "values": {
@@ -144,27 +150,22 @@
       "model.vocab_size",
       "model.ffn_hidden_size"
     ],
-    "warnings": ["PARSE_ZERO3_APPROXIMATED_AS_FSDP2", "PARSE_INCOMPLETE"]
+    "warnings": [
+      "PARSE_ZERO3_APPROXIMATED_AS_FSDP2",
+      "PARSE_INCOMPLETE"
+    ]
   },
   "mixtral_capacity_structure": {
     "expert_ffn_hidden_size": 14336,
     "first_k_dense_layers": 0,
     "remaining_model_gaps": []
   },
-  "model_structure_choice": {
-    "selected_plan": "editable-model-structure-preset",
+  "generic_model_structure": {
+    "strategy": "requires-confirmed-framework-and-resources",
+    "complete": false,
     "recommended_plan": null,
-    "requires_confirmation": "requires-confirmation",
-    "capacity_level": "over",
-    "capacity_ratio": 1.481816,
-    "preset_model": "editable-moe-structure-preset",
-    "preset_layers": 46,
-    "preset_hidden_size": 2560,
-    "preset_dp": 8,
-    "preset_total_ranks": 8,
-    "preset_card_model": "昇腾 950PR",
-    "preset_card_memory_gib": 128,
-    "preset_source": "mindspeed-config-mcp:editable-model-structure-preset@0.3.1"
+    "launch_feasible": null,
+    "plan_count": 0
   },
   "deepseek_completion": {
     "computation": "runtime-per-parse",
@@ -172,10 +173,28 @@
     "recommended_plan": null,
     "mode": "mindformers-offset",
     "profile": "mindformers",
-    "plan_ids": ["source-faithful", "mindformers-uniform-fallback"],
-    "plan_statuses": ["valid", "valid"],
-    "capacity_levels": ["over", "over"],
-    "recommended_stage_layers": [8, 8, 8, 8, 8, 8, 8, 5],
+    "plan_ids": [
+      "source-faithful",
+      "mindformers-uniform-fallback"
+    ],
+    "plan_statuses": [
+      "valid",
+      "valid"
+    ],
+    "capacity_levels": [
+      "over",
+      "over"
+    ],
+    "recommended_stage_layers": [
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      5
+    ],
     "completed_heads": 128,
     "completed_experts": 256
   },
@@ -272,15 +291,67 @@
     "layers": 43,
     "shared_experts": 1,
     "conflicts": [
-      "model.id",
       "model.total_layers",
       "model.shared_experts"
     ],
     "warning_codes": [
-      "PARSE_SOURCE_CONFLICT",
+      "PARSE_SHELL_FRAGMENT",
       "PARSE_SOURCE_CONFLICT",
       "PARSE_SOURCE_CONFLICT",
       "PARSE_INCOMPLETE"
     ]
+  },
+  "gpt_oss_fragment": {
+    "model_id": "gpt_oss",
+    "parallel_tp": null,
+    "parse_complete": false,
+    "completion": {
+      "strategy": "requires-confirmed-framework-and-resources",
+      "complete": false,
+      "launch_feasible": null,
+      "plan_count": 0
+    },
+    "conflicts": [],
+    "observations": [
+      {
+        "label": "最大位置长度",
+        "relation": "different",
+        "assessment": "review_only"
+      },
+      {
+        "label": "MoE 路由辅助损失系数",
+        "relation": "different",
+        "assessment": "review_only"
+      }
+    ],
+    "unverified_fields": [
+      "max-position-embeddings",
+      "moe-aux-loss-coeff",
+      "window-size",
+      "window-attn-skip-freq",
+      "enable-gpt-oss",
+      "max_position_embeddings",
+      "router_aux_loss_coef",
+      "sliding_window",
+      "layer_types",
+      "rope_scaling.rope_type",
+      "rope_scaling.factor",
+      "quantization_config.quant_method"
+    ],
+    "warning_codes": [
+      "PARSE_SHELL_FRAGMENT",
+      "PARSE_CROSS_SOURCE_REVIEW",
+      "PARSE_CROSS_SOURCE_REVIEW",
+      "PARSE_ARCHITECTURE_FIELDS_UNCHECKED",
+      "PARSE_INCOMPLETE"
+    ],
+    "quick_state": "needs_input",
+    "quick_evidence_codes": [
+      "PARSE_INCOMPLETE",
+      "PARSE_CROSS_SOURCE_REVIEW",
+      "PARSE_CROSS_SOURCE_REVIEW",
+      "PARSE_ARCHITECTURE_FIELDS_UNCHECKED"
+    ],
+    "snapshot_hash_basis": "submitted_utf8_text"
   }
 }

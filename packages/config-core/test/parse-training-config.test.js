@@ -82,6 +82,43 @@ torchrun train.py \\
   )));
 });
 
+test("GPT OSS 参数片段不补造并行度、昇腾容量或文件名来源冲突", () => {
+  const result = parseTrainingConfig({
+    schema_version: "1.0",
+    rule_profile: { framework: "generic", version: "unknown" },
+    source: {
+      format: "shell",
+      name: "D:\\samples\\nvidia_megatron_gpt_oss_20b_model_config.sh",
+      content: 'MODEL_ARGS=" --num-layers 24 --hidden-size 2880 --num-attention-heads 64 --num-experts 32 --moe-router-topk 4 --max-position-embeddings 40960 --moe-aux-loss-coeff 0.0 --window-size 127,0 "',
+    },
+    model_source: {
+      format: "json",
+      name: "gpt_oss_20b_model_config.json",
+      content: JSON.stringify({
+        model_type: "gpt_oss", num_hidden_layers: 24, hidden_size: 2880,
+        num_attention_heads: 64, num_local_experts: 32, num_experts_per_tok: 4,
+        max_position_embeddings: 131072, router_aux_loss_coef: 0.9,
+        sliding_window: 128, rope_scaling: { rope_type: "yarn" },
+      }),
+    },
+  });
+
+  assert.equal(result.status, "valid");
+  assert.equal(result.data.complete, false);
+  assert.equal(result.data.normalized_config.model.id, "gpt_oss");
+  assert.equal(result.data.normalized_config.parallel?.tp, undefined);
+  assert.deepEqual(result.data.source_conflicts, []);
+  assert.equal(result.data.completion.complete, false);
+  assert.equal(result.data.completion.launch_feasible, null);
+  assert.deepEqual(result.data.completion.plans, []);
+  assert.deepEqual(result.data.cross_source_observations.map((item) => item.relation), [
+    "different", "different",
+  ]);
+  assert.ok(result.warnings.some((item) => item.code === "PARSE_SHELL_FRAGMENT"));
+  assert.ok(result.warnings.some((item) => item.code === "PARSE_ARCHITECTURE_FIELDS_UNCHECKED"));
+  assert.equal(result.data.source_snapshot.source.hash_basis, "submitted_utf8_text");
+});
+
 test("可选模型结构语法错误定位到 model_source", () => {
   const result = parseTrainingConfig({
     ...input("--num-layers 32", "shell", "train.sh"),

@@ -11,6 +11,8 @@ const FORMAT_LABELS = Object.freeze({
   shell: "Shell 命令行",
 });
 const PAGE_IMPORT_SOURCE = "compute-graph-viewer-wzh:config-relation-import.js:162-503@ef39d30";
+const GPT_OSS_ARCHITECTURE_SOURCE =
+  "https://docs.nvidia.com/nemo/megatron-bridge/latest/models/gpt_oss/gpt-oss.html";
 
 const REQUIRED_PATHS = Object.freeze([
   "model.id",
@@ -252,6 +254,7 @@ const IGNORED_KEYS = new Set([
 
 function parseSingleTrainingConfig(input) {
   const detectedFormat = detectFormat(input.source.content, input.source.format, input.source.name);
+  const shellFragment = detectedFormat === "shell" && !hasShellLaunchCommand(input.source.content);
   let entries;
   try {
     entries = detectedFormat === "shell"
@@ -281,6 +284,15 @@ function parseSingleTrainingConfig(input) {
   const unmappedFields = [];
   const ignoredFields = [];
   const warnings = [];
+  if (shellFragment) {
+    warnings.push(diagnostic(
+      "PARSE_SHELL_FRAGMENT",
+      "Shell 文件未包含训练启动命令；参数可能由外层脚本补充，未采用 Megatron 并行与运行参数的省略态。",
+      ["source.content"],
+      "parser-rule",
+      PARSER_SOURCE,
+    ));
+  }
   const assigned = new Map();
   let nodeCount;
 
@@ -344,6 +356,8 @@ function parseSingleTrainingConfig(input) {
     normalized,
     mappedFields,
     warnings,
+    shellFragment,
+    hasModelSource: Boolean(input.model_source),
   });
 
   if (getPath(normalized, "parallel.num_layer_list") !== undefined
@@ -508,6 +522,7 @@ function mergeParsedSources(input, trainingResult, modelResult) {
     ...modelResult.data.ignored_fields.map((field) => ({ ...field, source_role: "model" })),
     ...ignoredModelMappings,
   ];
+  const architectureEvidence = gptOssArchitectureEvidence(normalized, unmappedFields);
   const conflictWarnings = conflicts.map((item) => diagnostic(
     "PARSE_SOURCE_CONFLICT",
     `训练配置与模型结构文件对 ${item.path} 的声明不一致；联合结果按证据强度采用${item.resolution === "model_source" ? "模型结构" : "训练配置"}值。`,
@@ -517,6 +532,26 @@ function mergeParsedSources(input, trainingResult, modelResult) {
   ));
   const sourceWarnings = [...trainingResult.warnings, ...modelResult.warnings]
     .filter((item) => item.code !== "PARSE_INCOMPLETE");
+  const architectureWarnings = architectureEvidence.cross_source_observations
+    .filter((item) => item.relation === "different")
+    .map((item) => diagnostic(
+      "PARSE_CROSS_SOURCE_REVIEW",
+      `${item.label}在训练参数与模型结构文件中的数值不同；尚未验证实际运行语义，不判为训练阻断。`,
+      [`source.${item.training.source_key}`, `model_source.${item.model.source_key}`],
+      "compatibility-gap",
+      GPT_OSS_ARCHITECTURE_SOURCE,
+    ));
+  if (architectureEvidence.unverified_architecture_fields.length) {
+    architectureWarnings.push(diagnostic(
+      "PARSE_ARCHITECTURE_FIELDS_UNCHECKED",
+      "GPT OSS 专用架构字段尚未进入统一静态规则；请结合实际 Megatron 版本核对，解析成功不表示这些字段已验证。",
+      architectureEvidence.unverified_architecture_fields.map(
+        (item) => `${item.source_role === "training" ? "source" : "model_source"}.${item.source_key}`
+      ),
+      "compatibility-gap",
+      GPT_OSS_ARCHITECTURE_SOURCE,
+    ));
+  }
   const incompleteWarnings = missingRequiredFields.length
     ? [diagnostic(
       "PARSE_INCOMPLETE",
@@ -531,7 +566,7 @@ function mergeParsedSources(input, trainingResult, modelResult) {
     tool: "parse_training_config",
     input,
     status: "valid",
-    warnings: [...sourceWarnings, ...conflictWarnings, ...incompleteWarnings],
+    warnings: [...sourceWarnings, ...conflictWarnings, ...architectureWarnings, ...incompleteWarnings],
     assumptions: [...new Set([
       ...trainingResult.assumptions,
       ...modelResult.assumptions,
@@ -560,12 +595,51 @@ function mergeParsedSources(input, trainingResult, modelResult) {
       missing_required_fields: missingRequiredFields,
       tool_readiness: toolReadinessForMissingFields(missingRequiredFields),
       source_conflicts: conflicts,
+      ...architectureEvidence,
       completion: planTrainingConfigCompletion(normalized, missingRequiredFields, {
         sourceName: input.source.name,
         detectedFormat: trainingResult.data.detected_format,
       }),
     },
   });
+}
+
+function gptOssArchitectureEvidence(normalized, unmappedFields) {
+  const empty = { cross_source_observations: [], unverified_architecture_fields: [] };
+  if (!/^gpt[-_]oss$/i.test(String(normalized.model?.id ?? ""))) return empty;
+  const find = (role, key) => unmappedFields.find((item) => (
+    item.source_role === role && normalizeKey(item.source_key.split(".").at(-1)) === normalizeKey(key)
+  ));
+  const pairs = [
+    ["最大位置长度", "max-position-embeddings", "max_position_embeddings"],
+    ["MoE 路由辅助损失系数", "moe-aux-loss-coeff", "router_aux_loss_coef"],
+  ];
+  const crossSource = pairs.flatMap(([label, trainingKey, modelKey]) => {
+    const training = find("training", trainingKey);
+    const model = find("model", modelKey);
+    if (!training || !model) return [];
+    return [{
+      label,
+      training: { source_key: training.source_key, value: training.value },
+      model: { source_key: model.source_key, value: model.value },
+      relation: Number(training.value) === Number(model.value) ? "same" : "different",
+      assessment: "review_only",
+      source_ref: GPT_OSS_ARCHITECTURE_SOURCE,
+    }];
+  });
+  const keyFields = new Set([
+    "max-position-embeddings", "moe-aux-loss-coeff", "window-size",
+    "window-attn-skip-freq", "enable-gpt-oss", "kv-channels",
+    "router-aux-loss-coef", "sliding-window",
+    "layer-types", "head-dim", "rope-scaling", "quantization-config",
+  ]);
+  const unverified = unmappedFields.filter((item) => (
+    [...keyFields].some((key) => normalizeSourcePath(item.source_key).includes(key))
+  )).map(({ source_role, source_key, value }) => ({ source_role, source_key, value }));
+  return {
+    cross_source_observations: crossSource,
+    unverified_architecture_fields: unverified,
+  };
 }
 
 function emptyData(input, format) {
@@ -618,7 +692,10 @@ function parseStructured(content, format) {
   return flatten(value);
 }
 
-function applySourceDerivations({ detectedFormat, entries, sourceName, normalized, mappedFields, warnings }) {
+function applySourceDerivations({
+  detectedFormat, entries, sourceName, normalized, mappedFields, warnings,
+  shellFragment = false, hasModelSource = false,
+}) {
   const sourcePaths = new Set(entries.map((entry) => normalizeSourcePath(entry.key)));
   const hasPath = (path) => sourcePaths.has(normalizeSourcePath(path));
   const isShell = detectedFormat === "shell";
@@ -626,7 +703,7 @@ function applySourceDerivations({ detectedFormat, entries, sourceName, normalize
     || hasPath("parallel_config.pipeline_stage")
     || hasPath("parallel_config.expert_parallel");
   const isHuggingFaceModel = hasPath("model_type") || hasPath("architectures");
-  const supportsOmittedDefaults = isShell || isMindFormers;
+  const supportsOmittedDefaults = (isShell && !shellFragment) || isMindFormers;
 
   if (isMindFormers) {
     normalized.rule_profile = {
@@ -640,8 +717,8 @@ function applySourceDerivations({ detectedFormat, entries, sourceName, normalize
     assignGenerated(normalized, mappedFields, path, value, sourceKey, kind)
   );
 
-  if (isShell && sourceName && getPath(normalized, "model.id") === undefined) {
-    add("model.id", String(sourceName).replace(/\.[^.]+$/, ""), "Shell 文件名", "derived");
+  if (isShell && sourceName && !hasModelSource && getPath(normalized, "model.id") === undefined) {
+    add("model.id", String(sourceName).split(/[\\/]/).at(-1).replace(/\.[^.]+$/, ""), "Shell 文件名", "derived");
   }
 
   if (supportsOmittedDefaults) {
@@ -823,6 +900,13 @@ function parseShell(content) {
   appendShellVariable(entries, variables, "DTYPE", "compute-dtype");
   if (!entries.length) throw new TypeError("没有找到形如 --name value 的启动参数");
   return entries;
+}
+
+function hasShellLaunchCommand(content) {
+  return content.split(/\r?\n/).some((line) => {
+    const active = stripShellComment(line).trim();
+    return /^(?:env\s+\S+\s+)*(?:torchrun|deepspeed|mpirun|python(?:3)?\s+\S+|\$\{?[A-Za-z_][A-Za-z0-9_]*\}?\s+\S+)/.test(active);
+  });
 }
 
 function stripShellComment(line) {
