@@ -102,15 +102,15 @@ function followUp(result, solutions, missing) {
   };
   if (solutions.length > 1) return {
     mode: "choose_solution",
-    prompt: `如要落实建议，请回复方案序号（1～${solutions.length}）${solutions.some((item) => item.requires_confirmation) ? "并确认其中的占位值" : ""}；Agent 应先展示拟改动，再修改源文件并复查。`,
+    prompt: `你倾向哪个方案？请回复方案序号（1～${solutions.length}）${solutions.some((item) => item.requires_confirmation) ? "，并确认方案中的占位值" : ""}；我会先列出拟改动，再修改源文件并复查。`,
   };
   if (solutions.length === 1) return {
     mode: "confirm_solution",
-    prompt: `如要落实建议，请${solutions[0].requires_confirmation ? "先确认方案中的占位值，再" : ""}回复“按方案1修改”；Agent 应先展示拟改动，再修改源文件并复查。`,
+    prompt: `是否采用方案 1？${solutions[0].requires_confirmation ? "请先确认方案中的占位值，再" : "请"}回复“采用方案 1”；我会先列出拟改动，再修改源文件并复查。`,
   };
   if (missing.length) return {
     mode: "provide_input",
-    prompt: `请提供实际启动脚本、并行度和设备信息${hasSourceDifference(result) ? "，并确认两份来源的差异值" : ""}；补齐后可继续校验。当前没有足够证据推荐修改源文件。`,
+    prompt: `当前没有可供选择的修改方案。请提供实际启动脚本、并行度和设备信息${hasSourceDifference(result) ? "，并确认两份来源实际使用的值" : ""}；补齐后我可以继续校验。`,
   };
   if (hasSourceDifference(result)) return {
     mode: "provide_input",
@@ -157,6 +157,7 @@ export function parseDialogue(result) {
       source_count: sourceCount,
       source_names: [snapshot.source?.name, snapshot.model_source?.name].filter(Boolean),
       read_field_count: data.source_field_count ?? 0,
+      mapped_field_count: data.mapped_count ?? 0,
       required_field_count: data.required_field_count ?? 0,
       available_required_count: data.filled_required_field_count ?? 0,
       missing_required_count: missing.length,

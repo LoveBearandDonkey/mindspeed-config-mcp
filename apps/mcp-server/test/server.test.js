@@ -194,12 +194,17 @@ test("GPT OSS 片段的 MCP 文本直接展示两项待核对差异和零个可�
     const text = response.content[0].text;
     assert.equal(response.structuredContent.data.dialogue.issues.length, 2);
     assert.equal(response.structuredContent.data.dialogue.solutions.length, 0);
+    assert.equal(response.structuredContent.data.dialogue.overview.mapped_field_count,
+      response.structuredContent.data.mapped_count);
+    assert.match(text, /共 \d+ 项配置；\d+ 项纳入本次字段解析与对照，完整训练诊断还缺 \d+ 项必需配置/);
+    assert.match(text, /\| 结论 \| 配置事实 \| 规则或约束判断 \|/);
     assert.match(text, /model\.sh:max-position-embeddings/);
     assert.match(text, /config\.json:router_aux_loss_coef/);
     assert.match(text, /尚未证实|不能据此判为训练阻断/);
     assert.match(text, /已覆盖的字段中没有可确认的训练阻断项；有 2 项差异待核对/);
-    assert.match(text, /可推荐方案：0 个。缺少已确认的框架和设备条件/);
-    assert.match(text, /下一步：请提供实际启动脚本/);
+    assert.match(text, /可推荐方案：0 个。[\s\S]*\| — \| 暂无可推荐改动 \| 缺少已确认的框架和设备条件/);
+    assert.match(text, /下一步：当前没有可供选择的修改方案。请提供实际启动脚本/);
+    assert.doesNotMatch(text, /请回复方案序号|Agent 应/);
   });
 });
 

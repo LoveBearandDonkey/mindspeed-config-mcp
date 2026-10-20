@@ -361,6 +361,7 @@
           "gpt_oss_20b_model_config.json"
         ],
         "read_field_count": 30,
+        "mapped_field_count": 20,
         "required_field_count": 33,
         "available_required_count": 12,
         "missing_required_count": 21,

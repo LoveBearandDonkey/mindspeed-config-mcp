@@ -105,7 +105,7 @@ const workbenchInputSchema = z.object({
   }).optional(),
 });
 const WORKBENCH_TOOL_NAME = "open_config_workbench";
-const SERVER_INSTRUCTIONS = "快速检查训练脚本和模型配置时，Agent 先读取用户指定的文件内容，再调用当前 MCP 连接的 parse_training_config；检查返回的 data.mcp_invocation，不把本地计算或健康检查写成 V2 MCP 已调用。优先用 data.dialogue 的四段式结果向用户回答；依 tool_readiness 决定是否继续并行、Rank 与理论容量检查。无可推荐方案时写 0 个，不要求用户选方案；未经授权不改源文件。";
+const SERVER_INSTRUCTIONS = "快速检查训练脚本和模型配置时，Agent 先读取用户指定的文件内容，再调用当前 MCP 连接的 parse_training_config；检查返回的 data.mcp_invocation，不把本地计算或健康检查写成 V2 MCP 已调用。面向用户时须按 data.dialogue 的四章组织：读取总数、已映射数与分析缺口；问题及其约束判断表；0～3 个排序方案与推荐理由表；缺口及补齐后的检查范围。结尾依 follow_up 提问：0 个方案只索取缺失信息，1 个询问是否采用，多个请回复序号。依 tool_readiness 决定是否继续并行、Rank 与理论容量检查；未经授权不改源文件。";
 
 const TOOL_DEFINITIONS = Object.freeze([
   {
@@ -135,7 +135,7 @@ const TOOL_DEFINITIONS = Object.freeze([
   {
     name: "parse_training_config",
     title: "解析训练配置",
-    description: "用户要求快速检查已保存的训练脚本和模型配置时，先由 Agent 读取实际文件文本，再调用当前连接的本工具；不得把本地解析或健康检查冒充本次 V2 MCP 调用。返回四段式对话摘要：读取与覆盖数量、问题及规则、最多三项有依据的方案、缺口与后续检查。先查看 tool_readiness，未就绪时不调用并行、Rank 或容量工具；仅要结论时无需打开页面。不读取服务器文件、不启动训练。",
+    description: "用户要求快速检查已保存的训练脚本和模型配置时，先由 Agent 读取实际文件文本，再调用当前连接的本工具；不得把本地解析或健康检查冒充本次 V2 MCP 调用。用户答复须按 data.dialogue 的四章呈现：读取总数、已映射数与缺口；问题及约束判断表；0～3 个排序方案与推荐理由表；缺失配置与继续检查范围。结尾按 follow_up 提问，0 个方案不得要求选方案。先查看 tool_readiness，未就绪时不调用并行、Rank 或容量工具；仅要结论时无需打开页面。不读取服务器文件、不启动训练。",
     inputSchema: parseInputSchema,
     assertInput: assertParseTrainingConfig,
     run: parseTrainingConfig,
@@ -218,9 +218,9 @@ function tableCell(value) {
 
 function issueRuleCell(issue) {
   const source = issue.source_ref?.startsWith("https://")
-    ? `；[规则来源](${issue.source_ref})`
-    : issue.source_ref ? `；来源：${issue.source_ref}` : "";
-  return tableCell(`${issue.constraint}（${issue.code}${source}）`);
+    ? ` [依据](${issue.source_ref})`
+    : "";
+  return tableCell(`${issue.constraint}${source}`);
 }
 
 function parseDialogueText(result) {
@@ -229,8 +229,8 @@ function parseDialogueText(result) {
   const parsed = overview.parse_status === "succeeded" ? "解析成功" : "解析失败";
   const lines = [
     "## 1. 文件与检查范围",
-    `${parsed}：收到 ${overview.source_count} 份文件、${overview.read_field_count} 项原始配置；完整分析所需 ${overview.required_field_count} 项中已具备 ${overview.available_required_count} 项，缺 ${overview.missing_required_count} 项。`,
-    "这里的“已具备”表示完成字段识别，不表示并行、Rank 或容量校验已经通过。",
+    `${parsed}：读取 ${overview.source_count} 份文件、共 ${overview.read_field_count} 项配置；${overview.mapped_field_count} 项纳入本次字段解析与对照，完整训练诊断还缺 ${overview.missing_required_count} 项必需配置。`,
+    "本轮仅完成解析与来源对照；字段纳入分析不表示已通过并行、Rank 或容量校验。",
     "",
     "## 2. 发现的问题与差异",
   ];
@@ -239,7 +239,7 @@ function parseDialogueText(result) {
     lines.push(blockedCount
       ? `已确认 ${blockedCount} 项解析或静态阻断；其余差异仍需核对。`
       : `已覆盖的字段中没有可确认的训练阻断项；有 ${issues.length} 项差异待核对。`);
-    lines.push("| 状态 | 文件依据与事实 | 对应规则或约束 |", "| --- | --- | --- |");
+    lines.push("| 结论 | 配置事实 | 规则或约束判断 |", "| --- | --- | --- |");
     for (const issue of issues) lines.push(
       `| ${issue.severity === "blocked" ? "阻断" : "待核对"} | ${tableCell(`${issue.locations.join("、")}：${issue.finding}`)} | ${issueRuleCell(issue)} |`
     );
@@ -248,15 +248,15 @@ function parseDialogueText(result) {
   }
   lines.push("", "## 3. 处理方案（按推荐顺序）");
   if (solutions.length) {
-    lines.push("| 方案 | 建议与理由 | 验证范围 |", "| --- | --- | --- |");
+    lines.push("| 排序 | 解决方案 | 推荐理由与验证范围 |", "| --- | --- | --- |");
     for (const solution of solutions) {
       const capacity = solution.capacity_estimate_gib !== null && solution.card_capacity_gib !== null
         ? `；理论显存 ${solution.capacity_estimate_gib}/${solution.card_capacity_gib} GiB`
         : `；容量依据：${solution.capacity_basis}`;
-      lines.push(`| ${solution.number}. ${tableCell(solution.title)} | ${tableCell(`${solution.reason} ${solution.ranking_reason}`)} | ${tableCell(solution.validation)}${capacity}${solution.requires_confirmation ? "；占位值需确认" : ""} |`);
+      lines.push(`| ${solution.number} | ${tableCell(solution.title)} | ${tableCell(`${solution.reason} ${solution.ranking_reason} ${solution.validation}`)}${capacity}${solution.requires_confirmation ? "；占位值需确认" : ""} |`);
     }
   } else {
-    lines.push(`可推荐方案：0 个。${solutionNote}`);
+    lines.push("可推荐方案：0 个。", "| 排序 | 解决方案 | 推荐理由 |", "| --- | --- | --- |", `| — | 暂无可推荐改动 | ${tableCell(solutionNote)} |`);
   }
   lines.push("", "## 4. 补全后可继续检查");
   if (completion.missing_groups.length) {
