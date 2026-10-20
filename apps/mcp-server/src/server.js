@@ -1,5 +1,6 @@
 import { registerAppResource, registerAppTool, RESOURCE_MIME_TYPE } from "@modelcontextprotocol/ext-apps/server";
 import { McpServer } from "@modelcontextprotocol/server";
+import { randomUUID } from "node:crypto";
 import * as z from "zod/v4";
 
 import {
@@ -104,6 +105,7 @@ const workbenchInputSchema = z.object({
   }).optional(),
 });
 const WORKBENCH_TOOL_NAME = "open_config_workbench";
+const SERVER_INSTRUCTIONS = "快速检查训练脚本和模型配置时，Agent 先读取用户指定的文件内容，再调用当前 MCP 连接的 parse_training_config；检查返回的 data.mcp_invocation，不把本地计算或健康检查写成 V2 MCP 已调用。优先用 data.dialogue 的四段式结果向用户回答；依 tool_readiness 决定是否继续并行、Rank 与理论容量检查。无可推荐方案时写 0 个，不要求用户选方案；未经授权不改源文件。";
 
 const TOOL_DEFINITIONS = Object.freeze([
   {
@@ -133,7 +135,7 @@ const TOOL_DEFINITIONS = Object.freeze([
   {
     name: "parse_training_config",
     title: "解析训练配置",
-    description: "解析 YAML、JSON 或 Shell 训练配置，并可联动解析独立模型结构文件；显式返回来源冲突、未识别和缺失字段，并为缺口生成经过完整静态复验与理论容量门禁的候选方案。不启动训练。",
+    description: "用户要求快速检查已保存的训练脚本和模型配置时，先由 Agent 读取实际文件文本，再调用当前连接的本工具；不得把本地解析或健康检查冒充本次 V2 MCP 调用。返回四段式对话摘要：读取与覆盖数量、问题及规则、最多三项有依据的方案、缺口与后续检查。先查看 tool_readiness，未就绪时不调用并行、Rank 或容量工具；仅要结论时无需打开页面。不读取服务器文件、不启动训练。",
     inputSchema: parseInputSchema,
     assertInput: assertParseTrainingConfig,
     run: parseTrainingConfig,
@@ -210,19 +212,98 @@ function summaryOf(result) {
   ].filter(Boolean).join(" ");
 }
 
+function tableCell(value) {
+  return String(value ?? "").replaceAll("|", "\\|").replaceAll(/\r?\n/g, " ");
+}
+
+function issueRuleCell(issue) {
+  const source = issue.source_ref?.startsWith("https://")
+    ? `；[规则来源](${issue.source_ref})`
+    : issue.source_ref ? `；来源：${issue.source_ref}` : "";
+  return tableCell(`${issue.constraint}（${issue.code}${source}）`);
+}
+
+function parseDialogueText(result) {
+  const dialogue = result.data.dialogue;
+  const { overview, issues, solutions, solution_note: solutionNote, completion, follow_up: followUp } = dialogue;
+  const parsed = overview.parse_status === "succeeded" ? "解析成功" : "解析失败";
+  const lines = [
+    "## 1. 文件与检查范围",
+    `${parsed}：收到 ${overview.source_count} 份文件、${overview.read_field_count} 项原始配置；完整分析所需 ${overview.required_field_count} 项中已具备 ${overview.available_required_count} 项，缺 ${overview.missing_required_count} 项。`,
+    "这里的“已具备”表示完成字段识别，不表示并行、Rank 或容量校验已经通过。",
+    "",
+    "## 2. 发现的问题与差异",
+  ];
+  if (issues.length) {
+    const blockedCount = issues.filter((issue) => issue.severity === "blocked").length;
+    lines.push(blockedCount
+      ? `已确认 ${blockedCount} 项解析或静态阻断；其余差异仍需核对。`
+      : `已覆盖的字段中没有可确认的训练阻断项；有 ${issues.length} 项差异待核对。`);
+    lines.push("| 状态 | 文件依据与事实 | 对应规则或约束 |", "| --- | --- | --- |");
+    for (const issue of issues) lines.push(
+      `| ${issue.severity === "blocked" ? "阻断" : "待核对"} | ${tableCell(`${issue.locations.join("、")}：${issue.finding}`)} | ${issueRuleCell(issue)} |`
+    );
+  } else {
+    lines.push("在已覆盖的字段中，暂未发现可确认的阻断项或跨来源差异。");
+  }
+  lines.push("", "## 3. 处理方案（按推荐顺序）");
+  if (solutions.length) {
+    lines.push("| 方案 | 建议与理由 | 验证范围 |", "| --- | --- | --- |");
+    for (const solution of solutions) {
+      const capacity = solution.capacity_estimate_gib !== null && solution.card_capacity_gib !== null
+        ? `；理论显存 ${solution.capacity_estimate_gib}/${solution.card_capacity_gib} GiB`
+        : `；容量依据：${solution.capacity_basis}`;
+      lines.push(`| ${solution.number}. ${tableCell(solution.title)} | ${tableCell(`${solution.reason} ${solution.ranking_reason}`)} | ${tableCell(solution.validation)}${capacity}${solution.requires_confirmation ? "；占位值需确认" : ""} |`);
+    }
+  } else {
+    lines.push(`可推荐方案：0 个。${solutionNote}`);
+  }
+  lines.push("", "## 4. 补全后可继续检查");
+  if (completion.missing_groups.length) {
+    lines.push(`还缺 ${overview.missing_required_count} 项完整分析所需配置：`);
+    for (const group of completion.missing_groups) lines.push(
+      `- ${group.label} ${group.count} 项：${group.fields.slice(0, 4).join("、")}${group.count > 4 ? " 等" : ""}。`
+    );
+  } else {
+    lines.push("完整分析所需字段已具备，可按实际问题继续调用就绪的校验工具。");
+  }
+  const unavailable = completion.tool_readiness.filter((item) => !item.ready).map((item) => item.label);
+  if (unavailable.length) lines.push(`目前不能完成：${unavailable.join("、")}；补齐相关字段后才能继续。`);
+  if (completion.shell_fragment) lines.push("当前 Shell 文件是参数片段；实际启动命令可能在外层脚本中。");
+  if (completion.unmapped_count) lines.push(
+    `另有 ${completion.unmapped_count} 项原始字段尚未纳入统一映射；这不等于这些字段有错。`
+  );
+  if (completion.unverified_architecture_fields.length) lines.push(
+    `${completion.unmapped_count ? "其中" : "另有"} ${completion.unverified_architecture_fields.length} 项专用架构字段尚未进入统一静态规则，需结合实际框架版本核对。`
+  );
+  if (followUp.prompt) lines.push("", `下一步：${followUp.prompt}`);
+  else lines.push("", "下一步：如需确认实际可运行性，请在目标环境复核。");
+  return lines.join("\n");
+}
+
 function runTool(definition, args) {
   const input = definition.assertInput(args);
   const result = definition.run(input);
   assertToolResult(result);
+  if (definition.name === "parse_training_config") {
+    result.data.mcp_invocation = {
+      server: "mindspeed-config-mcp",
+      tool: definition.name,
+      request_id: randomUUID(),
+    };
+  }
   return {
     content: [{ type: "text", text: definition.name === "compose_analysis_report"
-      ? `${result.data.markdown}\n\n${summaryOf(result)}` : summaryOf(result) }],
+      ? `${result.data.markdown}\n\n${summaryOf(result)}`
+      : definition.name === "parse_training_config" ? parseDialogueText(result) : summaryOf(result) }],
     structuredContent: result,
   };
 }
 
 export function createMcpServer({ webWorkbenchUrl = null } = {}) {
-  const server = new McpServer({ name: "mindspeed-config-mcp", version: "0.1.0" });
+  const server = new McpServer({ name: "mindspeed-config-mcp", version: "0.1.0" }, {
+    instructions: SERVER_INSTRUCTIONS,
+  });
 
   for (const launcher of LAUNCHER_DEFINITIONS) {
     registerAppTool(server, launcher.name, {

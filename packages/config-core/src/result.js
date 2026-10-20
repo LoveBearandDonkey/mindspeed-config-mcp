@@ -1,4 +1,5 @@
 import { quickAssessment } from "./quick-assessment.js";
+import { parseDialogue } from "./parse-dialogue.js";
 import { sha256Utf8 } from "./sha256.js";
 
 export const SOURCE_VERSIONS = Object.freeze({
@@ -78,6 +79,7 @@ export function toolResult({
     data: completeData,
   };
   result.quick_assessment = quickAssessment(result);
+  if (tool === "parse_training_config") result.data.dialogue = parseDialogue(result);
   return result;
 }
 

@@ -158,7 +158,48 @@ test("计算 Tool 都返回简短结论和结构化结果", async () => {
       assert.ok(response.content[0].text.length > 0);
       assert.match(response.content[0].text, /下一步：/);
       assert.ok(response.structuredContent.quick_assessment.conclusion);
+      if (name === "parse_training_config") {
+        const sections = response.content[0].text;
+        assert.equal(response.structuredContent.data.mcp_invocation.tool, "parse_training_config");
+        assert.match(response.structuredContent.data.mcp_invocation.request_id,
+          /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+        assert.match(sections, /## 1\. 文件与检查范围/);
+        assert.match(sections, /## 2\. 发现的问题与差异/);
+        assert.match(sections, /## 3\. 处理方案/);
+        assert.match(sections, /## 4\. 补全后可继续检查/);
+        assert.ok(response.structuredContent.data.dialogue.solutions.length <= 3);
+      }
     }
+  });
+});
+
+test("GPT OSS 片段的 MCP 文本直接展示两项待核对差异和零个可推荐改动", async () => {
+  await withClient(async (client) => {
+    const response = await client.callTool({
+      name: "parse_training_config",
+      arguments: {
+        schema_version: "1.0",
+        rule_profile: { framework: "generic", version: "unknown" },
+        source: {
+          format: "shell", name: "model.sh",
+          content: 'MODEL_ARGS=" --num-layers 24 --hidden-size 2880 --max-position-embeddings 40960 --moe-aux-loss-coeff 0.0 "',
+        },
+        model_source: {
+          format: "json", name: "config.json",
+          content: JSON.stringify({ model_type: "gpt_oss", num_hidden_layers: 24,
+            hidden_size: 2880, max_position_embeddings: 131072, router_aux_loss_coef: 0.9 }),
+        },
+      },
+    });
+    const text = response.content[0].text;
+    assert.equal(response.structuredContent.data.dialogue.issues.length, 2);
+    assert.equal(response.structuredContent.data.dialogue.solutions.length, 0);
+    assert.match(text, /model\.sh:max-position-embeddings/);
+    assert.match(text, /config\.json:router_aux_loss_coef/);
+    assert.match(text, /尚未证实|不能据此判为训练阻断/);
+    assert.match(text, /已覆盖的字段中没有可确认的训练阻断项；有 2 项差异待核对/);
+    assert.match(text, /可推荐方案：0 个。缺少已确认的框架和设备条件/);
+    assert.match(text, /下一步：请提供实际启动脚本/);
   });
 });
 

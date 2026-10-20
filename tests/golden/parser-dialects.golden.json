@@ -352,6 +352,64 @@
       "PARSE_CROSS_SOURCE_REVIEW",
       "PARSE_ARCHITECTURE_FIELDS_UNCHECKED"
     ],
+    "dialogue": {
+      "overview": {
+        "parse_status": "succeeded",
+        "source_count": 2,
+        "source_names": [
+          "D:\\fixtures\\nvidia_megatron_gpt_oss_20b_model_config.sh",
+          "gpt_oss_20b_model_config.json"
+        ],
+        "read_field_count": 30,
+        "required_field_count": 33,
+        "available_required_count": 12,
+        "missing_required_count": 21,
+        "full_static_validation_performed": false
+      },
+      "issues": [
+        {
+          "severity": "review",
+          "code": "PARSE_CROSS_SOURCE_REVIEW",
+          "locations": [
+            "D:\\fixtures\\nvidia_megatron_gpt_oss_20b_model_config.sh:max-position-embeddings",
+            "gpt_oss_20b_model_config.json:max_position_embeddings"
+          ]
+        },
+        {
+          "severity": "review",
+          "code": "PARSE_CROSS_SOURCE_REVIEW",
+          "locations": [
+            "D:\\fixtures\\nvidia_megatron_gpt_oss_20b_model_config.sh:moe-aux-loss-coeff",
+            "gpt_oss_20b_model_config.json:router_aux_loss_coef"
+          ]
+        }
+      ],
+      "solution_count": 0,
+      "unmapped_count": 12,
+      "missing_groups": [
+        {
+          "label": "并行策略",
+          "count": 10
+        },
+        {
+          "label": "设备与 Rank",
+          "count": 4
+        },
+        {
+          "label": "批量",
+          "count": 1
+        },
+        {
+          "label": "精度与显存策略",
+          "count": 4
+        },
+        {
+          "label": "模型结构",
+          "count": 2
+        }
+      ],
+      "follow_up_mode": "provide_input"
+    },
     "snapshot_hash_basis": "submitted_utf8_text"
   }
 }

@@ -127,7 +127,17 @@ try {
     assert.notEqual(response.isError, true, `${name} 返回了错误结果`);
     assert.equal(response.structuredContent?.tool, name);
     assert.equal(response.content?.[0]?.type, "text");
-    checks.push({ check: name, result: "通过", detail: response.content[0].text });
+    if (name === "parse_training_config") {
+      const dialogue = response.structuredContent.data.dialogue;
+      assert.equal(response.structuredContent.data.mcp_invocation.tool, name);
+      assert.match(response.structuredContent.data.mcp_invocation.request_id, /^[0-9a-f-]{36}$/);
+      assert.equal(dialogue.overview.source_count, 1);
+      assert.ok(dialogue.solutions.length <= 3);
+      assert.match(response.content[0].text, /## 1\. 文件与检查范围[\s\S]*## 4\. 补全后可继续检查/);
+      checks.push({ check: name, result: "通过", detail: "实际 MCP 调用含追踪信息、四段式结论与最多三个方案" });
+    } else {
+      checks.push({ check: name, result: "通过", detail: response.content[0].text });
+    }
   }
 
   const resource = await client.readResource({ uri: APP_RESOURCE_URI });

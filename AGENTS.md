@@ -27,3 +27,9 @@
 ## 本地页面预览
 
 - 每次完成页面或页面样式相关修改后，在最终答复前自动使用 `mindspeed-config-mcp-local` skill 执行 `Preview`，重新构建并刷新 `http://127.0.0.1:4174/training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html?preview=1`；用户明确要求不刷新时除外。只有用户明确要求完整 MCP 服务或 Inspector 时才改用 `Refresh`。
+
+## 场景 1：对话中快速检查配置
+
+- Agent 先读取用户指定的磁盘文件或用户显式提供的未保存内容，再调用当前会话实际连接的 V2 MCP `parse_training_config`；本地 `config-core` 调用、健康检查和工具登记均不能冒充本次 MCP 调用。若 MCP 调用失败，应明确说明，只能把本地分析标为回退结果。
+- 核对 `data.mcp_invocation`、`source_snapshot`、`missing_required_fields`、`tool_readiness` 和未检查字段。只有对应工具就绪时，才继续调用并行校验、Rank 或容量工具；不得用解析成功表示训练配置已通过完整校验。
+- 面向用户的结论按“文件与检查范围 → 问题及对应规则 → 0～3 个有证据的排序方案 → 缺口与继续检查范围”组织。没有安全方案时明确写 0 个，不要求用户选方案；只有 1 个方案时询问是否采用，多个方案时请用户回复序号。用户选择方案或明确授权修改后，Agent 先展示拟改动，再写入源文件并复查；已获授权时不重复索取许可。

@@ -230,6 +230,16 @@ test("携带 Bearer Token 的 Streamable HTTP 客户端可调用 Tool 并读取�
   const client = new Client({ name: "mindspeed-config-http-test", version: "0.1.0" });
 
   try {
+    const initialized = await fetch(`http://127.0.0.1:${port}/mindspeed-config/mcp`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${TOKEN}`, Accept: "application/json, text/event-stream",
+        "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {
+        protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "instructions-check", version: "0.1" },
+      } }),
+    });
+    assert.equal(initialized.status, 200);
+    assert.match(await initialized.text(), /当前 MCP 连接的 parse_training_config/);
     await client.connect(transport);
     const tools = await client.listTools();
     assert.deepEqual(tools.tools.map((tool) => tool.name).sort(), [
@@ -261,6 +271,9 @@ test("携带 Bearer Token 的 Streamable HTTP 客户端可调用 Tool 并读取�
     });
     assert.equal(parsed.structuredContent.tool, "parse_training_config");
     assert.equal(parsed.structuredContent.data.unmapped_count, 1);
+    assert.equal(parsed.structuredContent.data.mcp_invocation.tool, "parse_training_config");
+    assert.equal(parsed.structuredContent.data.dialogue.overview.source_count, 1);
+    assert.match(parsed.content[0].text, /## 1\. 文件与检查范围[\s\S]*## 4\. 补全后可继续检查/);
 
     const workbench = await client.callTool({ name: "open_config_workbench", arguments: {} });
     assert.equal(workbench.structuredContent.status, "ready");

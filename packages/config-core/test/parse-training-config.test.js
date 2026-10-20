@@ -114,6 +114,15 @@ test("GPT OSS 参数片段不补造并行度、昇腾容量或文件名来源冲
   assert.deepEqual(result.data.cross_source_observations.map((item) => item.relation), [
     "different", "different",
   ]);
+  assert.equal(result.data.dialogue.overview.source_count, 2);
+  assert.equal(result.data.mcp_invocation, undefined);
+  assert.equal(result.data.dialogue.overview.available_required_count
+    + result.data.dialogue.overview.missing_required_count, result.data.dialogue.overview.required_field_count);
+  assert.equal(result.data.dialogue.overview.full_static_validation_performed, false);
+  assert.deepEqual(result.data.dialogue.issues.map((item) => item.severity), ["review", "review"]);
+  assert.deepEqual(result.data.dialogue.solutions, []);
+  assert.equal(result.data.dialogue.follow_up.mode, "provide_input");
+  assert.ok(result.data.dialogue.completion.tool_readiness.every((item) => !item.ready));
   assert.ok(result.warnings.some((item) => item.code === "PARSE_SHELL_FRAGMENT"));
   assert.ok(result.warnings.some((item) => item.code === "PARSE_ARCHITECTURE_FIELDS_UNCHECKED"));
   assert.equal(result.data.source_snapshot.source.hash_basis, "submitted_utf8_text");
@@ -394,6 +403,13 @@ model:
     "mindformers-uniform-fallback",
   ]);
   assert.ok(result.data.completion.plans.every((plan) => plan.validation.status === "valid"));
+  assert.ok(result.data.dialogue.solutions.length <= 3);
+  assert.ok(result.data.dialogue.solutions.every((solution) => (
+    solution.capacity_basis === "theoretical"
+      && result.data.completion.plans.some((plan) => (
+        plan.id === solution.id && plan.capacity_assessment.recommendation_eligible
+      ))
+  )));
 });
 
 test("Megatron 命令行的缺口按本次输入即时求解，不依赖预置答案", () => {
@@ -453,6 +469,11 @@ torchrun train.py \\
   assert.equal(recommended.proposed_config.parallel.dp, 8);
   assert.equal(recommended.proposed_config.cluster.total_ranks, 32);
   assert.equal(recommended.validation.status, "valid");
+  assert.ok(result.data.dialogue.solutions.length <= 3);
+  assert.ok(result.data.dialogue.solutions.every((solution) => (
+    result.data.completion.plans.some((plan) => plan.id === solution.id
+      && plan.capacity_assessment.recommendation_eligible)
+  )));
 });
 
 test("常规搜索无解时生成经过复验的兜底方案并逐项暴露冲突字段", () => {

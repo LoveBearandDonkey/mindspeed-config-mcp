@@ -276,6 +276,18 @@ model:
       warning_codes: gptOssFragment.warnings.map((item) => item.code),
       quick_state: gptOssFragment.quick_assessment.state,
       quick_evidence_codes: gptOssFragment.quick_assessment.evidence.map((item) => item.code),
+      dialogue: {
+        overview: gptOssFragment.data.dialogue.overview,
+        issues: gptOssFragment.data.dialogue.issues.map((item) => ({
+          severity: item.severity, code: item.code, locations: item.locations,
+        })),
+        solution_count: gptOssFragment.data.dialogue.solutions.length,
+        unmapped_count: gptOssFragment.data.dialogue.completion.unmapped_count,
+        missing_groups: gptOssFragment.data.dialogue.completion.missing_groups.map(
+          (item) => ({ label: item.label, count: item.count })
+        ),
+        follow_up_mode: gptOssFragment.data.dialogue.follow_up.mode,
+      },
       snapshot_hash_basis: gptOssFragment.data.source_snapshot.source.hash_basis,
     },
   };
