@@ -156,17 +156,18 @@ test("计算 Tool 都返回简短结论和结构化结果", async () => {
       assert.equal(response.structuredContent.tool, name);
       assert.equal(response.content[0].type, "text");
       assert.ok(response.content[0].text.length > 0);
-      assert.match(response.content[0].text, /下一步：/);
+      assert.match(response.content[0].text, name === "parse_training_config" ? /## 下一步帮助/ : /下一步：/);
       assert.ok(response.structuredContent.quick_assessment.conclusion);
       if (name === "parse_training_config") {
         const sections = response.content[0].text;
         assert.equal(response.structuredContent.data.mcp_invocation.tool, "parse_training_config");
         assert.match(response.structuredContent.data.mcp_invocation.request_id,
           /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-        assert.match(sections, /## 1\. 文件与检查范围/);
-        assert.match(sections, /## 2\. 发现的问题与差异/);
-        assert.match(sections, /## 3\. 处理方案/);
-        assert.match(sections, /## 4\. 补全后可继续检查/);
+        assert.match(sections, /## ① 读取与解析/);
+        assert.match(sections, /## ② 问题与待核对差异/);
+        assert.match(sections, /## ③ 建议方案/);
+        assert.match(sections, /## ④ 还缺什么/);
+        assert.match(sections, /## 下一步帮助/);
         assert.ok(response.structuredContent.data.dialogue.solutions.length <= 3);
       }
     }
@@ -197,14 +198,36 @@ test("GPT OSS 片段的 MCP 文本直接展示两项待核对差异和零个可�
     assert.equal(response.structuredContent.data.dialogue.overview.mapped_field_count,
       response.structuredContent.data.mapped_count);
     assert.match(text, /共 \d+ 项配置；\d+ 项纳入本次字段解析与对照，完整训练诊断还缺 \d+ 项必需配置/);
-    assert.match(text, /\| 结论 \| 配置事实 \| 规则或约束判断 \|/);
+    assert.match(text, /\| 结论 \| 配置事实 \| MCP 内置规则或约束 \|/);
+    assert.match(text, /PARSE_CROSS_SOURCE_REVIEW：/);
+    assert.doesNotMatch(text, /\[依据\]\(https?:\/\//);
     assert.match(text, /model\.sh:max-position-embeddings/);
     assert.match(text, /config\.json:router_aux_loss_coef/);
     assert.match(text, /尚未证实|不能据此判为训练阻断/);
     assert.match(text, /已覆盖的字段中没有可确认的训练阻断项；有 2 项差异待核对/);
-    assert.match(text, /可推荐方案：0 个。[\s\S]*\| — \| 暂无可推荐改动 \| 缺少已确认的框架和设备条件/);
-    assert.match(text, /下一步：当前没有可供选择的修改方案。请提供实际启动脚本/);
+    assert.match(text, /MCP 候选方案：0 个。[\s\S]*\| — \| 暂无可推荐改动 \| 缺少已确认的框架和设备条件/);
+    assert.match(text, /## 下一步帮助\n当前没有可供选择的修改方案。请提供实际启动脚本/);
+    assert.match(text, /补齐可从现有文件确认的配置，再进行一轮检查吗/);
     assert.doesNotMatch(text, /请回复方案序号|Agent 应/);
+  });
+});
+
+test("MCP 问题表仅内联返回的规则代码、约束和内部来源", async () => {
+  await withClient(async (client) => {
+    const response = await client.callTool({
+      name: "parse_training_config",
+      arguments: {
+        schema_version: "1.0",
+        rule_profile: { framework: "generic", version: "unknown" },
+        source: { format: "shell", name: "train.sh", content: "python train.py --model-name example/model" },
+        model_source: { format: "json", name: "config.json", content: '{"model_type":"other"}' },
+      },
+    });
+    const text = response.content[0].text;
+    assert.match(text, /PARSE_SOURCE_CONFLICT：同一模型字段跨来源值不同；需确认实际使用的值。/);
+    assert.match(text, /mindspeed-config-mcp:parse-training-config@0\.3\.2/);
+    assert.equal(response.structuredContent.data.dialogue.solutions.length, 0);
+    assert.match(text, /MCP 候选方案：0 个/);
   });
 });
 

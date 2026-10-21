@@ -307,7 +307,7 @@ test("源配置缺少机器规格时采用 950PR 128G 容量优先假设", () =>
   assert.equal(proposed.cluster.card_model, "昇腾 950PR");
   assert.equal(proposed.cluster.card_memory_gib, 128);
   assert.ok(completion.plans[0].values.every((item) => (
-    item.reason.includes("950PR 128G") && item.source_ref.endsWith("@0.3.1")
+    item.reason.includes("950PR 128G") && item.source_ref.endsWith("@0.3.2")
   )));
 });
 

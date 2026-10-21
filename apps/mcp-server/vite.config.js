@@ -497,7 +497,8 @@ function connectMcpCapacity(source, assetFile) {
     return `/* 容量计算已迁移到 estimate_training_capacity；第 14 项适配层只渲染 structuredContent。 */`;
   }
   if (basename !== "config-relation-plane.js") return source;
-  let transformed = source;
+  // The checked-in page script can use CRLF; the required multiline markers use LF.
+  let transformed = source.replace(/\r\n/g, "\n");
   transformed = replaceRequired(
     transformed,
     `  const memoryLegendCaption = el("div", "crop-memory-legend__caption", "Rank HBM 占用");`,

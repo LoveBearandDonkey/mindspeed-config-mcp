@@ -4,7 +4,7 @@ import { diagnostic, toolResult } from "./result.js";
 import { planTrainingConfigCompletion } from "./plan-training-config-completion.js";
 import { toolReadinessForMissingFields } from "./tool-readiness.js";
 
-const PARSER_SOURCE = "mindspeed-config-mcp:parse-training-config@0.3.1";
+const PARSER_SOURCE = "mindspeed-config-mcp:parse-training-config@0.3.2";
 const FORMAT_LABELS = Object.freeze({
   yaml: "YAML",
   json: "JSON",
@@ -141,6 +141,7 @@ function definePath(aliases, target, convert = text) {
 }
 
 define(["model", "model-name", "model-id", "model-name-or-path", "model-type"], "model.id");
+definePath(["model.id"], "model.id");
 define(["num-layers", "num-hidden-layers", "total-layer", "total-layers"], "model.total_layers", integer);
 define(["hidden-size", "hidden-dim"], "model.hidden_size", integer);
 define(["num-attention-heads", "attention-heads"], "model.num_attention_heads", integer);
@@ -161,7 +162,7 @@ define(["expert-model-parallel-size", "expert-parallel-size", "expert-parallel",
 define(["virtual-pipeline-model-parallel-size", "virtual-pipeline-parallel-size", "pp-interleave-num", "vpp"], "parallel.vpp", integer);
 define(["pipeline-layer-mode", "pp-layer-mode"], "parallel.pipeline_layer_mode", lower);
 define(["num-layer-list", "pipeline-stage-layers"], "parallel.num_layer_list", integerList);
-definePath(["model.model-config.offset"], "parallel.pipeline_layer_offsets", integerMatrix);
+definePath(["model.model-config.offset", "parallel.pipeline-layer-offsets"], "parallel.pipeline_layer_offsets", integerMatrix);
 define(["ep-mode", "expert-parallel-mode"], "parallel.ep_mode", lower);
 define(["cp-mode", "context-parallel-mode", "context-parallel-algo"], "parallel.cp_mode", cpMode);
 define(["ulysses-degree-in-cp"], "parallel.ulysses_degree_in_cp", integer);

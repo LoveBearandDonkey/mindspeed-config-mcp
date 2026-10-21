@@ -1785,14 +1785,14 @@ test("第 17 项资源收口不得破坏页面初始化主链路", () => {
     assert.ok(!fs.existsSync(path.join(repositoryRoot, legacyPath)), `旧 MCP UI 路径仍存在：${legacyPath}`);
   }
 
-  const baselineForHash = read(baselineHtmlFile).replace(
+  const baselineForHash = read(baselineHtmlFile).replace(/\r\n/g, "\n").replace(
     /(<a class="btn btn-sm cro-export-btn" id="croMindSpeedIntro" href=")[^"]+(" target="_blank")/,
     "$1__MINDSPEED_INTRO_URL__$2",
   );
   const baselineHash = crypto.createHash("sha256").update(baselineForHash).digest("hex");
   assert.equal(
     baselineHash,
-    "5c43ed794ea7b76ddfd074a1317f8542388feeebc9508cd6e6177d905a20585d",
+    "eae3631be90b9305be738dedc6ee9ae031cff7543574b2a2c5ee547617e0931d",
     "除已确认的页面修改和单独校验的 MindSpeed intro 地址外，不得意外改写 4173 主页面基线",
   );
 });

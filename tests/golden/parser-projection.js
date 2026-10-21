@@ -1,4 +1,5 @@
 import { parseTrainingConfig } from "../../packages/config-core/src/index.js";
+import { createTrainingConfig } from "../fixtures/training-config.js";
 
 function parse(content, format, name) {
   return parseTrainingConfig({
@@ -22,6 +23,24 @@ function summary(result, paths) {
 }
 
 export function projectParserDialects() {
+  const canonicalConfig = createTrainingConfig({
+    rule_profile: { framework: "mindformers", version: "unknown" },
+    model: {
+      total_layers: 34, first_k_dense_layers: 0, hidden_size: 256,
+      num_attention_heads: 8, ffn_hidden_size: 512, expert_ffn_hidden_size: 256,
+    },
+    parallel: {
+      dp: 2, pp: 4, tp: 2, ep: 2, ep_mode: "mf",
+      pipeline_layer_mode: "mindformers-offset",
+      pipeline_layer_offsets: [[1, 1, 0, 0]],
+    },
+    cluster: { total_ranks: 16 },
+  });
+  const canonicalMindFormers = parseTrainingConfig({
+    schema_version: "1.0",
+    rule_profile: canonicalConfig.rule_profile,
+    source: { format: "json", name: "mindformers.json", content: JSON.stringify(canonicalConfig) },
+  });
   const mindformers = parse(`
 parallel_config:
   data_parallel: 2
@@ -184,6 +203,15 @@ model:
   });
 
   return {
+    canonical_mindformers: {
+      model_id: canonicalMindFormers.data.normalized_config.model.id,
+      pipeline_layer_mode: canonicalMindFormers.data.normalized_config.parallel.pipeline_layer_mode,
+      pipeline_layer_offsets: canonicalMindFormers.data.normalized_config.parallel.pipeline_layer_offsets,
+      missing_fields: canonicalMindFormers.data.missing_required_fields,
+      completion_plan_count: canonicalMindFormers.data.completion.plans.length,
+      dialogue_solution_count: canonicalMindFormers.data.dialogue.solutions.length,
+      follow_up_mode: canonicalMindFormers.data.dialogue.follow_up.mode,
+    },
     mindformers: summary(mindformers, [
       "parallel.tp", "parallel.pp", "parallel.ep", "parallel.ep_mode",
       "parallel.sequence_parallel", "cluster.total_ranks", "batch.micro_batch_count",

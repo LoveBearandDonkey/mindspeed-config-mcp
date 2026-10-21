@@ -3,7 +3,7 @@ import { estimateTrainingCapacity } from "./estimate-training-capacity.js";
 import { validateParallelConfig } from "./validate-parallel-config.js";
 import { parallelWorld } from "./page-rules.js";
 
-const COMPLETION_SOURCE = "mindspeed-config-mcp:plan-training-config-completion@0.3.1";
+const COMPLETION_SOURCE = "mindspeed-config-mcp:plan-training-config-completion@0.3.2";
 const DEEPSEEK_SOURCE = "compute-graph-viewer-wzh:config-test/hf_deepseekv3_config.json";
 const EDITABLE_STRUCTURE_PRESET_SOURCE = "mindspeed-config-mcp:editable-model-structure-preset@0.3.1";
 const EDITABLE_MODEL_STRUCTURE_PRESET = Object.freeze({
@@ -535,6 +535,18 @@ export function planTrainingConfigCompletion(normalizedConfig, missingRequiredFi
     values,
     !lacksEssentialModelStructure,
   );
+  if (!missingRequiredFields.length && sourcePlan.validation.status === "valid"
+    && sourcePlan.capacity_assessment.recommendation_eligible) {
+    return {
+      computation: "runtime-per-parse",
+      strategy: "evidence-plus-constraint-solver-and-theoretical-capacity-gate",
+      complete: true,
+      launch_feasible: sourcePlan.capacity_assessment.launch_feasible,
+      recommended_plan_id: null,
+      unresolved_fields: [],
+      plans: [],
+    };
+  }
   if (sourcePlan.validation.status === "valid") plans.push(sourcePlan);
   if (lacksAnyModelStructure && !lacksEssentialModelStructure) {
     const presetPlan = editableModelStructurePresetPlan(base, false);

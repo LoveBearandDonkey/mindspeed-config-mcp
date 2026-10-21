@@ -32,7 +32,7 @@ async function call(client, name, input) {
 }
 
 test("V2 场景 1：对话先给阻断结论，来源问题可追溯，修正后仍区分理论容量", async () => {
-  const script = await readFile(new URL("pretrain.sh", fixture), "utf8");
+  const script = (await readFile(new URL("pretrain.sh", fixture), "utf8")).replace(/\r\n/g, "\n");
   const model = await readFile(new URL("config.json", fixture), "utf8");
 
   await withClient(async (client) => {
@@ -84,6 +84,6 @@ test("V2 场景 1：对话先给阻断结论，来源问题可追溯，修正后
     assert.equal(capacity.confidence, "theoretical");
     assert.equal(capacity.data.bottleneck_level, "over");
     assert.match(capacityResponse.content[0].text, /theoretical/);
-    assert.equal(await readFile(new URL("pretrain.sh", fixture), "utf8"), script);
+    assert.equal((await readFile(new URL("pretrain.sh", fixture), "utf8")).replace(/\r\n/g, "\n"), script);
   });
 });

@@ -273,7 +273,7 @@ test("携带 Bearer Token 的 Streamable HTTP 客户端可调用 Tool 并读取�
     assert.equal(parsed.structuredContent.data.unmapped_count, 1);
     assert.equal(parsed.structuredContent.data.mcp_invocation.tool, "parse_training_config");
     assert.equal(parsed.structuredContent.data.dialogue.overview.source_count, 1);
-    assert.match(parsed.content[0].text, /## 1\. 文件与检查范围[\s\S]*## 4\. 补全后可继续检查/);
+    assert.match(parsed.content[0].text, /## ① 读取与解析[\s\S]*## ④ 还缺什么[\s\S]*## 下一步帮助/);
 
     const workbench = await client.callTool({ name: "open_config_workbench", arguments: {} });
     assert.equal(workbench.structuredContent.status, "ready");

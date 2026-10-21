@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { parseTrainingConfig } from "../src/index.js";
+import { createTrainingConfig } from "../../../tests/fixtures/training-config.js";
 
 function input(content, format = "auto", name) {
   return {
@@ -13,6 +14,35 @@ function input(content, format = "auto", name) {
     source: { format, content, ...(name ? { name } : {}) }
   };
 }
+
+test("完整 MindFormers JSON 保留模型标识和 PP offset，已有效配置不生成修复候选", () => {
+  const config = createTrainingConfig({
+    rule_profile: { framework: "mindformers", version: "unknown" },
+    model: {
+      total_layers: 34, first_k_dense_layers: 0, hidden_size: 256,
+      num_attention_heads: 8, ffn_hidden_size: 512, expert_ffn_hidden_size: 256,
+    },
+    parallel: {
+      dp: 2, pp: 4, tp: 2, ep: 2, ep_mode: "mf",
+      pipeline_layer_mode: "mindformers-offset",
+      pipeline_layer_offsets: [[1, 1, 0, 0]],
+    },
+    cluster: { total_ranks: 16 },
+  });
+  const result = parseTrainingConfig({
+    schema_version: "1.0",
+    rule_profile: config.rule_profile,
+    source: { format: "json", name: "mindformers.json", content: JSON.stringify(config) },
+  });
+
+  assert.equal(result.data.normalized_config.model.id, "test-moe");
+  assert.deepEqual(result.data.normalized_config.parallel.pipeline_layer_offsets, [[1, 1, 0, 0]]);
+  assert.equal(result.data.normalized_config.parallel.pipeline_layer_mode, "mindformers-offset");
+  assert.deepEqual(result.data.missing_required_fields, []);
+  assert.deepEqual(result.data.completion.plans, []);
+  assert.deepEqual(result.data.dialogue.solutions, []);
+  assert.equal(result.data.dialogue.follow_up.mode, "none");
+});
 
 test("解析 MindSpeed/Megatron Shell 参数并显式报告未知字段", () => {
   const result = parseTrainingConfig(input(`

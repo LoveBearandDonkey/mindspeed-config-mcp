@@ -39,6 +39,7 @@ test("场景 1 方案数量决定后续提问，容量不合格候选不作为�
   const none = parseDialogue(resultWithPlans([plan("over-capacity", { eligible: false })]));
   assert.deepEqual(none.solutions, []);
   assert.equal(none.follow_up.mode, "provide_input");
+  assert.match(none.follow_up.prompt, /补齐可从现有文件确认的配置，再进行一轮检查吗/);
 
   const one = parseDialogue(resultWithPlans([plan("confirmed", {
     recommended: true, confidence: "requires-confirmation",
@@ -47,6 +48,7 @@ test("场景 1 方案数量决定后续提问，容量不合格候选不作为�
   assert.equal(one.follow_up.mode, "confirm_solution");
   assert.match(one.follow_up.prompt, /是否采用方案 1/);
   assert.match(one.follow_up.prompt, /先确认方案中的占位值/);
+  assert.match(one.follow_up.prompt, /补齐可从现有文件确认的配置，再进行一轮检查吗/);
   assert.doesNotMatch(one.follow_up.prompt, /Agent 应/);
 
   const multiple = parseDialogue(resultWithPlans([
@@ -58,6 +60,7 @@ test("场景 1 方案数量决定后续提问，容量不合格候选不作为�
   assert.match(multiple.solutions[1].ranking_reason, /^备选：/);
   assert.equal(multiple.follow_up.mode, "choose_solution");
   assert.match(multiple.follow_up.prompt, /方案序号（1～3）/);
+  assert.match(multiple.follow_up.prompt, /补齐可从现有文件确认的配置，再进行一轮检查吗/);
   assert.doesNotMatch(multiple.follow_up.prompt, /Agent 应/);
 
   const conflicting = resultWithPlans([plan("otherwise-eligible", { recommended: true })]);

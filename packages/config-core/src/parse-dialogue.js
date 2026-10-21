@@ -57,6 +57,11 @@ function completionSolutions(result) {
   if (result.status === "error") return [];
   if (hasSourceDifference(result)) return [];
   const plans = result.data.completion?.plans ?? [];
+  const unchangedSafeSource = plans.some((plan) => plan.id === "source-faithful"
+    && plan.validation?.status === "valid"
+    && plan.capacity_assessment?.recommendation_eligible === true
+    && (plan.values?.length ?? 0) === 0);
+  if ((result.data.missing_required_fields?.length ?? 0) === 0 && unchangedSafeSource) return [];
   return [...plans]
     .filter((plan) => plan.validation?.status === "valid"
       && plan.capacity_assessment?.recommendation_eligible === true)
@@ -96,21 +101,24 @@ function solutionNote(result, solutions, missing, issues) {
 }
 
 function followUp(result, solutions, missing) {
+  const fillOffer = missing.length
+    ? "或者，您需要我先帮您补齐可从现有文件确认的配置，再进行一轮检查吗？"
+    : "";
   if (result.status === "error") return {
     mode: "provide_input",
     prompt: "请提供可解析的原始配置内容；修正后可重新检查。",
   };
   if (solutions.length > 1) return {
     mode: "choose_solution",
-    prompt: `你倾向哪个方案？请回复方案序号（1～${solutions.length}）${solutions.some((item) => item.requires_confirmation) ? "，并确认方案中的占位值" : ""}；我会先列出拟改动，再修改源文件并复查。`,
+    prompt: `你倾向哪个方案？请回复方案序号（1～${solutions.length}）${solutions.some((item) => item.requires_confirmation) ? "，并确认方案中的占位值" : ""}；我会先列出拟改动，再修改源文件并复查。${fillOffer}`,
   };
   if (solutions.length === 1) return {
     mode: "confirm_solution",
-    prompt: `是否采用方案 1？${solutions[0].requires_confirmation ? "请先确认方案中的占位值，再" : "请"}回复“采用方案 1”；我会先列出拟改动，再修改源文件并复查。`,
+    prompt: `是否采用方案 1？${solutions[0].requires_confirmation ? "请先确认方案中的占位值，再" : "请"}回复“采用方案 1”；我会先列出拟改动，再修改源文件并复查。${fillOffer}`,
   };
   if (missing.length) return {
     mode: "provide_input",
-    prompt: `当前没有可供选择的修改方案。请提供实际启动脚本、并行度和设备信息${hasSourceDifference(result) ? "，并确认两份来源实际使用的值" : ""}；补齐后我可以继续校验。`,
+    prompt: `当前没有可供选择的修改方案。请提供实际启动脚本、并行度和设备信息${hasSourceDifference(result) ? "，并确认两份来源实际使用的值" : ""}；补齐后我可以继续校验。${fillOffer}`,
   };
   if (hasSourceDifference(result)) return {
     mode: "provide_input",
