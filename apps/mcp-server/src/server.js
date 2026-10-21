@@ -105,7 +105,7 @@ const workbenchInputSchema = z.object({
   }).optional(),
 });
 const WORKBENCH_TOOL_NAME = "open_config_workbench";
-const SERVER_INSTRUCTIONS = "快速检查训练脚本和模型配置时，Agent 先读取用户指定的文件内容，再调用当前 MCP 连接的 parse_training_config；检查返回的 data.mcp_invocation，不把本地计算或健康检查写成 V2 MCP 已调用。面向用户时须按 data.dialogue 组织为 4+1：① 读取与解析（读取总数、已映射数与分析缺口）；② 问题与待核对差异（MCP 约束判断表）；③ 建议方案（MCP 候选与理由）；④ 还缺什么（补齐后的检查范围）；下一步帮助（follow_up 提问）。问题表第三列只写本次 MCP 结果中的规则代码、约束和内部规则来源；Agent 另查的依据或发现标为 Agent 补充观察，不混入第三列。MCP 候选数量严格取 data.dialogue.solutions；Agent 可据 MCP 缺口和文件事实另提补充建议，但须标明未经 MCP 复验，不计入 MCP 候选。结尾依 follow_up 提问：0 个 MCP 候选只索取缺失信息，1 个询问是否采用，多个请回复序号。依 tool_readiness 决定是否继续并行、Rank 与理论容量检查；未经授权不改源文件。";
+const SERVER_INSTRUCTIONS = "快速检查训练脚本和模型配置时，Agent 先读取用户指定的文件内容，再调用当前 MCP 连接的 parse_training_config；检查返回的 data.mcp_invocation，不把本地计算或健康检查写成 V2 MCP 已调用。面向用户时须按 data.dialogue 组织为 4+1：① 读取与解析（读取总数、已映射数与分析缺口）；② 问题与待核对差异（MCP 约束判断表）；③ 建议方案；④ 还缺什么（补齐后的检查范围）；下一步帮助。③ 有方案时只展示 data.dialogue.solutions 中经过筛选的方案；没有方案时直接使用 solution_note 说明输入不足、待核对差异或当前无需调整，不向用户报告内部候选计数或绘制空方案表。问题表第三列只写本次 MCP 结果中的规则代码、约束和内部规则来源；Agent 另查的依据或发现标为 Agent 补充观察，不混入第三列。Agent 可据 MCP 缺口和文件事实另提补充建议，但须标明未经 MCP 复验，不算作工具推荐方案。下一步帮助直接使用 follow_up.prompt 面向用户提问，不加“MCP 原答复是”等转述；没有方案时不要求用户选序号，有一个方案时询问是否采用，有多个时请回复序号。依 tool_readiness 决定是否继续并行、Rank 与理论容量检查；未经授权不改源文件。";
 
 const TOOL_DEFINITIONS = Object.freeze([
   {
@@ -135,7 +135,7 @@ const TOOL_DEFINITIONS = Object.freeze([
   {
     name: "parse_training_config",
     title: "解析训练配置",
-    description: "用户要求快速检查已保存的训练脚本和模型配置时，先由 Agent 读取实际文件文本，再调用当前连接的本工具；不得把本地解析或健康检查冒充本次 V2 MCP 调用。用户答复须按 data.dialogue 的 4+1 标题呈现：① 读取与解析；② 问题与待核对差异；③ 建议方案（data.dialogue.solutions 中 0～3 个 MCP 候选及理由）；④ 还缺什么；下一步帮助（follow_up 提问）。问题表第三列只列 MCP 返回的规则代码、约束和内部规则来源；Agent 另查的依据或建议单独标注，未经 MCP 复验的补充建议不计入候选数量。结尾按 follow_up 提问，0 个 MCP 候选不得要求选方案。先查看 tool_readiness，未就绪时不调用并行、Rank 或容量工具；仅要结论时无需打开页面。不读取服务器文件、不启动训练。",
+    description: "用户要求快速检查已保存的训练脚本和模型配置时，先由 Agent 读取实际文件文本，再调用当前连接的本工具；不得把本地解析或健康检查冒充本次 V2 MCP 调用。用户答复按 data.dialogue 的 4+1 标题呈现：① 读取与解析；② 问题与待核对差异；③ 建议方案；④ 还缺什么；下一步帮助。有方案时展示 data.dialogue.solutions 中经过筛选的方案及理由；无方案时直接采用 solution_note 的自然表述，不说“MCP 候选 0 个”或绘制空方案表。问题表第三列只列 MCP 返回的规则代码、约束和内部规则来源；Agent 另查的依据或建议单独标注为未经 MCP 复验。下一步帮助直接面向用户使用 follow_up.prompt，不写“MCP 原答复是”等转述。先查看 tool_readiness，未就绪时不调用并行、Rank 或容量工具；仅要结论时无需打开页面。不读取服务器文件、不启动训练。",
     inputSchema: parseInputSchema,
     assertInput: assertParseTrainingConfig,
     run: parseTrainingConfig,
@@ -249,8 +249,8 @@ function parseDialogueText(result) {
   }
   lines.push("", "## ③ 建议方案");
   if (solutions.length) {
-    lines.push(`MCP 返回 ${solutions.length} 个待审阅候选；请先核对原文件中的未映射字段，候选不代表建议立即改动源文件。`);
-    lines.push("| 排序 | MCP 候选 | 候选依据与适用限制 |", "| --- | --- | --- |");
+    lines.push(`以下 ${solutions.length} 个方案已通过已建模静态复验和理论容量筛选，仍需核对原文件中的未映射字段。`);
+    lines.push("| 排序 | 方案 | 依据与适用限制 |", "| --- | --- | --- |");
     for (const solution of solutions) {
       const capacity = solution.capacity_estimate_gib !== null && solution.card_capacity_gib !== null
         ? `；理论显存 ${solution.capacity_estimate_gib}/${solution.card_capacity_gib} GiB`
@@ -258,7 +258,7 @@ function parseDialogueText(result) {
       lines.push(`| ${solution.number} | ${tableCell(solution.title)} | ${tableCell(`${solution.reason} ${solution.ranking_reason} ${solution.validation}`)}${capacity}${solution.requires_confirmation ? "；占位值需确认" : ""} |`);
     }
   } else {
-    lines.push("MCP 候选方案：0 个。", "| 排序 | MCP 候选 | 原因 |", "| --- | --- | --- |", `| — | 暂无可推荐改动 | ${tableCell(solutionNote)} |`);
+    lines.push(solutionNote);
   }
   lines.push("", "## ④ 还缺什么");
   if (completion.missing_groups.length) {

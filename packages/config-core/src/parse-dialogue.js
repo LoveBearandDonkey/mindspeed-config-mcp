@@ -91,13 +91,14 @@ function hasSourceDifference(result) {
 
 function solutionNote(result, solutions, missing, issues) {
   if (solutions.length) return "候选尚未写入源文件；容量依据为理论估算。";
-  if (result.status === "error") return "解析错误未消除，暂无可验证的修改方案。";
+  if (result.status === "error") return "当前配置尚未成功解析，暂时无法给出推荐方案。";
   if (result.data.completion?.strategy === "requires-confirmed-framework-and-resources") {
-    return "缺少已确认的框架和设备条件，尚未生成可复验的配置修改方案。";
+    return "当前输入不足以输出推荐方案：缺少已确认的框架和设备条件。";
   }
-  if (hasSourceDifference(result)) return "两份来源仍有差异，先确认实际训练使用的值；暂不推荐修改源文件。";
-  if (missing.length || issues.length) return "当前没有通过静态复验及理论容量门槛的可推荐改动；需先补齐证据或确认差异。";
-  return "当前已覆盖字段未显示需修改的配置项。";
+  if (hasSourceDifference(result)) return "当前输入不足以输出推荐方案：两份来源的值存在差异，需先确认实际训练使用的配置。";
+  if (missing.length) return `当前输入不足以输出推荐方案：完整分析还缺 ${missing.length} 项必需配置。`;
+  if (issues.length) return "当前没有可复验的配置修改建议；请先核对上述差异。";
+  return "当前已覆盖字段未显示需要调整的配置项。";
 }
 
 function followUp(result, solutions, missing) {
@@ -118,7 +119,7 @@ function followUp(result, solutions, missing) {
   };
   if (missing.length) return {
     mode: "provide_input",
-    prompt: `当前没有可供选择的修改方案。请提供实际启动脚本、并行度和设备信息${hasSourceDifference(result) ? "，并确认两份来源实际使用的值" : ""}；补齐后我可以继续校验。${fillOffer}`,
+    prompt: `请补充上列缺失配置${hasSourceDifference(result) ? "，并确认两份来源实际使用的值" : ""}；补齐后我可以继续校验。${fillOffer}`,
   };
   if (hasSourceDifference(result)) return {
     mode: "provide_input",

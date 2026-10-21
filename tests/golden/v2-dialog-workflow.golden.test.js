@@ -48,6 +48,9 @@ export function projectV2DialogWorkflow() {
       complete: parsed.data.complete,
       source_sha256: parsed.data.source_snapshot.source.sha256,
       state: parsed.quick_assessment.state,
+      dialogue_source_version: parsed.source_versions.config_core,
+      solution_note: parsed.data.dialogue.solution_note,
+      follow_up_prompt: parsed.data.dialogue.follow_up.prompt,
     },
     fix: {
       solved: fixes.data.solved,

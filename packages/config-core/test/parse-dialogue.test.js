@@ -38,7 +38,9 @@ function plan(id, { recommended = false, eligible = true, confidence = "determin
 test("场景 1 方案数量决定后续提问，容量不合格候选不作为推荐方案", () => {
   const none = parseDialogue(resultWithPlans([plan("over-capacity", { eligible: false })]));
   assert.deepEqual(none.solutions, []);
+  assert.equal(none.solution_note, "当前输入不足以输出推荐方案：完整分析还缺 2 项必需配置。");
   assert.equal(none.follow_up.mode, "provide_input");
+  assert.match(none.follow_up.prompt, /^请补充上列缺失配置/);
   assert.match(none.follow_up.prompt, /补齐可从现有文件确认的配置，再进行一轮检查吗/);
 
   const one = parseDialogue(resultWithPlans([plan("confirmed", {
@@ -69,6 +71,7 @@ test("场景 1 方案数量决定后续提问，容量不合格候选不作为�
     model: { source_key: "max_position_embeddings", value: 131072 }, source_ref: "upstream" }];
   const unresolved = parseDialogue(conflicting);
   assert.deepEqual(unresolved.solutions, []);
+  assert.match(unresolved.solution_note, /^当前输入不足以输出推荐方案：两份来源的值存在差异/);
   assert.match(unresolved.follow_up.prompt, /确认两份来源实际使用的值/);
   assert.doesNotMatch(unresolved.follow_up.prompt, /方案序号/);
 });

@@ -205,8 +205,9 @@ test("GPT OSS 片段的 MCP 文本直接展示两项待核对差异和零个可�
     assert.match(text, /config\.json:router_aux_loss_coef/);
     assert.match(text, /尚未证实|不能据此判为训练阻断/);
     assert.match(text, /已覆盖的字段中没有可确认的训练阻断项；有 2 项差异待核对/);
-    assert.match(text, /MCP 候选方案：0 个。[\s\S]*\| — \| 暂无可推荐改动 \| 缺少已确认的框架和设备条件/);
-    assert.match(text, /## 下一步帮助\n当前没有可供选择的修改方案。请提供实际启动脚本/);
+    assert.match(text, /## ③ 建议方案\n当前输入不足以输出推荐方案：缺少已确认的框架和设备条件。/);
+    assert.doesNotMatch(text, /MCP 候选方案：0 个|\| — \| 暂无可推荐改动|MCP 原答复是/);
+    assert.match(text, /## 下一步帮助\n请补充上列缺失配置/);
     assert.match(text, /补齐可从现有文件确认的配置，再进行一轮检查吗/);
     assert.doesNotMatch(text, /请回复方案序号|Agent 应/);
   });
@@ -227,7 +228,27 @@ test("MCP 问题表仅内联返回的规则代码、约束和内部来源", asyn
     assert.match(text, /PARSE_SOURCE_CONFLICT：同一模型字段跨来源值不同；需确认实际使用的值。/);
     assert.match(text, /mindspeed-config-mcp:parse-training-config@0\.3\.2/);
     assert.equal(response.structuredContent.data.dialogue.solutions.length, 0);
-    assert.match(text, /MCP 候选方案：0 个/);
+    assert.match(text, /当前输入不足以输出推荐方案/);
+    assert.doesNotMatch(text, /MCP 候选方案：0 个|MCP 原答复是/);
+  });
+});
+
+test("完整且无需修改的输入不被说成信息不足，也不展示内部候选计数", async () => {
+  await withClient(async (client) => {
+    const response = await client.callTool({
+      name: "parse_training_config",
+      arguments: {
+        schema_version: "1.0",
+        rule_profile: { framework: "mindformers", version: "unknown" },
+        source: { format: "json", name: "complete.json",
+          content: JSON.stringify(createTrainingConfig({ model: { first_k_dense_layers: 0 } })) },
+      },
+    });
+    const text = response.content[0].text;
+    assert.equal(response.structuredContent.data.dialogue.overview.missing_required_count, 0);
+    assert.equal(response.structuredContent.data.dialogue.solutions.length, 0);
+    assert.match(text, /## ③ 建议方案\n当前已覆盖字段未显示需要调整的配置项。/);
+    assert.doesNotMatch(text, /输入不足|候选方案：0 个|MCP 原答复是/);
   });
 });
 
