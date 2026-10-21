@@ -133,8 +133,8 @@ try {
       assert.match(response.structuredContent.data.mcp_invocation.request_id, /^[0-9a-f-]{36}$/);
       assert.equal(dialogue.overview.source_count, 1);
       assert.ok(dialogue.solutions.length <= 3);
-      assert.match(response.content[0].text, /## 1\. 文件与检查范围[\s\S]*## 4\. 补全后可继续检查/);
-      checks.push({ check: name, result: "通过", detail: "实际 MCP 调用含追踪信息、四段式结论与最多三个方案" });
+      assert.match(response.content[0].text, /## ① 读取与解析[\s\S]*## ④ 还缺什么[\s\S]*## 下一步帮助/);
+      checks.push({ check: name, result: "通过", detail: "实际 MCP 调用含追踪信息、4+1 结论与最多三个候选" });
     } else {
       checks.push({ check: name, result: "通过", detail: response.content[0].text });
     }
