@@ -35,6 +35,7 @@ COPY --from=builder --chown=node:node /app/node_modules ./node_modules
 COPY --from=builder --chown=node:node /app/apps/mcp-server/package.json ./apps/mcp-server/package.json
 COPY --from=builder --chown=node:node /app/apps/mcp-server/src ./apps/mcp-server/src
 COPY --from=builder --chown=node:node /app/apps/mcp-server/ui/dist ./apps/mcp-server/ui/dist
+COPY --chown=node:node apps/web/prototypes/constraint-lens.html ./apps/web/prototypes/constraint-lens.html
 COPY --from=builder --chown=node:node /app/packages/config-core/package.json ./packages/config-core/package.json
 COPY --from=builder --chown=node:node /app/packages/config-core/src ./packages/config-core/src
 COPY --from=builder --chown=node:node /app/packages/contracts/package.json ./packages/contracts/package.json

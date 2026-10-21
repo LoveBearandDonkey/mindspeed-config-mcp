@@ -5,6 +5,7 @@ import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/cli
 
 import { APP_RESOURCE_META } from "../src/app-resource.js";
 import { createHttpApp, loadHttpConfig } from "../src/http.js";
+import { createTrainingConfig } from "../../../tests/fixtures/training-config.js";
 
 const TOKEN = "test-token-with-at-least-thirty-two-characters";
 const BROWSER_TOKEN = "browser-access-code-with-at-least-thirty-two-characters";
@@ -158,6 +159,69 @@ test("浏览器入口使用访问码换取 HttpOnly 会话，并由腾讯云 HTT
     const body = await parsed.json();
     assert.equal(body.structuredContent.tool, "parse_training_config");
     assert.equal(body.structuredContent.data.unmapped_count, 1);
+  } finally {
+    await close(server);
+  }
+});
+
+test("WorldSize V2 页面通过会话调用 suggest_config_fixes", async () => {
+  const server = await listen(createHttpApp({
+    token: TOKEN,
+    browserAccessToken: BROWSER_TOKEN,
+    browserPublicOrigin: PUBLIC_ORIGIN,
+  }));
+  const { port } = server.address();
+  const browserBase = `http://127.0.0.1:${port}/mindspeed-config`;
+  try {
+    const page = await fetch(`${browserBase}/prototypes/constraint-lens.html`);
+    assert.equal(page.status, 200);
+    const html = await page.text();
+    assert.match(html, /__MINDSPEED_WEB_SERVICE__/);
+    assert.match(html, /tools\/suggest_config_fixes/);
+    assert.doesNotMatch(html, new RegExp(BROWSER_TOKEN));
+
+    const input = createTrainingConfig();
+    Object.assign(input.parallel, { dp: 6, pp: 7, tp: 3, cp: 1, ep: 2, ep_mode: "orthogonal" });
+    input.cluster.total_ranks = 32;
+    input.policy.locked_fields = [
+      "model.num_attention_heads", "model.num_key_value_heads", "model.top_k", "parallel.vpp",
+    ];
+    const unauthorized = await fetch(`${browserBase}/api/tools/suggest_config_fixes`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: PUBLIC_ORIGIN },
+      body: JSON.stringify(input),
+    });
+    assert.equal(unauthorized.status, 401);
+
+    const login = await fetch(`${browserBase}/api/session`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: PUBLIC_ORIGIN },
+      body: JSON.stringify({ access_token: BROWSER_TOKEN }),
+    });
+    assert.equal(login.status, 200);
+    const response = await fetch(`${browserBase}/api/tools/suggest_config_fixes`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: PUBLIC_ORIGIN, cookie: login.headers.get("set-cookie") },
+      body: JSON.stringify(input),
+    });
+    assert.equal(response.status, 200);
+    const result = (await response.json()).structuredContent;
+    assert.equal(result.tool, "suggest_config_fixes");
+    assert.deepEqual(result.data.suggestions[0].changes.map(({ path, new_value: value }) => [path, value]), [
+      ["parallel.tp", 2], ["parallel.pp", 4], ["parallel.dp", 2],
+    ]);
+    input.policy.locked_fields.push("cluster.total_ranks");
+    const lockedResponse = await fetch(`${browserBase}/api/tools/suggest_config_fixes`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: PUBLIC_ORIGIN, cookie: login.headers.get("set-cookie") },
+      body: JSON.stringify(input),
+    });
+    assert.equal(lockedResponse.status, 200);
+    const lockedResult = (await lockedResponse.json()).structuredContent;
+    assert.ok(lockedResult.data.suggestions.length > 0);
+    assert.ok(lockedResult.data.suggestions.every((suggestion) => suggestion.changes.every(
+      (change) => change.path !== "cluster.total_ranks",
+    )));
   } finally {
     await close(server);
   }

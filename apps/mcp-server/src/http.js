@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
+import { readFile } from "node:fs/promises";
 
 import { createMcpExpressApp } from "@modelcontextprotocol/express";
 import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
@@ -16,6 +17,7 @@ const MIN_TOKEN_LENGTH = 32;
 const DEFAULT_BROWSER_BASE_PATH = "/mindspeed-config";
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_FAILURE_LIMIT = 10;
+const CONSTRAINT_LENS_PAGE_URL = new URL("../../web/prototypes/constraint-lens.html", import.meta.url);
 
 export function loadHttpConfig(env = process.env) {
   const host = env.MCP_HTTP_HOST?.trim() || DEFAULT_HOST;
@@ -161,6 +163,24 @@ export function createHttpApp({
     } catch (error) {
       console.error("Browser workbench resource failed:", error);
       response.status(503).type("text/plain").send("MindSpeed 配置工作台暂时不可用。");
+    }
+  });
+
+  app.get(`${browserBasePath}/prototypes/constraint-lens.html`, async (_request, response) => {
+    try {
+      const html = await readFile(CONSTRAINT_LENS_PAGE_URL, "utf8");
+      const config = JSON.stringify({ apiBase: `${browserBasePath}/api` }).replaceAll("<", "\\u003c");
+      response.set({
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": "default-src 'none'; base-uri 'none'; connect-src 'self'; font-src data:; form-action 'none'; frame-ancestors 'self'; img-src data:; script-src 'unsafe-inline'; style-src 'unsafe-inline'",
+        "Content-Type": "text/html; charset=utf-8",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff",
+      });
+      response.status(200).send(html.replace("<head>", `<head><script>globalThis.__MINDSPEED_WEB_SERVICE__=${config};</script>`));
+    } catch (error) {
+      console.error("Constraint lens resource failed:", error);
+      response.status(503).type("text/plain").send("WorldSize V2 页面暂时不可用。");
     }
   });
 

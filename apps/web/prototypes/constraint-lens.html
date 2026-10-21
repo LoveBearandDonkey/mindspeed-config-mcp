@@ -1,0 +1,931 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>V2 约束视图 · 独立原型</title>
+  <style>
+    :root{font-family:Inter,"Segoe UI","Microsoft YaHei",sans-serif;color:#1b2430;background:#f7f8fa;font-synthesis:none}
+    *{box-sizing:border-box}body{margin:0}button{font:inherit}button:focus-visible,summary:focus-visible{outline:3px solid #2378dc;outline-offset:3px}
+    .shell{max-width:960px;margin:auto;padding:0 30px 78px}.mast{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:20px;padding:9px 0;background:#fff;border-bottom:1px solid #ececec}
+    .brand{display:flex;align-items:center;gap:12px;white-space:nowrap;font-size:13px;font-weight:700;letter-spacing:.02em}.brand-short{display:none}.mark{display:grid;place-items:center;width:29px;height:29px;flex:none;border-radius:9px;color:white;background:#202a38;font-size:16px}
+    .gallery{display:flex;gap:5px;width:max-content;max-width:100%;overflow-x:auto;padding:5px;background:#e9edf1;border-radius:15px;margin-bottom:20px}
+    .gallery button{border:0;background:transparent;color:#576576;border-radius:11px;padding:10px 17px;white-space:nowrap;cursor:pointer;font-size:13px}.gallery button[aria-selected=true]{background:#fff;color:#1c2734;box-shadow:0 1px 5px #1c29351a;font-weight:660}
+    .panel{background:#fff;border:1px solid #dfe4e9;border-radius:24px;box-shadow:0 16px 44px #23354d08;overflow:hidden}.panel-top{padding:27px 34px 20px;border-bottom:1px solid #edf0f3}
+    .meta{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#8190a0;font-size:12px}.meta .source{font-weight:560}.question{display:inline-block;background:#f2f4f6;border-radius:14px;padding:11px 14px;margin:26px 0 23px;color:#344253;font-size:13px}
+    .lead-row{display:flex;align-items:start;justify-content:space-between;gap:18px}.lead-row h2{font-size:clamp(21px,2.5vw,29px);line-height:1.3;letter-spacing:-.028em;margin:0 0 9px;font-weight:660}.lead-row p{font-size:14px;line-height:1.65;margin:0;color:#647284;max-width:650px}.badge{flex:none;border-radius:99px;padding:7px 10px;font-size:12px;font-weight:660;white-space:nowrap}.badge.bad{color:#a34328;background:#fff0ea}.badge.good{color:#24735b;background:#e8f7f0}.badge.estimate{color:#765d2d;background:#f8f2e5}
+    .panel-body{padding:28px 34px 30px}.visual{border:1px solid #e4e8ed;background-color:#FAFAFA;border-radius:17px;padding:23px;min-height:231px}
+    .factor-line{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.factor{border:1px solid #dce4ed;background:white;border-radius:11px;padding:10px 13px;min-width:67px;text-align:center}.factor small{display:block;color:#8694a3;font-size:11px;margin-bottom:3px}.factor strong{font-size:21px;font-weight:680;font-variant-numeric:tabular-nums}.factor select{display:block;appearance:none;border:0;background:transparent;color:#1f2d3c;font:680 21px/1.15 Inter,"Segoe UI",sans-serif;font-variant-numeric:tabular-nums;text-align:center;width:100%;min-width:43px;cursor:pointer;padding:0 11px 0 2px;background-image:url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="8" height="5" viewBox="0 0 8 5"%3E%3Cpath fill="%238696a8" d="M0 0h8L4 5z"/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 2px center}.factor select:focus-visible{outline:2px solid #2378dc;outline-offset:2px;border-radius:3px}.factor.tp-factor{border-color:#abd3f3;background:#eff7ff}.factor.tp-factor small{color:#387db7}.factor.nested-factor{border-style:dashed;border-color:#a8d8ca;background:#f4fbf8}.factor.target-factor{border-color:#bccbda}.factor-separator{color:#a8b2bd;font-size:18px;margin:0 4px}.times{color:#a4aeb9;font-size:17px}.equals{color:#73849a;font-size:17px;margin:0 3px}.equated{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.result{font-size:27px;font-weight:700;color:#2d6cae;font-variant-numeric:tabular-nums}.result.good-text{color:#25775e}
+    .measure{margin-top:30px}.measure-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:8px;font-size:12px;color:#5b6b7d}.measure-head strong{color:#253446;font-size:13px}.scale{height:22px;border-radius:7px;background:#e9eef4;display:flex;overflow:hidden}.scale-fill{height:100%;background:#69a5e7}.scale-fill.good-fill{background:#60b89c}.scale-target{height:100%;background:#aab8c8}.scale-gap{height:100%;background:repeating-linear-gradient(135deg,#ffede7,#ffede7 6px,#f8d7cb 6px,#f8d7cb 10px)}.measure-foot{display:flex;justify-content:space-between;color:#8b97a5;font-size:11px;margin-top:7px}.annotation{margin-top:15px;color:#a24b32;font-size:13px;font-weight:620}.annotation.ok{color:#28775d}
+    .division-top{font-size:14px;color:#657386;margin-bottom:18px}.division-top strong{font-size:24px;color:#202d3b;font-weight:680}.groups{display:flex;gap:10px;align-items:stretch}.group{flex:1;min-width:0;border:1px solid #bcd5f1;background:#eaf4ff;border-radius:11px;padding:15px}.group small{color:#5f85ac;font-size:11px;display:block}.group strong{display:block;color:#245e99;font-size:24px;margin:6px 0 2px;font-weight:650}.group span{font-size:11px;color:#6d8aaa}.leftover{flex:none;min-width:88px;border:1px dashed #e7b3a1;background:#fff0eb;border-radius:11px;padding:15px;color:#b45234}.leftover small{font-size:11px;display:block}.leftover strong{font-size:24px;display:block;margin:6px 0 2px}.leftover span{font-size:11px}.groups.valid .group{border-color:#b9decf;background:#e9f7f0}.groups.valid .group strong{color:#287a5e}.groups.valid .group small,.groups.valid .group span{color:#5e8b78}
+    .rank-stage{display:flex;align-items:center;gap:12px;margin:12px 0}.rank-label{width:79px;flex:none;color:#66788b;font-size:12px}.rank-cells{display:flex;gap:5px;flex-wrap:wrap}.rank-cell{border:1px solid #c9e0f4;background:#eff7ff;border-radius:8px;min-width:40px;height:43px;cursor:pointer;font-size:12px;color:#4076ad;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}.rank-cell small{font-size:10px;font-weight:700}.rank-cell.active{background:#2679c5;color:white;border-color:#2679c5}.rank-hint{font-size:12px;color:#718294;margin-top:18px}.rank-detail{min-height:23px;font-size:12px;color:#345879;margin-top:10px}
+    .product-stages{display:grid;grid-template-columns:repeat(var(--pp-count,2),minmax(0,1fr));gap:14px;margin-top:20px}.product-stage{border:1px solid #dce5ec;background:#fff;border-radius:13px;padding:14px;min-width:0}.product-stage-head{display:flex;justify-content:space-between;gap:10px;color:#33495f;font-size:13px;font-weight:680;margin-bottom:10px}.product-stage-head span:last-child{color:#8190a0;font-size:11px;font-weight:500}.product-replica{display:grid;grid-template-columns:43px minmax(0,1fr);gap:7px;padding:9px 0;border-top:1px solid #edf1f4}.product-replica-name{font-size:11px;color:#65798c;padding-top:7px}.ep-panes{display:grid;grid-template-columns:repeat(var(--ep-count,2),minmax(0,1fr));gap:7px;min-width:0}.ep-pane{border:1px solid #d9e8e4;background:#f7fbfa;border-radius:9px;padding:7px;min-width:0}.ep-title{font-size:10px;color:#4c8b7b;font-weight:700;margin-bottom:5px}.cp-line{display:grid;grid-template-columns:28px repeat(var(--tp-count,2),minmax(0,1fr));align-items:center;gap:3px;margin-top:3px}.cp-line-label{font-size:10px;color:#718596}.tp-rank{border:1px solid #a8d0f1;border-radius:6px;background:#eff7ff;min-width:0;min-height:40px;color:#326eaa;font-size:11px;cursor:pointer;padding:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}.tp-rank .tp-id{font-size:10px;font-weight:720;letter-spacing:.02em}.tp-rank .rank-id{font-size:12px;font-variant-numeric:tabular-nums}.tp-rank.peer{border-color:#5da7e1;background:#deefff}.tp-rank.active{background:#2e7fc2;border-color:#2e7fc2;color:#fff}
+    .capacity-grid{display:grid;grid-template-columns:1fr auto;gap:13px 22px;align-items:center}.capacity-name{font-size:13px;color:#617184}.capacity-name strong{color:#263647;font-size:16px}.capacity-value{font-variant-numeric:tabular-nums;font-size:13px;font-weight:700;color:#263647}.capacity-track{grid-column:1 / -1;height:24px;border-radius:7px;background:#e9eef4;position:relative;overflow:hidden}.capacity-used{height:100%;background:#edb18d}.capacity-limit{height:100%;width:39.5%;border-right:2px solid #34475e;position:absolute;top:0;left:0}.capacity-legend{grid-column:1 / -1;display:flex;justify-content:space-between;color:#768699;font-size:11px;gap:10px}.capacity-note{font-size:12px;color:#7d6d53;line-height:1.6;margin-top:20px}
+    .interaction{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:20px}.control{display:flex;align-items:center;gap:11px;flex-wrap:wrap}.choice{display:flex;padding:3px;border-radius:10px;background:#edf0f4;gap:3px}.choice button{font-size:12px;border:0;background:transparent;color:#667589;border-radius:8px;padding:7px 13px;cursor:pointer}.choice button.active{background:white;color:#1f2f40;font-weight:670;box-shadow:0 1px 4px #1c29351c}.details-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:0 34px 28px}.disclosure{border-top:1px solid #e8edf1;padding-top:17px}.disclosure summary{cursor:pointer;color:#3a5d82;font-size:12px;font-weight:650}.disclosure p,.disclosure li{color:#6d7c8d;font-size:12px;line-height:1.65}.disclosure code{font-size:11px;overflow-wrap:anywhere;color:#566a7e}.disclosure ul{padding-left:17px}
+    @media(max-width:700px){.shell{padding:0 16px 45px}.gallery{width:100%}.panel-top{padding:21px 20px 18px}.panel-body{padding:21px 20px 25px}.lead-row{display:block}.badge{display:inline-block;margin-top:14px}.visual{padding:17px;min-height:0}.factor{min-width:56px;padding:8px}.factor strong{font-size:18px}.times{font-size:14px}.result{font-size:22px}.groups{gap:6px}.group,.leftover{min-width:0;padding:10px}.leftover{flex:1}.details-grid{grid-template-columns:1fr;padding:0 20px 24px;gap:4px}.rank-stage{align-items:flex-start}.rank-label{width:56px}.rank-cell{min-width:36px;height:43px}.product-stages{grid-template-columns:1fr}}
+    @media(max-width:420px){.groups{flex-wrap:wrap}.group{flex:1 1 40%}.leftover{flex:1 1 100%}.mast{gap:8px}.brand-full{display:none}.brand-short{display:inline}.rank-label{width:48px}.ep-panes{grid-template-columns:1fr}}
+    @media(prefers-reduced-motion:no-preference){.gallery button,.choice button,.rank-cell{transition:background-color .15s,color .15s}}
+    /* Reference palette and spacing: quiet white shell, neutral plot, blue trace, orange remainder. */
+    :root{color:#111;background:#fff}
+    button:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid #1689ee;outline-offset:2px}
+    .width-switch{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:10px;background:#f1f1f1}.width-switch button{border:0;border-radius:8px;padding:7px 9px;background:transparent;color:#666;font-size:11px;white-space:nowrap;cursor:pointer}.width-switch button[aria-pressed=true]{background:#fff;color:#111;box-shadow:0 1px 4px #00000012;font-weight:600}.brand{color:#202020}.mark{background:#111;border-radius:9px}
+
+    .gallery{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(max-content,1fr);width:100%;gap:0;padding:3px;background:#f1f1f1;border-radius:20px;margin-bottom:20px}.gallery button{color:#626262;border-radius:18px;padding:11px 12px;font-size:13px}.gallery button[aria-selected=true]{color:#111;background:#fff;box-shadow:0 1px 5px #00000012;font-weight:550}
+    .panel{border-color:#dedede;border-radius:22px;box-shadow:none}.panel-top{padding:30px 31px 0;border-bottom:0}.question{display:block;width:max-content;max-width:100%;margin:0 0 27px auto;background:#f4f4f4;color:#191919;border-radius:19px;padding:11px 15px;font-size:13px;line-height:1.35}.meta{color:#858585;border-bottom:1px solid #dedede;padding-bottom:15px;font-size:11px;flex-wrap:wrap;align-items:flex-start}.meta .source{font-weight:400;flex:1 1 380px;min-width:0;line-height:1.5}.lead-row{align-items:center;padding-top:19px}.lead-row h2{font-size:19px;letter-spacing:-.015em;line-height:1.4;font-weight:560;color:#111;margin:0 0 5px}.badge{border-radius:9px;padding:6px 9px;font-size:11px;font-weight:500}.badge.bad{color:#ae5c31;background:#fff1e8}.badge.good{color:#3178a5;background:#eaf5fd}.badge.estimate{color:#ae5c31;background:#fff1e8}
+    .lead-actions{display:flex;align-items:center;gap:8px;flex:none}.lead-actions .badge{margin-top:0}.restore-button{border:1px solid #dedede;border-radius:8px;background:#fff;color:#555;padding:6px 9px;font-size:11px;cursor:pointer;white-space:nowrap}.restore-button:hover{background:#f7f7f7}.restore-button[hidden]{display:none}
+    .panel-body{padding:23px 31px 28px;container-type:inline-size}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 235px;gap:18px;align-items:start}.workspace.no-controls{grid-template-columns:minmax(0,1fr)}.visual{grid-column:1;grid-row:1;min-width:0;min-height:330px;border:1px solid #dedede;background-color:#FAFAFA;border-radius:12px;padding:21px}.interaction{grid-column:2;grid-row:1;display:block;margin:0;padding:2px 0 0;min-width:0}.interaction[hidden]{display:none}.control{display:block}
+    .factor-line{display:grid;grid-template-columns:1fr;gap:0}.factor{min-width:0;width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;background:transparent;border:0;border-radius:0;text-align:left}.factor small,.factor.tp-factor small{display:block;color:#555;font-size:12px;margin:0}.factor select{width:auto;min-width:56px;max-width:76px;padding:6px 19px 6px 8px;border:1px solid #e1e1e1;border-radius:8px;background-color:#fff;background-position:right 7px center;color:#161616;font-size:14px;font-weight:550;text-align:left}.factor.tp-factor,.factor.nested-factor,.factor.target-factor{border-color:#ededed;background:transparent;border-style:solid}.factor.tp-factor small{color:#1689ee}
+    .factor{display:block;padding:7px 0 8px}.factor-top{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;margin-bottom:5px;cursor:text}.factor input[type=number]{width:58px;min-width:0;padding:5px 7px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;color:#111;font:550 13px/1.2 Inter,"Segoe UI",sans-serif;text-align:right;font-variant-numeric:tabular-nums;appearance:textfield}.factor input[type=number]::-webkit-inner-spin-button,.factor input[type=number]::-webkit-outer-spin-button{appearance:none;margin:0}.factor input[type=range]{display:block;width:100%;height:17px;margin:0;padding:0;border:0;appearance:none;background:linear-gradient(to right,#1689ee 0%,#1689ee var(--range-progress),#dfdfdf var(--range-progress),#dfdfdf 100%) center/100% 2px no-repeat;cursor:pointer}.factor input[type=range]::-webkit-slider-runnable-track{height:2px;background:transparent;border-radius:99px}.factor input[type=range]::-webkit-slider-thumb{appearance:none;width:17px;height:17px;margin-top:-7.5px;border:1px solid #dedede;border-radius:50%;background:#fff;box-shadow:0 1px 4px #00000018}.factor input[type=range]::-moz-range-track{height:2px;background:transparent;border-radius:99px}.factor input[type=range]::-moz-range-thumb{width:16px;height:16px;border:1px solid #dedede;border-radius:50%;background:#fff;box-shadow:0 1px 4px #00000018}.factor input:focus-visible{outline:2px solid #1689ee;outline-offset:2px}
+    .factor-heading{display:flex;align-items:center;gap:4px;margin-bottom:5px}.factor-heading .factor-top{flex:1;min-width:0;margin:0}.lock-toggle{flex:none;display:grid;place-items:center;width:25px;height:25px;padding:3px;border:0;border-radius:7px;background:transparent;color:#a3a3a3;cursor:pointer}.lock-toggle svg{width:17px;height:17px}.lock-toggle:hover{background:#f1f1f1;color:#555}.lock-toggle.locked{background:#ededed;color:#171717}.factor.passive-changed input[type=number]{border-color:#f2a260;background:#fff4e9;box-shadow:0 0 0 2px #f2a26044}.factor.passive-changed small{color:#a45325}.balance-feedback{min-height:16px;margin-top:9px;color:#737373;font-size:11px;line-height:1.45}
+    .balance-feedback:empty{display:none}
+    .factor-stepper{display:inline-flex;align-items:center;flex:none;border:1px solid #e0e0e0;border-radius:8px;background:#fff}.factor-stepper button{display:grid;place-items:center;flex:none;width:20px;height:27px;padding:0;border:0;background:transparent;color:#777;cursor:pointer}.factor-stepper button:hover:not(:disabled){color:#1689ee}.factor-stepper button:disabled{opacity:.35;cursor:not-allowed}.factor-stepper svg{width:14px;height:14px}.factor-stepper input[type=number]{width:44px;padding:5px 0;border:0;border-radius:0;background:transparent;text-align:center}.factor-stepper input:focus-visible{outline:0}.factor-stepper:focus-within{outline:2px solid #1689ee;outline-offset:2px}.factor.passive-changed .factor-stepper{border-color:#f2a260;background:#fff4e9;box-shadow:0 0 0 2px #f2a26044}.factor.passive-changed .factor-stepper input[type=number]{border:0;background:transparent;box-shadow:none}.product-status-note{font-size:12px;color:#6e6e6e;line-height:1.6;margin:15px 0 0}
+    .equation{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.equation-factors{display:flex;align-items:center;flex-wrap:wrap;gap:7px}.equation-factor{display:inline-flex;align-items:baseline;gap:5px;color:#444}.equation-factor small{font-size:11px}.equation-factor strong{font-size:17px;color:#171717;font-weight:600;font-variant-numeric:tabular-nums}.equation-factor.tp-equation small,.equation-factor.tp-equation strong{color:#1689ee}.times,.equals{font-size:15px;color:#979797;margin:0}.result,.result.good-text{font-size:22px;color:#1689ee;font-weight:650}
+    .measure{margin-top:22px}.measure-head{color:#666;font-size:12px}.measure-head strong{color:#171717;font-weight:560}.scale{height:18px;border-radius:5px;background:#e7e7e7}.scale-fill,.scale-fill.good-fill{background:#1689ee}.scale-target{background:#a4a4a4}.scale-gap{background:#f5a065}.measure-foot{color:#888}.annotation,.annotation.ok{color:#ae5c31;font-size:12px;font-weight:500}.annotation.ok{color:#1689ee}
+    .division-top{color:#777;font-size:13px}.division-top strong{color:#111;font-size:22px;font-weight:600}.groups{gap:8px}.group,.groups.valid .group{border:1px solid #cae2f5;background:#edf7ff;border-radius:10px;padding:14px}.group small,.group span,.groups.valid .group small,.groups.valid .group span{color:#6989a1}.group strong,.groups.valid .group strong{color:#1689ee}.leftover{border:1px solid #efb58f;background:#fff0e6;border-radius:10px;color:#b65e27}
+    .rank-label,.rank-hint{color:#777}.rank-cell{border-color:#cae2f5;background:#edf7ff;color:#2479b7;border-radius:7px}.rank-cell.active{background:#1689ee;border-color:#1689ee}.rank-detail{color:#376c91}
+    .capacity-note{color:#6e6e6e}.product-stages{gap:10px}.product-stage{border-color:#dedede;border-radius:10px;padding:10px}.product-stage-head{color:#2b2b2b}.product-stage-head span:last-child{color:#888}.product-replica{grid-template-columns:35px minmax(0,1fr);gap:5px}.product-replica-name{color:#777}.ep-pane{border-color:#e2e2e2;background:#fafafa;border-radius:8px;padding:5px}.ep-title{color:#666}.tp-rank{border-color:#b6d9f4;background:#edf7ff;color:#2479b7}.tp-rank.peer{border-color:#70b8ee;background:#e0f0fd}.tp-rank.active{background:#1689ee;border-color:#1689ee}
+    .product-replica-name{align-self:center;padding-top:0;font-size:10px}.product-replica .tp-rank,.product-replica .rank-id{font-size:10px}
+    .capacity-name,.capacity-legend{color:#777}.capacity-name strong,.capacity-value{color:#111}.capacity-track{background:#e7e7e7}.capacity-used{background:#f5a065}.capacity-limit{border-color:#333}
+    .capacity-summary{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}.capacity-summary strong{font-size:22px;color:#171717;font-variant-numeric:tabular-nums}.capacity-summary span{font-size:12px;color:#777}.capacity-chart{position:relative;height:160px;margin:22px 0 10px;border-bottom:1px solid #c9c9c9;background:linear-gradient(to top,transparent 24%,#ededed 24% 24.5%,transparent 24.5% 49%,#ededed 49% 49.5%,transparent 49.5% 74%,#ededed 74% 74.5%,transparent 74.5%)}.capacity-chart-bar{position:absolute;left:15%;bottom:0;width:20%;height:var(--used-pct);min-height:2px;border-radius:7px 7px 0 0;background:linear-gradient(to top,#1689ee 0%,#54b8d6 48%,#f2aa65 78%,#e57861 100%)}.capacity-chart-line{position:absolute;left:4%;right:4%;bottom:var(--line-pct);height:0;border-top:1px dashed #999}.capacity-chart-line span{position:absolute;left:44%;top:-9px;padding:0 4px;background:#fafafa;color:#666;font-size:11px;white-space:nowrap}.capacity-chart-line.capacity-boundary{border-color:#333}.capacity-chart-line.capacity-warning{border-color:#cf8750}.capacity-chart-line.capacity-alert{border-color:#bd5f58}.capacity-chart-line.capacity-marker{left:11%;right:55%;border-top:2px solid #222}.capacity-range{display:flex;justify-content:space-between;gap:12px;color:#686868;font-size:11px}.capacity-stage-list{display:flex;gap:8px;margin-top:22px;align-items:flex-end;min-height:110px}.capacity-stage{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;color:#555;font-size:11px;font-variant-numeric:tabular-nums}.capacity-stage strong{font-weight:600}.capacity-stage i{display:block;width:100%;max-width:50px;height:var(--stage-pct);min-height:3px;border-radius:4px 4px 0 0;background:linear-gradient(to top,#1689ee,#e57861)}.capacity-stage.active strong{color:#1689ee}.capacity-stage-bars{display:flex;align-items:flex-end;justify-content:center;width:100%;height:64px;border-bottom:1px solid #d4d4d4}.capacity-controls{display:grid;gap:4px}.capacity-controls .factor{padding:7px 0}.capacity-controls select{min-width:96px;padding:6px 8px;border:1px solid #dedede;border-radius:8px;background:#fff;color:#171717;font-size:12px}.capacity-note{margin-top:16px}
+    .capacity-chart-line span{display:none}.capacity-boundaries,.capacity-thresholds{display:flex;flex-wrap:wrap;justify-content:space-between;gap:5px 12px;font-size:11px;color:#666}.capacity-boundaries{margin-top:12px}.capacity-thresholds{margin-top:6px}.capacity-boundaries span,.capacity-thresholds span{white-space:nowrap}.capacity-boundaries i,.capacity-thresholds i{display:inline-block;width:12px;border-top:2px solid #222;vertical-align:middle;margin-right:4px}.capacity-thresholds i{border-top-style:dashed}.capacity-thresholds .tight i{border-color:#cf8750}.capacity-thresholds .alert i{border-color:#bd5f58}.capacity-thresholds .cap i{border-color:#333}
+    .capacity-chart.capacity-hbm{height:auto;margin:22px 0 0;border:0;background:none}.capacity-hbm__head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:9px;font-size:11px;color:#555}.capacity-hbm__head strong{font-variant-numeric:tabular-nums;color:#222}.capacity-hbm__track{position:relative;height:32px}.capacity-hbm__capacity{position:absolute;inset:0 auto 0 0;width:var(--cap-pct);overflow:hidden;border:1px solid #cbd4dc;border-radius:7px;background:#e7edf1;box-shadow:inset 0 1px 3px #273b4b16}.capacity-hbm__used{height:100%;width:var(--fill-pct);background:linear-gradient(90deg,#1689ee 0%,#57bed6 58%,#eaa563 100%)}.capacity-hbm__overflow{position:absolute;left:var(--cap-pct);top:2px;bottom:2px;width:var(--overflow-pct);background:repeating-linear-gradient(135deg,#c95855 0 8px,#df7770 8px 16px);border-radius:0 5px 5px 0}.capacity-hbm__mark{position:absolute;top:-7px;bottom:-7px;width:2px;z-index:1;background:#fff;box-shadow:0 0 0 1px #2229}.capacity-hbm__mark--min{left:var(--min-pct)}.capacity-hbm__mark--max{left:var(--max-pct)}.capacity-hbm__mark--tight{top:1px;bottom:1px;width:0;left:var(--tight-pct);border-left:2px dashed #9b5135;box-shadow:none}.capacity-hbm__axis{position:relative;height:20px;margin-top:8px;color:#777;font-size:10px;font-variant-numeric:tabular-nums}.capacity-hbm__axis .capacity-hbm__cap-label{position:absolute;left:var(--cap-pct);transform:translateX(-100%);white-space:nowrap;color:#333}.capacity-hbm__keys{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:12px;color:#666;font-size:11px}.capacity-hbm__keys span{white-space:nowrap}.capacity-hbm__keys i{display:inline-block;width:12px;height:8px;margin-right:4px;vertical-align:middle;border-top:2px solid #333}.capacity-hbm__keys .used i{border:0;border-radius:2px;background:linear-gradient(90deg,#1689ee,#eaa563)}.capacity-hbm__keys .overflow i{border:0;border-radius:2px;background:#c95855}.capacity-hbm__keys .tight i{border-color:#bd7a43;border-top-style:dashed}.capacity-hbm__keys .range i{border-color:#777}.capacity-hbm__scope{margin:10px 0 0;color:#707070;font-size:11px}.capacity-controls .factor{border-bottom:1px solid #ededed}.capacity-controls .factor-stepper input[type=number]{width:55px}.capacity-controls .factor.is-locked,.capacity-mode.is-locked{opacity:.62}.capacity-mode{padding:10px 0;border-bottom:1px solid #ededed}.capacity-mode-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;color:#555;font-size:12px}.capacity-mode .choice{width:100%;margin:0}.capacity-mode .choice button{flex:1;min-width:0;padding:7px 4px;font-size:11px}.capacity-mode .choice button:disabled{cursor:not-allowed}.capacity-feedback{min-height:17px;color:#a45325;font-size:11px;line-height:1.4}.capacity-feedback:empty{display:none}
+    .capacity-hbm{--memory-gradient:linear-gradient(90deg,#1689ee 0%,#57bed6 48%,#eaa563 78%,#e57861 100%)}.capacity-hbm__used,.capacity-hbm__interval{position:absolute;inset:0;width:100%;height:100%;background:var(--memory-gradient)}.capacity-hbm__used{opacity:.5}.capacity-hbm__interval{clip-path:inset(0 calc(100% - var(--max-card-pct)) 0 var(--min-card-pct))}.capacity-hbm__keys .used i{background:var(--memory-gradient)}
+    .lead-row h2{margin:0}.capacity-summary[data-level=over] strong{color:#b4544a}.capacity-warning{display:flex;align-items:baseline;gap:8px;margin-top:12px;padding:9px 11px;border:1px solid #ebc9a3;border-radius:8px;background:#fff5e9;color:#945324;font-size:11px;line-height:1.5}.capacity-warning strong{flex:none;font-size:11px}.capacity-warning[data-level=alert],.capacity-warning[data-level=over]{border-color:#e8b9b1;background:#fff0ed;color:#a64b42}
+    .choice{display:flex;gap:3px;width:max-content;max-width:100%;background:#f1f1f1;border-radius:10px;padding:3px}.choice button{color:#666;border-radius:8px;padding:8px 10px}.choice button.active{color:#111;background:#fff;box-shadow:0 1px 4px #00000012;font-weight:550}.ep-mode-choice{width:100%;margin-bottom:14px}.ep-mode-choice button{flex:1;min-width:0}
+    .details-grid{gap:20px}.disclosure{border-color:#e3e3e3}.disclosure summary{color:#555;font-weight:500}.disclosure p,.disclosure li{color:#858585}.disclosure code{color:#666}
+    @container (max-width:780px){.workspace{grid-template-columns:minmax(0,1fr)}.interaction{grid-column:1;grid-row:1;padding:0 0 14px;border-bottom:1px solid #e4e4e4}.visual{grid-column:1;grid-row:2;min-height:230px}.factor-line{grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:4px 14px}.factor{padding:5px 0}.workspace.no-controls .visual{grid-row:1}}
+    @media(max-width:700px){.shell{padding:0 16px 45px}.gallery{display:flex;overflow-x:auto}.gallery button{flex:none}.panel-top{padding:20px 20px 0}.panel-body{padding:20px}.question{margin-bottom:22px}.lead-row{display:block}.badge{margin-top:10px}.visual{padding:16px}.details-grid{padding:0 20px 20px}}
+    @media(max-width:420px){.factor-line{grid-template-columns:repeat(2,minmax(0,1fr))}.product-stages{grid-template-columns:1fr}.ep-panes{grid-template-columns:1fr}}
+    @media(max-width:700px){.lead-actions{margin-top:10px}}
+    .shell[data-shell-width=narrow]{max-width:480px}.shell[data-shell-width=narrow] .gallery{display:flex;overflow-x:auto}.shell[data-shell-width=narrow] .gallery button{flex:none}.shell[data-shell-width=narrow] .panel-top{padding:20px 20px 0}.shell[data-shell-width=narrow] .panel-body{padding:20px}.shell[data-shell-width=narrow] .question{margin-bottom:22px}.shell[data-shell-width=narrow] .lead-row{display:block}.shell[data-shell-width=narrow] .badge{margin-top:10px}.shell[data-shell-width=narrow] .visual{padding:16px}.shell[data-shell-width=narrow] .details-grid{grid-template-columns:1fr;padding:0 20px 20px}.shell[data-shell-width=narrow] .product-stages,.shell[data-shell-width=narrow] .ep-panes{grid-template-columns:1fr}
+    .shell[data-shell-width=narrow] .lead-actions{margin-top:10px}.shell[data-shell-width=narrow] .lead-actions .badge{margin-top:0}
+    .meta .source{display:inline-flex;align-items:flex-start;gap:8px}.meta .source svg{width:17px;height:17px;flex:none;margin-top:1px;color:#26835b}.meta .source span{min-width:0}.title-line{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.title-line h2{margin:0}.title-line .badge{margin:0}.badge.good{color:#24734e;background:#e8f6ed}.lead-row>div:first-child{min-width:0}
+    .workspace{align-items:stretch}.visual{align-self:stretch;min-height:max(330px,var(--control-height,0px))}.agent-response{margin-top:21px}.agent-response p{margin:0;color:#303030;font-size:13px;line-height:1.7}.reply-actions{display:flex;align-items:center;gap:5px;margin-top:12px}.reply-actions button{display:grid;place-items:center;width:29px;height:29px;padding:5px;border:0;border-radius:7px;background:transparent;color:#878787;cursor:pointer}.reply-actions button:hover,.reply-actions button[aria-pressed=true]{background:#f1f1f1;color:#292929}.reply-actions svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.reply-feedback{margin-left:7px;color:#777;font-size:11px}.reply-feedback:empty{display:none}
+    @container (max-width:780px){.visual{min-height:max(230px,var(--control-height,0px))}}
+    @container (max-width:500px){.capacity-controls.factor-line{grid-template-columns:1fr}}
+    .product-view-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px;color:#707070;font-size:11px}.product-layer-toggle{display:inline-flex;align-items:center;gap:7px;padding:5px 7px;border:0;background:transparent;color:#505050;font-size:11px;cursor:pointer}.product-layer-toggle-track{width:27px;height:16px;border-radius:20px;background:#d2d2d2;padding:2px;transition:background-color .15s}.product-layer-toggle-track::before{content:"";display:block;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0002;transition:transform .15s}.product-layer-toggle[aria-pressed=true] .product-layer-toggle-track{background:#1689ee}.product-layer-toggle[aria-pressed=true] .product-layer-toggle-track::before{transform:translateX(11px)}
+    .product-stages--layers{grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr))}.product-stages--layers .product-stage{padding:13px}.product-layer-scroll{max-width:100%;max-height:390px;overflow:auto;border:1px solid #e5e5e5;border-radius:7px;scrollbar-color:#c6c6c6 transparent}.product-layer-matrix{width:max-content;min-width:100%;--rank-label-width:116px;--layer-cell-width:23px}.product-layer-ruler,.layer-rank-row{display:grid;grid-template-columns:var(--rank-label-width) repeat(var(--layer-count),var(--layer-cell-width));width:max-content;min-width:100%}.product-layer-ruler{position:sticky;top:0;z-index:3;background:#fff;border-bottom:1px solid #dcdcdc}.product-layer-ruler span{display:flex;flex-direction:column;align-items:center;justify-content:center;height:35px;border-right:1px solid #ededed;color:#555;font-size:10px;line-height:1.2;font-weight:600}.product-layer-ruler span small{color:#8c8c8c;font-size:9px;font-weight:400}.product-layer-ruler .layer-ruler-corner{position:sticky;left:0;z-index:4;align-items:flex-start;padding-left:10px;background:#fff;color:#777}.layer-rank-row{padding:0;border:0;border-bottom:1px solid #fff;background:#fff;color:inherit;text-align:left;cursor:pointer}.layer-rank-row.group-start{border-top:5px solid #f4f4f4}.layer-rank-name{position:sticky;left:0;z-index:2;display:flex;align-items:center;gap:7px;min-height:27px;padding:3px 7px;background:#fff;border-right:1px solid #e5e5e5;color:#2a2a2a;font-size:10px;font-weight:650;white-space:nowrap}.layer-rank-name small{color:#777;font-size:9px;font-weight:400}.layer-cell{display:flex;align-items:center;justify-content:center;min-height:27px;border-right:1px solid #d8e8f4;background:#edf7ff;box-shadow:inset 0 2px #91c7ee;color:#4384b0;font-size:9px;font-variant-numeric:tabular-nums;white-space:nowrap}.layer-cell--moe{background:var(--expert-bg);color:var(--expert-ink);box-shadow:inset 0 2px #91c7ee,inset 0 -2px var(--expert-line)}.layer-rank-row.layer-ep-0{--expert-bg:#eef8f3;--expert-ink:#3f8465;--expert-line:#9bd2b5}.layer-rank-row.layer-ep-1{--expert-bg:#f3f0fb;--expert-ink:#7a63a7;--expert-line:#c5afe8}.layer-rank-row.layer-ep-2{--expert-bg:#fff6eb;--expert-ink:#a57439;--expert-line:#eac397}.layer-rank-row.layer-ep-3{--expert-bg:#ecf8f9;--expert-ink:#42858c;--expert-line:#99d4d8}.layer-rank-row:hover .layer-rank-name,.layer-rank-row.peer .layer-rank-name{background:#eef7fe}.layer-rank-row:hover .layer-cell,.layer-rank-row.peer .layer-cell{filter:saturate(1.35)}.layer-rank-row.active .layer-rank-name{background:#1689ee;color:#fff}.layer-rank-row.active .layer-rank-name small{color:#e6f4ff}.layer-rank-row.active .layer-cell{box-shadow:inset 0 3px #1689ee,inset 0 -3px #1689ee;background:#dff0ff;color:#215e8d;font-weight:650}.layer-rank-row:focus-visible{position:relative;z-index:4;outline:2px solid #1689ee;outline-offset:-2px}
+    .layer-rank-name{flex-direction:column;align-items:flex-start;justify-content:center;gap:0;min-height:32px}.layer-cell{min-height:32px}
+    .compatibility-preview{display:flex;flex-direction:column;justify-content:center;min-height:286px}.compatibility-preview p{margin:0 0 18px;color:#555;font-size:13px;line-height:1.7}.compatibility-preview ul{display:grid;gap:9px;margin:0;padding:0;list-style:none}.compatibility-preview li{padding:10px 12px;border:1px solid #e4e4e4;border-radius:8px;background:#fff;color:#555;font-size:12px;line-height:1.5}.compatibility-preview code{color:#666;font-size:11px;overflow-wrap:anywhere}
+    .issue-summary{margin-top:26px;padding:27px 31px;border:1px solid #dedede;border-radius:22px;background:#fff}.issue-summary h2{margin:3px 0 8px;font-size:19px;font-weight:600;letter-spacing:-.015em}.issue-summary p{margin:0;color:#666;font-size:12px;line-height:1.7}.issue-summary .eyebrow{color:#1689ee;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}.issue-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:21px 0}.issue-card{min-width:0;padding:15px 16px;border:1px solid #e5e5e5;border-radius:11px;background:#fafafa}.issue-card h3{display:flex;align-items:baseline;gap:10px;margin:0 0 8px;color:#222;font-size:14px;font-weight:600}.issue-card h3 span{color:#1689ee;font-size:11px;font-variant-numeric:tabular-nums}.issue-card p{color:#555}.issue-card code,.issue-sources code{font-size:11px;overflow-wrap:anywhere}.issue-card .issue-code{margin-top:9px;color:#777}.issue-sources{padding-top:18px;border-top:1px solid #e9e9e9}.issue-sources h3{margin:0 0 8px;font-size:12px;font-weight:600}.issue-sources ul{margin:0;padding-left:18px;color:#666;font-size:11px;line-height:1.8}.issue-sources li{padding-left:2px}.issue-sources .scope-note{margin-top:10px}.shell[data-shell-width=narrow] .issue-summary{padding:20px}.shell[data-shell-width=narrow] .issue-list{grid-template-columns:1fr}@media(max-width:700px){.issue-summary{padding:20px}.issue-list{grid-template-columns:1fr}}
+    .v2-artboard{position:relative;width:100%;height:var(--v2-chart-height);background:#fafafa}.v2-target-grid,.v2-actual-grid{position:absolute;left:34%;bottom:66px;display:grid;overflow:hidden}.v2-target-grid{grid-template-columns:repeat(var(--v2-target-cols),var(--v2-cell-size));grid-template-rows:repeat(var(--v2-target-rows),var(--v2-cell-size));background:#4fa2e9}.v2-actual-grid{grid-template-columns:repeat(var(--v2-copy-columns),var(--v2-cell-size));grid-template-rows:repeat(var(--v2-data-rows),var(--v2-cell-size));z-index:1}.v2-target-cell,.v2-actual-cell{width:var(--v2-cell-size);height:var(--v2-cell-size);box-sizing:border-box;box-shadow:inset 0 0 0 1px #28303c55}.v2-actual-cell{background:rgba(246,126,130,.68);box-shadow:inset 0 0 0 1px #28303c66}.v2-arrow{position:absolute;z-index:2;color:#171717}.v2-arrow--up{left:calc(34% + var(--v2-target-width) + 12px);top:var(--v2-target-top);height:var(--v2-arrow-height);border-left:2px solid currentColor}.v2-arrow--up::before{content:"";position:absolute;top:-1px;left:-5px;border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:8px solid currentColor}.v2-arrow--left{left:calc(34% + var(--v2-target-width));width:var(--v2-width-gap);bottom:43px;border-top:2px solid currentColor}.v2-arrow--left::before{content:"";position:absolute;top:-5px;left:-1px;border-top:4px solid transparent;border-bottom:4px solid transparent;border-right:8px solid currentColor}.v2-arrow-label{position:absolute;z-index:2;color:#181818;font-size:12px;white-space:nowrap}.v2-arrow-label--up{left:calc(34% + var(--v2-target-width) + 24px);top:var(--v2-arrow-label-top)}.v2-arrow-label--left{left:calc(34% + var(--v2-target-width) + var(--v2-half-width-gap));bottom:12px;transform:translateX(-50%)}.v2-legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 13px;color:#555;font-size:11px}.v2-legend span{display:inline-flex;align-items:center;gap:5px}.v2-legend i{display:inline-block;width:10px;height:10px;border-radius:2px}.v2-legend-blue{background:#4fa2e9}.v2-legend-red{background:#f7adad}.v2-advice{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding-top:12px;border-top:1px solid #e6e6e6;color:#777;font-size:11px}.v2-advice strong{margin-right:3px;color:#262626;font-size:12px;font-weight:630}.v2-advice-button{padding:7px 9px;border:1px solid #d7d7d7;border-radius:7px;background:#fff;color:#222;font-size:11px;cursor:pointer}.v2-advice-button:hover{border-color:#1689ee;color:#126ab1}.v2-limit{padding:30px;color:#777;font-size:12px}
+    .v2-controls .factor{padding:7px 0;border-bottom:0}.v2-controls .factor-top{margin-bottom:4px}.v2-controls .factor input[type=range]{margin-top:6px}.v2-controls .factor.is-data small{color:#1689ee}.v2-controls .factor.is-target small{font-weight:400}.v2-controls .factor-stepper input[type=number]{width:48px}.v2-controls .factor-stepper button{width:23px;font-size:17px;line-height:1}.v2-input-row{display:flex;align-items:center;gap:7px}.v2-controls .lock-toggle{width:24px;height:28px}.v2-controls input:disabled{opacity:.58;cursor:not-allowed}.v2-mode{display:flex;gap:3px;margin-bottom:12px;padding:3px;border-radius:9px;background:#f1f1f1}.v2-mode button{flex:1;border:0;border-radius:7px;padding:7px 5px;background:transparent;color:#666;font-size:11px;cursor:pointer}.v2-mode button[aria-pressed=true]{background:#fff;color:#111;box-shadow:0 1px 4px #00000012;font-weight:620}.v2-feedback{min-height:16px;margin-top:8px;color:#a44843;font-size:11px}.v2-feedback:empty{display:none}
+    .v2-controls .factor.is-suggested .factor-stepper{border-color:#d75f5a;background:#fff0ef;box-shadow:0 0 0 2px #d75f5a44}.v2-controls .factor.is-suggested .factor-stepper input{color:#ad403b;font-weight:700}.v2-controls .factor.is-suggested .factor-stepper button{color:#ad403b}
+    @container (max-width:520px){.v2-arrow-label{font-size:10px}}
+    .v2-advice-button[aria-pressed="true"]{border-color:#1689ee;background:#eef7ff;color:#126ab1;box-shadow:0 0 0 1px #1689ee55}
+    .v2-advice-button:focus-visible{outline:2px solid #1689ee;outline-offset:2px}
+    .v2-limit{min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center}.v2-limit small{color:#888;font-size:11px}.v2-limit-marks{display:flex;justify-content:center;flex-wrap:wrap;gap:8px}.v2-limit-marks span{padding:5px 9px;border:1px solid #d7d7d7;border-radius:7px;color:#333;background:#fff;font-size:11px}
+    .v2-arrow--down::before{top:auto;bottom:-1px;border-bottom:0;border-top:8px solid currentColor}
+    .v2-artboard{--v2-matrix-left:calc(50% - var(--v2-half-wide-width));width:min(100%,var(--v2-chart-width));margin-inline:auto}
+    .v2-target-grid,.v2-actual-grid{left:var(--v2-matrix-left);bottom:var(--v2-matrix-inset)}
+    .v2-arrow--left{left:calc(var(--v2-matrix-left) + var(--v2-narrow-width));bottom:calc(var(--v2-matrix-inset) - 14px)}
+    .v2-arrow-label--left{left:calc(var(--v2-matrix-left) + var(--v2-narrow-width) + var(--v2-half-width-gap));bottom:calc(var(--v2-matrix-inset) - 36px)}
+    .v2-arrow--right::before{left:auto;right:-1px;border-right:0;border-left:8px solid currentColor}
+    .v2-hover-tip{position:fixed;z-index:100;display:flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid #d8dce0;border-radius:7px;background:#fff;box-shadow:0 5px 18px #0002;color:#292929;font-size:11px;white-space:nowrap;pointer-events:none;transform:translateX(-50%)}
+    .v2-hover-dot{width:8px;height:8px;flex:none;border-radius:50%;background:#4fa2e9}.v2-hover-tip[data-layer=actual] .v2-hover-dot{background:#e77277}
+    .v2-target-cell,.v2-actual-cell{cursor:help}
+    .v2-arrow--up{left:calc(var(--v2-matrix-left) + var(--v2-wide-width) + 12px)}
+    .v2-arrow-label--up{left:calc(var(--v2-matrix-left) + var(--v2-wide-width) + 25px)}
+    .v2-arrow--up::after{content:"";position:absolute;bottom:0;left:-4.5px;width:7px;border-top:2px solid currentColor}
+    .v2-arrow--down::after{top:0;bottom:auto}
+    .v2-arrow--left::after{content:"";position:absolute;right:0;top:-4.5px;height:7px;border-left:2px solid currentColor}
+    .v2-arrow--right::after{left:0;right:auto}
+    .v2-legend{justify-content:center;text-align:center}
+    .v2-arrow--rank{left:var(--v2-matrix-left);width:var(--v2-wide-width);bottom:calc(var(--v2-matrix-inset) - 14px);border-top:2px solid currentColor}
+    .v2-arrow--rank::before{content:"";position:absolute;right:-1px;top:-5px;border-top:4px solid transparent;border-bottom:4px solid transparent;border-left:8px solid currentColor}
+    .v2-arrow--rank::after{content:"";position:absolute;left:0;top:-4.5px;height:7px;border-left:2px solid currentColor}
+    .v2-arrow--rank-decrease::before{left:-1px;right:auto;border-left:0;border-right:8px solid currentColor}
+    .v2-arrow--rank-decrease::after{left:auto;right:0}
+    .v2-arrow-label--rank{left:calc(var(--v2-matrix-left) + var(--v2-half-wide-width));bottom:calc(var(--v2-matrix-inset) - 36px);transform:translateX(-50%)}
+    .v2-artboard.has-v2-double-bottom .v2-arrow--rank{bottom:calc(var(--v2-matrix-inset) - 50px)}.v2-artboard.has-v2-double-bottom .v2-arrow-label--rank{bottom:calc(var(--v2-matrix-inset) - 72px)}
+    .v2-advice-try{margin-left:auto;padding:7px 12px;border:1px solid #1689ee;border-radius:7px;background:#1689ee;color:#fff;font-size:11px;white-space:nowrap;cursor:pointer}
+    .v2-advice-try:hover{background:#0878da}.v2-advice-try:focus-visible{outline:2px solid #1689ee;outline-offset:2px}
+    .v2-target-cell,.v2-actual-cell{--v2-right-line:transparent;--v2-bottom-line:transparent;border:0;background-image:linear-gradient(to right,rgba(0,0,0,.4) 0 1.5px,transparent 1.5px),linear-gradient(to bottom,rgba(0,0,0,.4) 0 1.5px,transparent 1.5px),linear-gradient(to left,var(--v2-right-line) 0 1.5px,transparent 1.5px),linear-gradient(to top,var(--v2-bottom-line) 0 1.5px,transparent 1.5px);background-repeat:no-repeat;box-shadow:none}
+    .v2-cell-last-column{--v2-right-line:rgba(0,0,0,.4)}.v2-cell-last-row{--v2-bottom-line:rgba(0,0,0,.4)}
+    .v2-target-cell.is-covered{background-image:none}
+    .v2-artboard.is-v2-overlap .v2-target-grid{background:transparent;visibility:hidden}
+    .v2-artboard.is-v2-overlap .v2-actual-cell{background-color:transparent}
+    @media(prefers-reduced-motion:no-preference){
+      .v2-artboard.is-v2-success .v2-actual-cell{animation:v2-match-cell 1.45s ease-out both}
+      .v2-artboard.is-v2-success::after{content:"";position:absolute;z-index:2;left:var(--v2-matrix-left);bottom:var(--v2-matrix-inset);width:var(--v2-wide-width);height:var(--v2-matrix-height);pointer-events:none;animation:v2-match-glow 1.45s ease-out both}
+    }
+    @keyframes v2-match-cell{0%,28%{background-color:#57cd91}100%{background-color:transparent}}
+    @keyframes v2-match-glow{0%{box-shadow:0 0 0 0 #4fc78a88;opacity:1}45%{box-shadow:0 0 0 18px #4fc78a33;opacity:1}100%{box-shadow:0 0 0 30px #4fc78a00;opacity:0}}
+    .visual.is-v2-visual{display:flex;flex-direction:column}
+    .visual.is-v2-visual .v2-restored{position:relative;flex:1;min-width:0}
+    .visual.is-v2-visual .v2-artboard{position:absolute;top:50%;left:50%;margin:0;transform:translate(-50%,-50%)}
+    .visual.is-v2-visual .v2-footer{position:absolute;right:0;bottom:0;left:0;display:flex;flex-direction:column}
+    .visual.is-v2-visual .v2-restored--limited{display:flex;flex-direction:column;min-height:260px}.visual.is-v2-visual .v2-restored--limited .v2-limit{flex:1}.visual.is-v2-visual .v2-restored--limited .v2-footer{position:static;margin-top:auto}
+    .visual.is-v2-visual .v2-legend:last-child{margin-bottom:0}
+  </style>
+</head>
+<body>
+  <main class="shell" data-shell-width="wide">
+    <div class="mast"><div class="brand"><span class="mark" aria-hidden="true">◎</span><span class="brand-full">MindSpeed Config · V2</span><span class="brand-short">V2</span></div><div class="width-switch" role="group" aria-label="页面宽度"><button type="button" data-width-mode="wide" aria-pressed="true">宽屏 960</button><button type="button" data-width-mode="narrow" aria-pressed="false">窄屏 480</button></div></div>
+    <div class="gallery" role="tablist" aria-label="约束视图案例">
+      <button role="tab" id="tab-worldsize-v2" aria-controls="case-panel" aria-selected="true" data-case="worldsize-v2">World Size V2</button>
+      <button role="tab" id="tab-product" aria-controls="case-panel" aria-selected="false" data-case="product">World Size</button>
+      <button role="tab" id="tab-heads" aria-controls="case-panel" aria-selected="false" data-case="heads">注意力切分</button>
+      <button role="tab" id="tab-layers" aria-controls="case-panel" aria-selected="false" data-case="layers">均匀分层</button>
+      <button role="tab" id="tab-compatibility" aria-controls="case-panel" aria-selected="false" data-case="compatibility">配置选项冲突</button>
+      <button role="tab" id="tab-capacity" aria-controls="case-panel" aria-selected="false" data-case="capacity">理论容量</button>
+    </div>
+    <section class="panel" id="case-panel" role="tabpanel" aria-labelledby="tab-worldsize-v2">
+      <div class="panel-top"><div class="question" id="case-question"></div><div class="meta"><span class="source" id="case-source"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="8"/><path d="m6.4 10 2.4 2.4 4.8-5"/></svg><span id="case-source-text"></span></span></div><div class="lead-row"><div><div class="title-line"><h2 id="case-title" aria-live="polite"></h2><span class="badge" id="case-badge"></span></div></div><div class="lead-actions"><button type="button" class="restore-button" id="restore-current" title="复原当前页签配置" hidden>复原</button></div></div></div>
+      <div class="panel-body"><div class="workspace" id="workspace"><div class="interaction" id="interaction"><div class="control" id="context-control"></div></div><div class="visual" id="visual"></div></div><div class="agent-response"><p id="agent-reply"></p><div class="reply-actions" role="group" aria-label="答复操作"><button type="button" data-reply-action="like" aria-label="点赞" title="点赞" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v11H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3Zm0 0 5-8a2 2 0 0 1 2 2v5h5a3 3 0 0 1 2.9 3.7l-1.6 7A2 2 0 0 1 18.4 21H7"/></svg></button><button type="button" data-reply-action="dislike" aria-label="点踩" title="点踩" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14V3H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3Zm0 0 5 8a2 2 0 0 0 2-2v-5h5a3 3 0 0 0 2.9-3.7l-1.6-7A2 2 0 0 0 18.4 3H7"/></svg></button><button type="button" data-reply-action="share" aria-label="分享" title="分享"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m0 0L7 8m5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg></button><button type="button" data-reply-action="copy" aria-label="复制" title="复制"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button><span class="reply-feedback" id="reply-feedback" role="status" aria-live="polite"></span></div></div></div>
+    </section>
+    <section class="issue-summary" aria-labelledby="issue-summary-title">
+      <p class="eyebrow">V2 MCP · 静态配置诊断</p>
+      <h2 id="issue-summary-title">开训前可检查的五类常见问题</h2>
+      <p>按实际使用场景建议排序；当前没有用户报错频次统计，因此“常见”不代表实测频率排名。</p>
+      <div class="issue-list">
+        <article class="issue-card"><h3><span>01</span>World Size 与总 Rank 不匹配</h3><p>核对 DP×PP×TP×CP 与总 Rank；只有 orthogonal EP 口径才将 EP 乘入。末节点未满配会单独提醒。</p><p class="issue-code"><code>PAGE_WORLD_SIZE_MATCHES_TOTAL_RANKS</code> · <code>PAGE_PARTIAL_LAST_NODE</code></p></article>
+        <article class="issue-card"><h3><span>02</span>并行切分不能整除</h3><p>检查 Attention Head、序列、专家数和 EP 域的切分条件，识别 Head÷TP、Ulysses Head÷(TP×CP)、Ring 序列÷(2×CP)、专家数÷EP 等不成立的情况。</p><p class="issue-code"><code>PAGE_HEADS_DIVISIBLE_BY_TP</code> · <code>MINDSPEED_RING_SEQUENCE_DIVISIBLE_BY_2CP</code> · <code>PAGE_EXPERTS_DIVISIBLE_BY_EP</code></p></article>
+        <article class="issue-card"><h3><span>03</span>PP／VPP 分层无法成立</h3><p>检查每个 Stage 是否有层、均匀分层能否整除 PP×VPP、动态 PP 层数列表的长度与总和，以及动态 PP 与 VPP 的兼容性。</p><p class="issue-code"><code>PAGE_LAYERS_DIVISIBLE_BY_PP_VPP</code> · <code>MINDSPEED_DYNAMIC_PP_LIST_SUM_MATCHES_LAYERS</code></p></article>
+        <article class="issue-card"><h3><span>04</span>配置选项冲突或缺少前提</h3><p>识别 MC2 与 CoC 同开、AMPipe 缺少 FlashAttention／MoE／EP 前提、2D TP 与其他特性不兼容，以及重计算模式互斥等问题；结论依所选框架 Profile。</p><p class="issue-code"><code>MINDSPEED_MC2_COC_MUTUALLY_EXCLUSIVE</code> · <code>MINDSPEED_AMPIPE_REQUIRES_FLASH_ATTENTION</code></p></article>
+        <article class="issue-card"><h3><span>05</span>单卡 HBM 理论容量不足</h3><p>按 PP Stage 估算权重、梯度、优化器状态、激活与运行时预留；超过单卡容量时提示理论 OOM 风险。结果为 theoretical，不代表实测峰值。</p><p class="issue-code"><code>CAPACITY_THEORETICAL_OOM</code> · <code>estimate_training_capacity</code></p></article>
+      </div>
+      <div class="issue-sources">
+        <h3>分析来源与能力边界</h3>
+        <ul>
+          <li>规则清单：<code>D:\Projects\compute-graph-viewer-wzh\Profiling_Insight_and_Tool\mindspeed-intro\mindspeed-static-config-analysis.html</code> 的「08 / Rule inventory」，列有 82 个静态诊断码和 6 个非阻塞策略码。</li>
+          <li>规则实现：<code>packages/config-core/src/validate-parallel-config.js</code>；Rank 乘积及 EP 口径：<code>packages/config-core/src/page-rules.js</code>。前四类主要由 V2 MCP 的 <code>validate_parallel_config</code> 检查。</li>
+          <li>容量实现：<code>packages/config-core/src/estimate-training-capacity.js</code>。第五类由独立的 <code>estimate_training_capacity</code> 估算，其告警不计入 08 楼层的 82 个静态诊断码。</li>
+        </ul>
+        <p class="scope-note">以上是工具能力归纳，不是对某份训练配置的实际 MCP 检查结果；静态通过和理论容量估算均不等于目标 NPU 环境实机训练通过。</p>
+      </div>
+    </section>
+  </main>
+  <script>/* CONFIG_CORE_BUNDLE_START */
+var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{value:`Module`});var t=`split`,n=`orthogonal`;function r(e){return e===`orthogonal`||e===`ortho`?n:e===`mf`?`mf`:t}function i(e){let t=e?.parallel??{},n=e?.model??{};return{mode:r(t.ep_mode),layers:Number(n.total_layers),dp:Number(t.dp),pp:Number(t.pp),tp:Number(t.tp),cp:Number(t.cp),ep:Number(t.ep),vpp:Number(t.vpp),routed:Number(n.routed_experts),topk:Number(n.top_k)}}function a(e){let t=i(e);return t.mode===`mf`?t.dp*t.tp:t.dp}function o(e){let t=i(e);return t.mode===`orthogonal`?t.ep:1}function s(e){let t=i(e);return t.dp*t.pp*t.tp*t.cp*o(e)}function c(e){let t=i(e);return t.mode===`orthogonal`?t.dp*t.ep:t.dp}function l(e){let t=i(e);return t.mode===`orthogonal`?t.dp:Math.max(1,Math.floor(a(e)/t.ep))}function u(e){let t=i(e);return t.mode===`mf`?t.ep:t.ep*t.tp}function d(e){let t=i(e);return c(e)*t.tp}function f(e){let t=i(e);return{mode:t.mode,dp:c(e),pp:t.pp,tp:t.tp,cp:t.cp,ep:t.ep,rows:d(e),rank_count_per_stage:d(e)*t.cp,group_rows:u(e),edp:l(e),world:s(e),d_axis:t.mode!==`orthogonal`&&t.ep>1?`EDP`:`DP`}}function p(e){return{code:e.code,message:e.message,fields:e.fields??[],source:e.source,source_ref:e.source_ref??``,...e.formula?{formula:e.formula}:{}}}function m(e,t,n,r,i){return{state:e,conclusion:t,evidence:n,next_step:r,limitation:i}}function h({tool:e,status:t,errors:n,warnings:r,suggestions:i,data:a}){if(e===`compose_analysis_report`)return m(a.report.unresolved.length?`review`:`ready`,`已生成 ${a.report.project} 的简明分析报告。`,a.report.rule_evidence[0]?[{...a.report.rule_evidence[0],source:`compatibility-gap`}]:[],`复制或保存 Markdown 与机器可读结果；源文件改动须按修改后内容复查。`,`报告汇总已有工具证据，不新增训练运行或性能验证。`);if(e===`analyze_performance_evidence`){let e=a.config_check.error_codes.length>0,t=a.hypotheses[0];return m(e?`blocked`:`review`,e?`本次运行配置有静态问题，性能归因需先核对配置版本。`:t?`已关联配置检查与性能瓶颈，得到待实测的调参假设。`:`已检查配置；该瓶颈尚无足够依据提出配置调参假设。`,n[0]?[p(n[0])]:t?[{code:t.code,message:t.hypothesis,fields:t.fields,source:`compatibility-gap`,source_ref:t.source_ref}]:[],t?t.experiment:`继续收集 Profiling、日志和环境证据，区分非配置原因。`,`性能归因与调参收益未经验证；容量结果如有返回也仅为 theoretical。`)}if(e===`plan_training_config`){if(a.required_inputs?.length)return m(`needs_input`,`已有资源目标，仍需 ${a.required_inputs.length} 项模型或批量条件。`,r[0]?[p(r[0])]:[],`从工程补齐模型结构、训练框架与批量目标后重新规划。`,`仅凭卡数和显存不能确定完整训练配置。`);if(!a.candidates?.length)return m(`blocked`,`当前约束下没有找到静态合法的候选。`,n[0]?[p(n[0])]:[],`核对锁定字段、模型参数和资源条件，再重新规划。`,`有限范围搜索不能证明不存在其他方案。`);let e=a.candidates[0];return m(a.viable?`review`:`blocked`,a.viable?`找到 ${a.candidates.length} 个候选，首选理论瓶颈为 ${e.capacity.bottleneck_gib.toFixed(1)} GiB。`:`找到静态合法候选，但均未达到理论显存余量目标。`,[{code:`PLAN_CANDIDATE`,message:`首选候选 ${e.id}；${e.changes.length} 处字段变化`,fields:e.changes.map(({path:e})=>e),source:`compatibility-gap`,source_ref:a.policy_source}],`审阅候选差异和取舍，由 Agent 生成源文件后复查，再在目标 NPU 上验证。`,`容量为 theoretical；未预测实测吞吐或保证不 OOM。`)}if(e===`suggest_config_fixes`){if(a.already_valid)return m(`passed`,`当前配置通过已建模静态校验，无需修复。`,[],`如需确认可运行性，在目标环境继续验证。`,`静态通过不代表实机训练通过。`);if(a.solved){let e=a.suggestions[0];return m(`review`,`找到 ${a.suggestions.length} 个已复验的修复候选。`,[{code:`FIX_CANDIDATE`,message:`首选候选修改 ${e.changes.length} 个字段`,fields:e.changes.map(({path:e})=>e),source:`mindspeed-rule`,source_ref:`packages/config-core/src/suggest-config-fixes.js`}],`核对首选候选的 changes；由 Agent 修改源文件，再调用 review_config_change 复查。`,`候选只改结构化配置，尚未写入源文件。`)}return m(`blocked`,`当前搜索范围内没有找到合法修复候选。`,n[0]?[p(n[0])]:[],`检查锁定字段、缺失条件和原始配置，再决定修复方向。`,`搜索受字段范围与束宽限制，不代表不存在其他方案。`)}let o=n[0];if(o){let t=e===`review_config_change`?`核对修改后的源文件、锁定字段和候选差异，再按新文件内容复查。`:e===`parse_training_config`?`修正原始配置的解析错误，再重新提交文件内容。`:e===`suggest_config_fixes`?`核对首个候选的字段差异；由 Agent 修改源文件后重新解析并复查。`:`先处理所列静态问题，再用修改后的配置重新校验。`;return m(`blocked`,e===`review_config_change`?`修改后复查未通过。`:`当前配置存在阻断问题。`,[p(o)],t,`静态结论不等于目标环境的训练运行结果。`)}if(e===`parse_training_config`){let e=r.find(({code:e})=>e===`PARSE_INCOMPLETE`),t=r.find(({code:e})=>e===`PARSE_SOURCE_CONFLICT`),n=r.filter(({code:e})=>e===`PARSE_CROSS_SOURCE_REVIEW`||e===`PARSE_ARCHITECTURE_FIELDS_UNCHECKED`);return e?m(`needs_input`,`原始配置已解析，但缺少调用完整分析所需的字段。`,[p(e),...n.slice(0,3).map(p)],`补齐真实启动命令、并行度与硬件信息；核对未覆盖字段后再运行静态校验。`,a.completion?.strategy===`requires-confirmed-framework-and-resources`?`通用框架不自动补造硬件或容量结论；解析成功不等于训练可运行。`:`省略态默认值与推导值应由用户核对。`):t?m(`review`,`原始配置已解析，但来源文件有冲突。`,[p(t)],`确认冲突字段应采用哪个文件，再运行静态校验。`,`解析成功不等于配置通过静态校验。`):n.length?m(`review`,`原始配置已解析，但仍有架构字段差异或未检查项。`,n.slice(0,3).map(p),`核对差异和目标框架版本，再运行适用的静态校验。`,`这些字段未经完整框架规则验证；解析成功不等于训练可运行。`):a.unmapped_count>0?m(`review`,`原始配置已解析，但仍有未识别字段。`,[{code:`PARSE_UNMAPPED_FIELDS`,message:`${a.unmapped_count} 个字段未映射`,fields:(a.unmapped_fields??[]).slice(0,3).map(({source_key:e})=>e),source:`parser-rule`,source_ref:`packages/config-core/src/parse-training-config.js`}],`核对未识别字段与映射结果，再运行静态校验。`,`解析成功不等于配置通过静态校验。`):m(`ready`,`原始配置已完成解析，可继续静态校验。`,[],`运行 validate_parallel_config；需要时再查看 Rank 与理论容量。`,`解析成功不等于配置通过静态校验。`)}if(e===`review_config_change`){let e=r[0];return e||a.after_unmapped_fields?.length||a.after_source_conflicts?.length?m(`review`,`修改后静态复查通过，但仍有来源或差异需要核对。`,e?[p(e)]:[],`审阅源文件差异、未识别字段和来源冲突，再决定是否采用。`,`静态通过不代表实机训练通过。`):m(`passed`,`源文件已变化，锁定字段保持不变，修改后静态复查通过。`,[],`展示源文件差异，并在目标环境验证训练行为。`,`静态通过不代表实机训练通过。`)}if(e===`estimate_training_capacity`&&t===`estimated`){let e=a.stages[a.bottleneck_stage],t=a.bottleneck_level===`over`||a.bottleneck_level===`tight`;return m(t?`review`:`estimated`,`理论瓶颈位于 Stage ${e.stage}，估算 ${e.total_gib.toFixed(1)} GiB，等级为 ${e.level}。`,[{code:`CAPACITY_BOTTLENECK`,message:`Stage ${e.stage}: ${e.total_gib.toFixed(1)} GiB`,fields:[`cluster.card_memory_gib`],source:`page-rule`,source_ref:`packages/config-core/src/estimate-training-capacity.js`}],t?`先检查瓶颈 Stage 的理论容量余量，再在目标 NPU 上实测。`:`在目标 NPU 上实测峰值，校准估算。`,`容量为 theoretical，不是实测峰值。`)}let s=r[0],c=i.find(({kind:e})=>e===`suggestion`),l=s?[p(s)]:c?[{code:c.code,message:c.message,fields:c.fields,source:c.source,source_ref:c.source_ref}]:[];return s||c?m(`review`,`配置通过已建模静态校验，但有需要核对的提醒。`,l,`核对提醒的依据与适用条件，再决定是否调整配置。`,`静态通过不代表实机训练通过。`):m(`passed`,e===`compute_rank_topology`?`已生成 ${a.ranks.length} 个 Rank、${a.stages.length} 个 PP Stage 的拓扑。`:`配置通过已建模静态校验。`,[],`如需确认可运行性，在目标环境继续验证。`,`静态通过不代表实机训练通过。`)}var g=Object.freeze({validate_parallel_config:`并行约束校验`,compute_rank_topology:`Rank 拓扑`,estimate_training_capacity:`理论容量估算`}),_=Object.freeze({model:`模型结构`,parallel:`并行策略`,cluster:`设备与 Rank`,batch:`批量`,memory:`精度与显存策略`});function v(e){let t=new Map;for(let n of e){let e=_[n.split(`.`)[0]]??`其他`;t.set(e,[...t.get(e)??[],n])}return[...t].map(([e,t])=>({label:e,count:t.length,fields:t}))}function y(e,t){return{severity:t,code:e.code,finding:e.message,locations:e.fields??[],constraint:e.formula??(t===`blocked`?`输入必须满足该项解析或静态约束。`:`尚未证实违反训练约束，需按实际框架语义核对。`),source_ref:e.source_ref??``}}function b(e){let t=e.data.source_name??e.data.source_snapshot?.source?.name??`训练配置`,n=e.data.model_source_name??e.data.source_snapshot?.model_source?.name??`模型结构`;return(e.data.cross_source_observations??[]).filter(e=>e.relation===`different`).map(e=>({severity:`review`,code:`PARSE_CROSS_SOURCE_REVIEW`,finding:`${e.label}：训练参数为 ${e.training.value}，模型结构为 ${e.model.value}。`,locations:[`${t}:${e.training.source_key}`,`${n}:${e.model.source_key}`],constraint:`两份来源数值不同；实际运行语义未验证，不能据此判为训练阻断。`,source_ref:e.source_ref}))}function x(e){if(e.status===`error`||S(e))return[];let t=e.data.completion?.plans??[],n=t.some(e=>e.id===`source-faithful`&&e.validation?.status===`valid`&&e.capacity_assessment?.recommendation_eligible===!0&&(e.values?.length??0)===0);return(e.data.missing_required_fields?.length??0)===0&&n?[]:[...t].filter(e=>e.validation?.status===`valid`&&e.capacity_assessment?.recommendation_eligible===!0).sort((e,t)=>Number(!!t.recommended)-Number(!!e.recommended)).slice(0,3).map((e,t)=>({number:t+1,id:e.id,title:e.label,reason:e.summary,ranking_reason:t===0?`首选：已通过静态复验，且理论容量余量达到推荐门槛。`:`备选：同样达到静态规则与理论容量门槛，可按字段取舍比较。`,confidence:e.confidence,validation:`已通过已建模静态规则复验；尚未修改源文件`,capacity_basis:e.capacity_assessment?.confidence??`theoretical`,capacity_estimate_gib:e.capacity_assessment?.estimated_gib??null,card_capacity_gib:e.capacity_assessment?.capacity_gib??null,requires_confirmation:e.confidence===`requires-confirmation`}))}function S(e){return!!(e.data.source_conflicts??[]).length||(e.data.cross_source_observations??[]).some(e=>e.relation===`different`)}function C(e,t,n,r){return t.length?`候选尚未写入源文件；容量依据为理论估算。`:e.status===`error`?`当前配置尚未成功解析，暂时无法给出推荐方案。`:e.data.completion?.strategy===`requires-confirmed-framework-and-resources`?`当前输入不足以输出推荐方案：缺少已确认的框架和设备条件。`:S(e)?`当前输入不足以输出推荐方案：两份来源的值存在差异，需先确认实际训练使用的配置。`:n.length?`当前输入不足以输出推荐方案：完整分析还缺 ${n.length} 项必需配置。`:r.length?`当前没有可复验的配置修改建议；请先核对上述差异。`:`当前已覆盖字段未显示需要调整的配置项。`}function w(e,t,n){let r=n.length?`或者，您需要我先帮您补齐可从现有文件确认的配置，再进行一轮检查吗？`:``;return e.status===`error`?{mode:`provide_input`,prompt:`请提供可解析的原始配置内容；修正后可重新检查。`}:t.length>1?{mode:`choose_solution`,prompt:`你倾向哪个方案？请回复方案序号（1～${t.length}）${t.some(e=>e.requires_confirmation)?`，并确认方案中的占位值`:``}；我会先列出拟改动，再修改源文件并复查。${r}`}:t.length===1?{mode:`confirm_solution`,prompt:`是否采用方案 1？${t[0].requires_confirmation?`请先确认方案中的占位值，再`:`请`}回复“采用方案 1”；我会先列出拟改动，再修改源文件并复查。${r}`}:n.length?{mode:`provide_input`,prompt:`请补充上列缺失配置${S(e)?`，并确认两份来源实际使用的值`:``}；补齐后我可以继续校验。${r}`}:S(e)?{mode:`provide_input`,prompt:`请确认冲突字段应以哪份配置为准，之后可继续校验。`}:{mode:`none`,prompt:``}}function ee(e){let t=e.data,n=t.missing_required_fields??[],r=t.source_snapshot??{},i=Number(!!r.source)+Number(!!r.model_source),a=[...e.errors.map(e=>y(e,`blocked`)),...(t.source_conflicts??[]).map(n=>({severity:`review`,code:`PARSE_SOURCE_CONFLICT`,finding:`${n.path}：训练配置为 ${JSON.stringify(n.training.value)}，模型结构为 ${JSON.stringify(n.model.value)}。`,locations:[`${t.source_name??`训练配置`}:${n.training.source_key}`,`${t.model_source_name??`模型结构`}:${n.model.source_key}`],constraint:`同一模型字段跨来源值不同；需确认实际使用的值。`,source_ref:e.warnings.find(e=>e.code===`PARSE_SOURCE_CONFLICT`)?.source_ref??``})),...b(e),...e.warnings.filter(e=>e.code===`PARSE_TARGET_OVERWRITTEN`).map(e=>y(e,`review`))],o=x(e),s=Object.entries(t.tool_readiness??{}).filter(([e])=>g[e]).map(([e,t])=>({tool:e,label:g[e],ready:t.ready,missing_count:t.missing_fields?.length??0}));return{overview:{parse_status:e.status===`error`?`failed`:`succeeded`,source_count:i,source_names:[r.source?.name,r.model_source?.name].filter(Boolean),read_field_count:t.source_field_count??0,mapped_field_count:t.mapped_count??0,required_field_count:t.required_field_count??0,available_required_count:t.filled_required_field_count??0,missing_required_count:n.length,full_static_validation_performed:!1},issues:a,solutions:o,solution_note:C(e,o,n,a),completion:{missing_groups:v(n),tool_readiness:s,unmapped_count:t.unmapped_count??0,unverified_architecture_fields:(t.unverified_architecture_fields??[]).map(e=>e.source_key),shell_fragment:e.warnings.some(e=>e.code===`PARSE_SHELL_FRAGMENT`)},follow_up:w(e,o,n)}}var te=Object.freeze([1116352408,1899447441,3049323471,3921009573,961987163,1508970993,2453635748,2870763221,3624381080,310598401,607225278,1426881987,1925078388,2162078206,2614888103,3248222580,3835390401,4022224774,264347078,604807628,770255983,1249150122,1555081692,1996064986,2554220882,2821834349,2952996808,3210313671,3336571891,3584528711,113926993,338241895,666307205,773529912,1294757372,1396182291,1695183700,1986661051,2177026350,2456956037,2730485921,2820302411,3259730800,3345764771,3516065817,3600352804,4094571909,275423344,430227734,506948616,659060556,883997877,958139571,1322822218,1537002063,1747873779,1955562222,2024104815,2227730452,2361852424,2428436474,2756734187,3204031479,3329325298]),ne=Object.freeze([1779033703,3144134277,1013904242,2773480762,1359893119,2600822924,528734635,1541459225]);function T(e,t){return e>>>t|e<<32-t}function re(e){let t=new TextEncoder().encode(e),n=new Uint8Array(Math.ceil((t.length+9)/64)*64);n.set(t),n[t.length]=128;let r=new DataView(n.buffer),i=BigInt(t.length)*8n;r.setUint32(n.length-8,Number(i>>32n&4294967295n)),r.setUint32(n.length-4,Number(i&4294967295n));let a=[...ne],o=new Uint32Array(64);for(let e=0;e<n.length;e+=64){for(let t=0;t<16;t+=1)o[t]=r.getUint32(e+t*4);for(let e=16;e<64;e+=1){let t=o[e-15],n=o[e-2],r=T(t,7)^T(t,18)^t>>>3,i=T(n,17)^T(n,19)^n>>>10;o[e]=o[e-16]+r+o[e-7]+i>>>0}let[t,n,i,s,c,l,u,d]=a;for(let e=0;e<64;e+=1){let r=T(c,6)^T(c,11)^T(c,25),a=c&l^~c&u,f=d+r+a+te[e]+o[e]>>>0,p=(T(t,2)^T(t,13)^T(t,22))+(t&n^t&i^n&i)>>>0;d=u,u=l,l=c,c=s+f>>>0,s=i,i=n,n=t,t=f+p>>>0}let f=[t,n,i,s,c,l,u,d];for(let e=0;e<8;e+=1)a[e]=a[e]+f[e]>>>0}return a.map(e=>e.toString(16).padStart(8,`0`)).join(``)}var ie=Object.freeze({tool_matrix_ui:`1e6bb6eabe60f75b2486188b3b08b59f65d33621`,plane_ui_reference:`485d5206ce4c0cd4719f5d28dd5cbbeb04680be1`,mindspeed_core:`0.12.1@65634689bed75ee9b6df666d526f7f16051a3db5`,config_core:`0.1.1`});function E(e,t,n,r,i,a){let o={code:e,message:t,fields:n,source:r,source_ref:i};return a&&(o.formula=a),o}function D({code:e,kind:t=`suggestion`,confidence:n=`theoretical`,message:r,fields:i=[],applicableHardware:a=[],applicableVersions:o=[],assumptions:s=[],source:c=`mindspeed-rule`,sourceRef:l,formula:u,data:d}){let f={code:e,kind:t,confidence:n,message:r,fields:i,applicable_hardware:a,applicable_versions:o,assumptions:s,source:c,source_ref:l};return u&&(f.formula=u),d&&(f.data=d),f}function O({tool:e,input:t,status:n,errors:r=[],warnings:i=[],suggestions:a=[],assumptions:o=[],confidence:s=`deterministic`,data:c={}}){let l=e===`parse_training_config`?ae(t):t.source_snapshot,u=l?{...c,source_snapshot:l}:c,d={schema_version:`1.0`,tool:e,status:n,rule_profile:{...t.rule_profile},source_versions:{...ie},errors:r,warnings:i,suggestions:a,assumptions:o,confidence:s,data:u};return d.quick_assessment=h(d),e===`parse_training_config`&&(d.data.dialogue=ee(d)),d}function ae(e){if(!e.source?.content)return null;let t=e=>({name:e.name??null,sha256:re(e.content),hash_basis:`submitted_utf8_text`});return{source:t(e.source),...e.model_source?{model_source:t(e.model_source)}:{}}}var k=`MindSpeed 0.12.1@65634689bed75ee9b6df666d526f7f16051a3db5`,oe=`MindSpeed:mindspeed/auto_settings/module/search/stage_1_prune.py:30-44@6563468`,se=`MindSpeed:docs/zh/features/hccl-group-buffer-set.md@6563468`,ce=`MindSpeed:mindspeed/core/hccl_buffer/hccl_adaptive_func.py:83-263@6563468`,A=`mindspeed-config-mcp:estimate-training-capacity.js:activation-and-sharding@0.1.0`,j=1048576;function M(e){return 2*Math.ceil(e)}function N(e){let t=String(e??``).toLowerCase();return t.includes(`910_93`)?{id:`910_93`,label:`昇腾 910_93`,minimumSequencePerCp:4096}:t.includes(`910b`)||t.includes(`a2g`)?{id:`910B/A2G`,label:`昇腾 910B/A2G`,minimumSequencePerCp:8192}:null}function le(e,t){let n=new Set;for(let r=1;r<=Math.sqrt(e);r+=1){if(e%r!==0)continue;r<=t&&n.add(r);let i=e/r;i<=t&&n.add(i)}return[...n].sort((e,t)=>e-t)}function ue(e){let t=N(e.cluster.card_model),n=e.batch.sequence_length,r=Math.max(1,Math.floor(e.cluster.total_ranks/e.parallel.tp)),i=le(n,r),a=i.filter(e=>e===1||!t||n/e>=t.minimumSequencePerCp);return{hardware_profile:t?.id??`unclassified`,minimum_sequence_per_cp:t?.minimumSequencePerCp??null,maximum_cp_from_world_and_tp:r,divisible_cp_degrees:i,eligible_cp_degrees:a,current_cp_eligible:a.includes(e.parallel.cp)}}function de(e){let{model:t,parallel:n,batch:r,features:i={}}=e,a=r.sequence_length,o=r.micro_batch_size,s=t.hidden_size,c=n.cp,l=n.tp,u=n.ep,d=t.top_k,f=i.moe_token_dispatcher_type,p=i.hccl_ep_group_buffer_adaptive_factor,m=Number.isFinite(p)&&p>0?p:null,h=a/c*o*s/j,g={tp:M(h)*(n.sequence_parallel?1:2),pp:n.sequence_parallel?M(h/l):M(h),pp_new_stream:n.sequence_parallel?M(h/l):M(h),mp:10,mp_exp:10,tp_cp:10};if(t.routed_experts>0){if(g.exp=m===null?200:M(h/l*d),f===`alltoall_seq`){let e=m===null?200:M(m*h/l*d);g.tp=Math.max(g.tp,e),i.moe_tp_extend_ep&&(g.tp_exp=e)}else f===`allgather`&&(g.tp_exp=m===null?200:M(m*h*u))}if(n.cp_mode===`ulysses`)g.cp=M(h/l);else if(n.cp_mode===`ring`){let e=t.num_key_value_heads??t.num_attention_heads,r=h/t.num_attention_heads*e/l;g.cp=2*M(r),((n.cp_window_size??1)>1||i.use_cp_send_recv_overlap)&&(g.cp2=M(r))}else if(n.cp_mode===`hybrid`&&n.ulysses_degree_in_cp){let e=n.ulysses_degree_in_cp,r=c/e,i=t.num_key_value_heads??t.num_attention_heads;g.cp=10,g.cp_ulysses=M(a/e*o*s/l/j),g.cp_ring=M(a/r*o*s/t.num_attention_heads*i/l/j)*2}return{unit:`MiB`,ep_load_imbalance_factor:m,ep_factor_configured:m!==null,enabled:i.hccl_group_buffer_adaptive===!0,groups:g}}function fe(e){if(e.rule_profile?.framework===`generic`)return[];let t=[],n=ue(e),r=N(e.cluster.card_model),i=[r?.label??e.cluster.card_model];r&&!n.current_cp_eligible&&t.push(D({code:`MINDSPEED_CP_SLICE_BELOW_DEVICE_HEURISTIC`,kind:`suggestion`,confidence:`model-informed`,message:`当前 CP=${e.parallel.cp} 使每个分片只有 ${e.batch.sequence_length/e.parallel.cp} tokens，低于 ${r.label} 自动搜索使用的 ${r.minimumSequencePerCp} tokens 下限。`,fields:[`parallel.cp`,`batch.sequence_length`,`cluster.card_model`],applicableHardware:i,applicableVersions:[k],assumptions:[`这是性能搜索裁剪建议，不会把当前配置判为非法。`],source:`mindspeed-rule`,sourceRef:oe,formula:`sequence_length / cp >= ${r.minimumSequencePerCp}`,data:{...n,action:`优先从 ${n.eligible_cp_degrees.join(`、`)} 中选择更低 CP，并重新配平其余并行度后做 Profiling。`,impact_if_ignored:`配置仍然合法，但可能因分片过小和 CP 通信开销导致吞吐下降。`}}));let a=de(e);t.push(D({code:`MINDSPEED_HCCL_GROUP_BUFFER_ADAPTIVE`,kind:`advisory`,message:e.features?.hccl_group_buffer_adaptive?`已启用 HCCL 通信域 Buffer 自适应；可展开查看各通信域的静态估算。`:`HCCL 通信域当前使用统一 200 MiB Buffer；仅在显存偏满或 OOM 时评估自适应。`,fields:[`batch.sequence_length`,`batch.micro_batch_size`,`model.hidden_size`,`parallel.tp`,`parallel.cp`,`parallel.ep`,`features.hccl_group_buffer_adaptive`],applicableHardware:[`昇腾 NPU`],applicableVersions:[k,`TorchNPU FrameworkPTAdapter >= 7.0.RC1.B020`],assumptions:[`Buffer 数值单位为 MiB，并按 MindSpeed 锁定版本中的自适应公式计算。`,a.ep_factor_configured?`MoE EP 负载不均衡系数按显式配置 ${a.ep_load_imbalance_factor} 计算；实际值过大可能引起 OOM。`:`未显式配置 MoE EP 负载不均衡系数；按 MindSpeed 默认行为将 EP 相关通信域保留为 200 MiB。`,`该建议只描述静态配置方向，不代表性能收益已经通过 Profiling 校准。`],source:`mindspeed-rule`,sourceRef:`${se}; ${ce}`,data:{...a,action:e.features?.hccl_group_buffer_adaptive?`无需操作；用 Profiling 核对峰值显存和吞吐即可。`:`仅当理论容量偏满、实测显存紧张或发生 OOM 时，确认版本兼容后试加 --hccl-group-buffer-adaptive，并对比峰值显存与吞吐。`,impact_if_ignored:`配置和训练正确性不受影响；显存紧张时可能错失通信 Buffer 的节省空间。`}}));let o=e.batch.sequence_length/e.parallel.cp;return e.memory.recompute_mode===`none`&&o>=8192&&t.push(D({code:`CONFIG_LONG_SEQUENCE_RECOMPUTE_CAPACITY_DIRECTION`,kind:`suggestion`,message:`当前长序列未启用重计算；若理论容量接近卡上限，可用 estimate_training_capacity 对比 selective/full 重计算后再决定。`,fields:[`batch.sequence_length`,`parallel.cp`,`memory.recompute_mode`],applicableHardware:i,applicableVersions:[`mindspeed-config-mcp 0.1.x`],assumptions:[`这是容量方向建议；吞吐代价和真实峰值必须通过目标环境 Profiling 校准。`],source:`page-rule`,sourceRef:A,data:{sequence_per_cp:o,compare_recompute_modes:[`selective`,`full`]}})),e.memory.shard_mode===`none`&&e.parallel.dp>1&&t.push(D({code:`CONFIG_DP_OPTIMIZER_SHARD_CAPACITY_DIRECTION`,kind:`suggestion`,message:`DP>1 且优化器状态未分片；若容量受优化器状态主导，可用 estimate_training_capacity 对比 zero1/fsdp2。`,fields:[`parallel.dp`,`memory.shard_mode`],applicableHardware:i,applicableVersions:[`mindspeed-config-mcp 0.1.x`],assumptions:[`这是理论容量方向，不表示目标框架、版本和 checkpoint 流程已兼容对应分片模式。`],source:`page-rule`,sourceRef:A,data:{compare_shard_modes:[`zero1`,`fsdp2`]}})),t}var P=`compute-graph-viewer-wzh:shared/plane-rules.js@1e6bb6e`,F=`compute-graph-viewer-wzh:config-relation-observer.js:1519@1e6bb6e`,pe=`mindspeed-config-mcp:config-relation-observer.js:model-structure@2026-10-14`,me=`Megatron-LM:megatron/training/arguments.py@core_v0.12.1`,I=`MindSpeed-LLM:mindspeed_llm/training/arguments.py@7826e88`,L=`MindSpeed:mindspeed/arguments.py:868-882@6563468`,R=`MindSpeed:mindspeed/arguments.py:896-949@6563468`,he=`MindSpeed:mindspeed/arguments.py:796-1128@6563468`,z=`compute-graph-viewer-wzh:config-test/mf_pretrain_deepseek3_671b.yaml:model.model_config.offset`;function B(e){return e.rule_profile?.framework!==`generic`}function ge(e){return e.parallel?.pipeline_layer_mode?e.parallel.pipeline_layer_mode:Array.isArray(e.parallel?.num_layer_list)?`dynamic`:`uniform`}function V(e,t,n){t&&e.push(n)}function H(e,t){return e?.[t]===!0}function U(e,t,n,r,i,a){V(e,t,E(n,r,i,`mindspeed-rule`,he,a))}function W(e){let t=i(e),n=e.model,r=e.parallel,c=e.cluster,u=e.batch,d=e.features??{},f=[],p=[],m=ge(e),h=r.num_layer_list,g=r.pipeline_layer_offsets;if(V(f,t.layers<t.pp,E(`PAGE_LAYERS_AT_LEAST_PP`,`总层数 ${t.layers} 少于 PP ${t.pp}，无法保证每个 Stage 至少一层。`,[`model.total_layers`,`parallel.pp`],`page-rule`,P,`total_layers >= pp`)),m===`mindformers-offset`){if(V(f,e.rule_profile?.framework!==`mindformers`,E(`MINDFORMERS_OFFSET_REQUIRES_MINDFORMERS_PROFILE`,`MindFormers PP 层偏置只按 MindFormers profile 校验。`,[`rule_profile.framework`,`parallel.pipeline_layer_mode`,`parallel.pipeline_layer_offsets`],`compatibility-gap`,z,`framework === 'mindformers'`)),V(f,!Array.isArray(g)||!g.length,E(`MINDFORMERS_OFFSET_REQUIRES_MATRIX`,`选择 MindFormers PP 层偏置后必须提供 offset 矩阵。`,[`parallel.pipeline_layer_mode`,`parallel.pipeline_layer_offsets`],`compatibility-gap`,z)),Array.isArray(g)&&g.length){let e=g.every(e=>Array.isArray(e)&&e.length===t.pp);if(V(f,!e||g.length!==t.vpp,E(`MINDFORMERS_OFFSET_SHAPE_MATCHES_VPP_PP`,`offset 矩阵必须是 VPP×PP=${t.vpp}×${t.pp}，当前为 ${g.length}×${g[0]?.length??0}。`,[`parallel.pp`,`parallel.vpp`,`parallel.pipeline_layer_offsets`],`compatibility-gap`,z,`offset.length === vpp && every(row.length === pp)`)),e&&g.length===t.vpp){let e=g.flat().reduce((e,t)=>e+t,0),n=(t.layers-e)/(t.pp*t.vpp);V(f,!(Number.isInteger(n)&&g.flat().every(e=>n+e>0)),E(`MINDFORMERS_OFFSET_RESOLVES_ALL_LAYERS`,`offset 矩阵无法把 ${t.layers} 层分配为正整数虚拟 Stage。`,[`model.total_layers`,`parallel.pp`,`parallel.vpp`,`parallel.pipeline_layer_offsets`],`compatibility-gap`,z,`base=(total_layers-sum(offset))/(pp*vpp) is positive integer`))}}}else if(m===`dynamic`){if(V(f,e.rule_profile?.framework!==`mindspeed-llm-mcore`,E(`MINDSPEED_DYNAMIC_PP_REQUIRES_MCORE_PROFILE`,`动态 PP 的 num_layer_list 当前只按 MindSpeed-LLM MCore 口径校验。`,[`rule_profile.framework`,`parallel.pipeline_layer_mode`,`parallel.num_layer_list`],`mindspeed-rule`,I,`framework === 'mindspeed-llm-mcore'`)),V(f,!Array.isArray(h)||h.length===0,E(`MINDSPEED_DYNAMIC_PP_REQUIRES_NUM_LAYER_LIST`,`选择动态 PP 后，必须明确提供每个 Stage 的层数 num_layer_list。`,[`parallel.pipeline_layer_mode`,`parallel.num_layer_list`],`mindspeed-rule`,I,`num_layer_list.length === pp`)),Array.isArray(h)&&h.length>0){V(f,h.length!==t.pp,E(`MINDSPEED_DYNAMIC_PP_LIST_LENGTH_MATCHES_PP`,`动态 PP 给了 ${h.length} 个 Stage 层数，但 PP 是 ${t.pp}。`,[`parallel.pp`,`parallel.num_layer_list`],`mindspeed-rule`,I,`num_layer_list.length === pp`));let e=h.reduce((e,t)=>e+t,0);V(f,e!==t.layers,E(`MINDSPEED_DYNAMIC_PP_LIST_SUM_MATCHES_LAYERS`,`动态 PP 的 Stage 层数之和是 ${e}，与总层数 ${t.layers} 不一致。`,[`model.total_layers`,`parallel.num_layer_list`],`mindspeed-rule`,I,`sum(num_layer_list) === total_layers`))}}else Array.isArray(h)&&f.push(E(`CONFIG_NUM_LAYER_LIST_REQUIRES_DYNAMIC_PP`,`已经提供 num_layer_list，但 PP 分层模式仍是均匀；请明确选择动态 PP，或移除该列表。`,[`parallel.pipeline_layer_mode`,`parallel.num_layer_list`],`compatibility-gap`,I,`num_layer_list === undefined || pipeline_layer_mode === 'dynamic'`));if(m===`uniform`&&t.layers>=t.pp&&t.layers%t.pp!==0){let n=E(`MINDSPEED_LAYERS_DIVISIBLE_BY_PP`,`均匀 PP 要求每个 Stage 层数相同，但总层数 ${t.layers} 不能被 PP ${t.pp} 整除。MindSpeed-LLM MCore 可改用动态 PP 并明确 num_layer_list。`,[`model.total_layers`,`parallel.pp`,`parallel.pipeline_layer_mode`],B(e)?`mindspeed-rule`:`compatibility-gap`,me,`total_layers % pp === 0`);(B(e)?f:p).push(n)}if(V(f,n.num_attention_heads%t.tp!==0,E(`PAGE_HEADS_DIVISIBLE_BY_TP`,`注意力头 ${n.num_attention_heads} 不能被 TP ${t.tp} 整除。`,[`model.num_attention_heads`,`parallel.tp`],`page-rule`,F,`num_attention_heads % tp === 0`)),n.num_key_value_heads&&V(f,n.num_attention_heads%n.num_key_value_heads!==0,E(`MODEL_ATTENTION_HEADS_DIVISIBLE_BY_KV_HEADS`,`注意力头 ${n.num_attention_heads} 不能被 KV 头 ${n.num_key_value_heads} 整除，GQA/MQA 分组不完整。`,[`model.num_attention_heads`,`model.num_key_value_heads`],`page-rule`,pe,`num_attention_heads % num_key_value_heads === 0`)),n.ffn_hidden_size&&V(f,n.ffn_hidden_size%t.tp!==0,E(`PAGE_DENSE_FFN_DIVISIBLE_BY_TP`,`Dense FFN intermediate ${n.ffn_hidden_size} 不能被 TP ${t.tp} 整除。`,[`model.ffn_hidden_size`,`parallel.tp`],`page-rule`,F,`ffn_hidden_size % tp === 0`)),r.expert_tensor_parallel&&n.expert_ffn_hidden_size&&n.routed_experts>0&&V(f,n.expert_ffn_hidden_size%t.tp!==0,E(`PAGE_EXPERT_FFN_DIVISIBLE_BY_TP`,`MoE 专家 intermediate ${n.expert_ffn_hidden_size} 不能被 TP ${t.tp} 整除。`,[`model.expert_ffn_hidden_size`,`parallel.tp`,`parallel.expert_tensor_parallel`],`page-rule`,F,`expert_ffn_hidden_size % tp === 0`)),t.cp>1&&r.cp_mode===`ulysses`&&(V(f,n.num_attention_heads%(t.tp*t.cp)!==0,E(`MINDSPEED_ULYSSES_HEADS_DIVISIBLE_BY_TP_CP`,`Ulysses 口径下，注意力头 ${n.num_attention_heads} 不能被 TP×CP=${t.tp*t.cp} 整除。`,[`model.num_attention_heads`,`parallel.tp`,`parallel.cp`],`mindspeed-rule`,L,`num_attention_heads % (tp * cp) === 0`)),V(f,u.sequence_length%t.cp!==0,E(`MINDSPEED_ULYSSES_SEQUENCE_DIVISIBLE_BY_CP`,`Ulysses 口径下，序列长度 ${u.sequence_length} 不能被 CP ${t.cp} 整除。`,[`batch.sequence_length`,`parallel.cp`],`mindspeed-rule`,L,`sequence_length % cp === 0`))),t.cp>1&&r.cp_mode===`ring`&&V(f,u.sequence_length%(2*t.cp)!=0,E(`MINDSPEED_RING_SEQUENCE_DIVISIBLE_BY_2CP`,`Ring 口径下，序列长度 ${u.sequence_length} 不能被 2×CP=${2*t.cp} 整除。`,[`batch.sequence_length`,`parallel.cp`],`mindspeed-rule`,L,`sequence_length % (2 * cp) === 0`)),t.cp>1&&[`hybrid`,`hybrid-adaptive`].includes(r.cp_mode)){let e=r.ulysses_degree_in_cp;if(V(f,!e,E(`MINDSPEED_HYBRID_CP_REQUIRES_ULYSSES_DEGREE`,`${r.cp_mode===`hybrid`?`Hybrid`:`Hybrid Adaptive`} CP 必须提供 Ulysses 度数。`,[`parallel.cp_mode`,`parallel.cp`,`parallel.ulysses_degree_in_cp`],`mindspeed-rule`,R,`ulysses_degree_in_cp is required`)),e){let i=t.cp/e;V(f,t.cp%e!==0||i<=1,E(`MINDSPEED_HYBRID_CP_DEGREES_FORM_CP`,`CP ${t.cp} 必须由 Ulysses 度数 ${e} 与大于 1 的 Ring 度数整数组合。`,[`parallel.cp`,`parallel.ulysses_degree_in_cp`],`mindspeed-rule`,R,`cp % ulysses_degree_in_cp === 0 && cp / ulysses_degree_in_cp > 1`)),V(f,n.num_attention_heads%(e*t.tp)!==0,E(`MINDSPEED_HYBRID_CP_HEADS_DIVISIBLE_BY_ULYSSES_TP`,`注意力头 ${n.num_attention_heads} 不能被 Ulysses×TP=${e*t.tp} 整除。`,[`model.num_attention_heads`,`parallel.ulysses_degree_in_cp`,`parallel.tp`],`mindspeed-rule`,R,`num_attention_heads % (ulysses_degree_in_cp * tp) === 0`));let a=r.cp_window_size??1;r.cp_mode===`hybrid`&&Number.isInteger(i)&&i>1&&V(f,a>=i||i%a!==0,E(`MINDSPEED_HYBRID_CP_WINDOW_DIVIDES_RING_DEGREE`,`Hybrid CP 的 window ${a} 必须小于 Ring 度数 ${i}，且能整除 Ring 度数。`,[`parallel.cp`,`parallel.ulysses_degree_in_cp`,`parallel.cp_window_size`],`mindspeed-rule`,R,`1 <= cp_window_size < ring_degree && ring_degree % cp_window_size === 0`))}let i=r.cp_mode===`hybrid`?2*t.cp:t.cp;V(f,u.sequence_length%i!==0,E(r.cp_mode===`hybrid`?`MINDSPEED_HYBRID_CP_SEQUENCE_DIVISIBLE_BY_2CP`:`MINDSPEED_HYBRID_ADAPTIVE_CP_SEQUENCE_DIVISIBLE_BY_CP`,`${r.cp_mode===`hybrid`?`Hybrid`:`Hybrid Adaptive`} CP 要求序列长度 ${u.sequence_length} 能被 ${i} 整除。`,[`batch.sequence_length`,`parallel.cp`,`parallel.cp_mode`],`mindspeed-rule`,R,r.cp_mode===`hybrid`?`sequence_length % (2 * cp) === 0`:`sequence_length % cp === 0`))}if(t.cp>1&&r.cp_mode===`adaptive`&&V(f,u.sequence_length%t.cp!==0,E(`MINDSPEED_ADAPTIVE_CP_SEQUENCE_DIVISIBLE_BY_CP`,`Adaptive CP 要求序列长度 ${u.sequence_length} 能被 CP ${t.cp} 整除。`,[`batch.sequence_length`,`parallel.cp`,`parallel.cp_mode`],`mindspeed-rule`,R,`sequence_length % cp === 0`)),t.cp>1&&r.cp_mode===`ring`&&(r.cp_window_size??1)>1){let e=r.cp_window_size;V(f,e>=t.cp||t.cp%e!==0,E(`MINDSPEED_RING_CP_WINDOW_DIVIDES_CP`,`Ring CP 的 window ${e} 必须小于 CP ${t.cp}，且能整除 CP。`,[`parallel.cp`,`parallel.cp_window_size`],`mindspeed-rule`,R,`1 <= cp_window_size < cp && cp % cp_window_size === 0`))}U(f,H(d,`use_ascend_mc2`)&&H(d,`use_ascend_coc`),`MINDSPEED_MC2_COC_MUTUALLY_EXCLUSIVE`,`Ascend MC2 与 CoC 不能同时启用。`,[`features.use_ascend_mc2`,`features.use_ascend_coc`],`!(use_ascend_mc2 && use_ascend_coc)`),n.routed_experts>0&&(U(f,H(d,`use_ascend_mc2`),`MINDSPEED_MC2_INCOMPATIBLE_WITH_MOE`,`当前 MindSpeed 规则不允许在 MoE 模型上启用通用 Ascend MC2。`,[`model.routed_experts`,`features.use_ascend_mc2`],`routed_experts === 0 || !use_ascend_mc2`),U(f,H(d,`use_ascend_coc`),`MINDSPEED_COC_INCOMPATIBLE_WITH_MOE`,`当前 MindSpeed 规则不允许在 MoE 模型上启用 CoC。`,[`model.routed_experts`,`features.use_ascend_coc`],`routed_experts === 0 || !use_ascend_coc`));let _=d.ampipe_degree??1;if(_>1){U(f,!H(d,`use_flash_attention`),`MINDSPEED_AMPIPE_REQUIRES_FLASH_ATTENTION`,`AMPipe 必须启用 FlashAttention。`,[`features.ampipe_degree`,`features.use_flash_attention`],`use_flash_attention === true`),U(f,n.routed_experts<=0,`MINDSPEED_AMPIPE_REQUIRES_MOE`,`AMPipe 只支持 MoE 模型。`,[`features.ampipe_degree`,`model.routed_experts`],`routed_experts > 0`),U(f,t.ep<=1,`MINDSPEED_AMPIPE_REQUIRES_EP`,`AMPipe 要求 EP 大于 1。`,[`features.ampipe_degree`,`parallel.ep`],`ep > 1`),U(f,d.moe_model_type!==`deepspeed_moe`,`MINDSPEED_AMPIPE_REQUIRES_DEEPSPEED_MOE`,`AMPipe 当前只支持 deepspeed_moe。`,[`features.ampipe_degree`,`features.moe_model_type`],`moe_model_type === 'deepspeed_moe'`);for(let[e,t,n]of[[`use_ascend_mc2`,`MINDSPEED_AMPIPE_INCOMPATIBLE_WITH_MC2`,`Ascend MC2`],[`add_bias_linear`,`MINDSPEED_AMPIPE_INCOMPATIBLE_WITH_BIAS`,`bias linear`],[`overlap_grad_reduce`,`MINDSPEED_AMPIPE_INCOMPATIBLE_WITH_GRAD_OVERLAP`,`overlap_grad_reduce`],[`overlap_param_gather`,`MINDSPEED_AMPIPE_INCOMPATIBLE_WITH_PARAM_OVERLAP`,`overlap_param_gather`],[`use_nanopipe`,`MINDSPEED_AMPIPE_INCOMPATIBLE_WITH_NANOPIPE`,`NanoPipe`],[`recompute_in_bubble`,`MINDSPEED_AMPIPE_INCOMPATIBLE_WITH_BUBBLE_RECOMPUTE`,`recompute_in_bubble`],[`recompute_in_advance`,`MINDSPEED_AMPIPE_INCOMPATIBLE_WITH_ADVANCE_RECOMPUTE`,`recompute_in_advance`],[`adaptive_recompute`,`MINDSPEED_AMPIPE_INCOMPATIBLE_WITH_ADAPTIVE_RECOMPUTE`,`adaptive recompute`]])U(f,H(d,e),t,`AMPipe 当前不支持 ${n}。`,[`features.ampipe_degree`,`features.${e}`],`!${e}`);if(r.sequence_parallel&&U(f,u.sequence_length%(_*t.tp)!==0,`MINDSPEED_AMPIPE_SEQUENCE_DIVISIBLE_BY_DEGREE_TP`,`启用 sequence parallel 时，序列长度 ${u.sequence_length} 必须能被 AMPipe×TP=${_*t.tp} 整除。`,[`batch.sequence_length`,`features.ampipe_degree`,`parallel.tp`,`parallel.sequence_parallel`],`sequence_length % (ampipe_degree * tp) === 0`),t.cp>1){U(f,r.cp_mode!==`ring`,`MINDSPEED_AMPIPE_CP_REQUIRES_RING`,`AMPipe 与 CP 同用时只支持 Ring/megatron CP。`,[`features.ampipe_degree`,`parallel.cp`,`parallel.cp_mode`],`cp <= 1 || cp_mode === 'ring'`),U(f,_!==2,`MINDSPEED_AMPIPE_CP_REQUIRES_DEGREE_TWO`,`AMPipe 与 CP 同用时 AMPipe degree 必须为 2。`,[`features.ampipe_degree`,`parallel.cp`],`cp <= 1 || ampipe_degree === 2`);let e=2*_*t.cp*(r.sequence_parallel?t.tp:1);U(f,u.sequence_length%e!==0,`MINDSPEED_AMPIPE_CP_SEQUENCE_DIVISIBILITY`,`当前 AMPipe/CP 组合要求序列长度 ${u.sequence_length} 能被 ${e} 整除。`,[`batch.sequence_length`,`features.ampipe_degree`,`parallel.cp`,`parallel.tp`,`parallel.sequence_parallel`],`sequence_length % (2 * ampipe_degree * cp * (sequence_parallel ? tp : 1)) === 0`)}}if(H(d,`tp_2d`)){let e=d.tp_x??1,i=d.tp_y??1;U(f,r.sequence_parallel,`MINDSPEED_TP2D_INCOMPATIBLE_WITH_SEQUENCE_PARALLEL`,`2D TP 不支持 sequence parallel。`,[`features.tp_2d`,`parallel.sequence_parallel`],`!sequence_parallel`),U(f,H(d,`use_fused_rmsnorm`),`MINDSPEED_TP2D_INCOMPATIBLE_WITH_FUSED_RMSNORM`,`2D TP 不支持 fused RMSNorm。`,[`features.tp_2d`,`features.use_fused_rmsnorm`],`!use_fused_rmsnorm`),U(f,H(d,`use_nanopipe`),`MINDSPEED_TP2D_INCOMPATIBLE_WITH_NANOPIPE`,`2D TP 不支持 NanoPipe。`,[`features.tp_2d`,`features.use_nanopipe`],`!use_nanopipe`),U(f,_>1,`MINDSPEED_TP2D_INCOMPATIBLE_WITH_AMPIPE`,`2D TP 不支持 AMPipe。`,[`features.tp_2d`,`features.ampipe_degree`],`ampipe_degree <= 1`),U(f,![`ring`,`ulysses`].includes(r.cp_mode),`MINDSPEED_TP2D_CP_MODE_LIMIT`,`2D TP 当前只支持 Ring 或 Ulysses CP。`,[`features.tp_2d`,`parallel.cp_mode`],`cp_mode in ['ring', 'ulysses']`),U(f,H(d,`use_ascend_coc`),`MINDSPEED_TP2D_INCOMPATIBLE_WITH_COC`,`2D TP 不支持 Ascend CoC。`,[`features.tp_2d`,`features.use_ascend_coc`],`!use_ascend_coc`),U(f,t.tp!==e*i,`MINDSPEED_TP2D_FACTORS_MATCH_TP`,`2D TP 要求 TP=${t.tp} 等于 tp_x×tp_y=${e*i}。`,[`parallel.tp`,`features.tp_x`,`features.tp_y`],`tp === tp_x * tp_y`),U(f,t.ep>1||n.routed_experts>0,`MINDSPEED_TP2D_INCOMPATIBLE_WITH_MOE`,`2D TP 当前不支持 MoE/EP。`,[`features.tp_2d`,`model.routed_experts`,`parallel.ep`],`routed_experts === 0 && ep === 1`)}if(H(d,`use_nd_matmul`)){U(f,d.normalization===`layernorm`,`MINDSPEED_ND_MATMUL_INCOMPATIBLE_WITH_LAYERNORM`,`ND MatMul 当前不支持 LayerNorm。`,[`features.use_nd_matmul`,`features.normalization`],`normalization !== 'layernorm'`),U(f,H(d,`loading_checkpoint`),`MINDSPEED_ND_MATMUL_INCOMPATIBLE_WITH_CHECKPOINT_LOAD`,`ND MatMul 训练当前不支持加载权重或预训练 checkpoint。`,[`features.use_nd_matmul`,`features.loading_checkpoint`],`!loading_checkpoint`);for(let e of[`nd1_dim1_size`,`nd2_dim1_size`]){let n=d[e]??1;U(f,t.tp%n!==0,`MINDSPEED_ND_MATMUL_TP_DIVISIBLE_BY_${e.startsWith(`nd1`)?`ND1`:`ND2`}`,`TP ${t.tp} 必须能被 ${e}=${n} 整除。`,[`parallel.tp`,`features.${e}`],`tp % ${e} === 0`)}}let v=H(d,`moe_alltoall_overlap_comm`),y=H(d,`moe_allgather_overlap_comm`);U(f,v&&d.moe_token_dispatcher_type!==`alltoall_seq`,`MINDSPEED_MOE_ALLTOALL_OVERLAP_REQUIRES_ALLTOALL_SEQ`,`MoE AllToAll overlap 只支持 alltoall_seq dispatcher。`,[`features.moe_alltoall_overlap_comm`,`features.moe_token_dispatcher_type`],`moe_token_dispatcher_type === 'alltoall_seq'`),U(f,y&&d.moe_token_dispatcher_type!==`allgather`,`MINDSPEED_MOE_ALLGATHER_OVERLAP_REQUIRES_ALLGATHER`,`MoE AllGather overlap 只支持 allgather dispatcher。`,[`features.moe_allgather_overlap_comm`,`features.moe_token_dispatcher_type`],`moe_token_dispatcher_type === 'allgather'`),U(f,H(d,`moe_adaptive_recompute_activation`)&&d.moe_token_dispatcher_type===`alltoall_seq`,`MINDSPEED_MOE_ADAPTIVE_RECOMPUTE_REQUIRES_ALLGATHER`,`MoE adaptive recompute activation 不支持 alltoall_seq，当前规则要求 allgather。`,[`features.moe_adaptive_recompute_activation`,`features.moe_token_dispatcher_type`],`moe_token_dispatcher_type === 'allgather'`),(v||y)&&(U(f,!H(d,`moe_permutation_async_comm`),`MINDSPEED_MOE_OVERLAP_REQUIRES_ASYNC_PERMUTATION`,`MoE dispatcher overlap 必须启用 permutation async communication。`,[`features.moe_alltoall_overlap_comm`,`features.moe_allgather_overlap_comm`,`features.moe_permutation_async_comm`],`moe_permutation_async_comm === true`),U(f,!H(d,`moe_grouped_gemm`),`MINDSPEED_MOE_OVERLAP_REQUIRES_GROUPED_GEMM`,`MoE dispatcher overlap 必须启用 grouped GEMM。`,[`features.moe_alltoall_overlap_comm`,`features.moe_allgather_overlap_comm`,`features.moe_grouped_gemm`],`moe_grouped_gemm === true`)),U(f,v&&t.tp>1&&!H(d,`moe_tp_extend_ep`),`MINDSPEED_MOE_ALLTOALL_OVERLAP_TP_REQUIRES_EXTEND_EP`,`TP>1 的 MoE AllToAll overlap 必须启用 moe_tp_extend_ep。`,[`parallel.tp`,`features.moe_alltoall_overlap_comm`,`features.moe_tp_extend_ep`],`tp === 1 || moe_tp_extend_ep`),H(d,`moe_tp_extend_ep`)&&(U(f,n.routed_experts%(t.tp*t.ep)!==0,`MINDSPEED_MOE_TP_EXTEND_EP_EXPERT_DIVISIBILITY`,`moe_tp_extend_ep 要求路由专家 ${n.routed_experts} 能被 TP×EP=${t.tp*t.ep} 整除。`,[`model.routed_experts`,`parallel.tp`,`parallel.ep`,`features.moe_tp_extend_ep`],`routed_experts % (tp * ep) === 0`),U(f,!H(d,`moe_permutation_async_comm`)||!H(d,`moe_grouped_gemm`),`MINDSPEED_MOE_TP_EXTEND_EP_REQUIRES_ASYNC_GROUPED_GEMM`,`moe_tp_extend_ep 必须同时启用 permutation async communication 和 grouped GEMM。`,[`features.moe_tp_extend_ep`,`features.moe_permutation_async_comm`,`features.moe_grouped_gemm`],`moe_permutation_async_comm && moe_grouped_gemm`)),H(d,`moe_bmm_mc2`)&&(U(f,d.moe_model_type!==`megatron_moe`||d.moe_token_dispatcher_type!==`alltoall`,`MINDSPEED_MOE_BMM_MC2_REQUIRES_MCORE_ALLTOALL`,`MoE BMM MC2 只支持 megatron_moe 与 alltoall dispatcher。`,[`features.moe_bmm_mc2`,`features.moe_model_type`,`features.moe_token_dispatcher_type`],`moe_model_type === 'megatron_moe' && moe_token_dispatcher_type === 'alltoall'`),U(f,!H(d,`moe_grouped_gemm`),`MINDSPEED_MOE_BMM_MC2_REQUIRES_GROUPED_GEMM`,`MoE BMM MC2 必须启用 grouped GEMM。`,[`features.moe_bmm_mc2`,`features.moe_grouped_gemm`],`moe_grouped_gemm === true`),U(f,H(d,`moe_tp_extend_ep`)||v,`MINDSPEED_MOE_BMM_MC2_OVERLAP_CONFLICT`,`MoE BMM MC2 不支持 moe_tp_extend_ep 或 MoE AllToAll overlap。`,[`features.moe_bmm_mc2`,`features.moe_tp_extend_ep`,`features.moe_alltoall_overlap_comm`],`!moe_tp_extend_ep && !moe_alltoall_overlap_comm`)),U(f,H(d,`adaptive_recompute`)&&e.memory.recompute_mode!==`none`,`MINDSPEED_ADAPTIVE_RECOMPUTE_CONFLICTS_WITH_STATIC_RECOMPUTE`,`Adaptive recompute 不能与静态 recompute mode 同时启用。`,[`features.adaptive_recompute`,`memory.recompute_mode`],`!adaptive_recompute || recompute_mode === 'none'`),H(d,`adaptive_memory_optimization`)&&(U(f,_>1,`MINDSPEED_ADAPTIVE_MEMORY_INCOMPATIBLE_WITH_AMPIPE`,`Adaptive memory optimization 不支持 AMPipe。`,[`features.adaptive_memory_optimization`,`features.ampipe_degree`],`ampipe_degree <= 1`),U(f,H(d,`adaptive_recompute`),`MINDSPEED_ADAPTIVE_MEMORY_INCOMPATIBLE_WITH_ADAPTIVE_RECOMPUTE`,`Adaptive memory optimization 不支持 adaptive recompute。`,[`features.adaptive_memory_optimization`,`features.adaptive_recompute`],`!adaptive_recompute`),U(f,e.memory.recompute_mode!==`none`,`MINDSPEED_ADAPTIVE_MEMORY_INCOMPATIBLE_WITH_STATIC_RECOMPUTE`,`Adaptive memory optimization 不支持静态 recompute mode。`,[`features.adaptive_memory_optimization`,`memory.recompute_mode`],`recompute_mode === 'none'`)),t.vpp>1&&(V(f,t.pp<=1,E(`PAGE_VPP_REQUIRES_PP`,`PP ${t.pp} 时没有可供 VPP ${t.vpp} 交错的流水线。`,[`parallel.pp`,`parallel.vpp`],`page-rule`,F,`vpp === 1 || pp > 1`)),V(f,m===`dynamic`,E(`MINDSPEED_DYNAMIC_PP_INCOMPATIBLE_WITH_VPP`,`动态 PP 与 VPP ${t.vpp} 不能同时启用；请将 VPP 调回 1，或改回均匀 PP。`,[`parallel.pipeline_layer_mode`,`parallel.num_layer_list`,`parallel.vpp`],`mindspeed-rule`,I,`pipeline_layer_mode !== 'dynamic' || vpp === 1`)),V(f,m===`uniform`&&t.pp>1&&t.layers%(t.pp*t.vpp)!==0,E(`PAGE_LAYERS_DIVISIBLE_BY_PP_VPP`,`总层数 ${t.layers} 不能被 PP×VPP=${t.pp*t.vpp} 整除。`,[`model.total_layers`,`parallel.pp`,`parallel.vpp`],`page-rule`,F,`total_layers % (pp * vpp) === 0`))),n.routed_experts>0?(V(f,n.routed_experts%t.ep!==0,E(`PAGE_EXPERTS_DIVISIBLE_BY_EP`,`路由专家 ${n.routed_experts} 不能被 EP ${t.ep} 整除。`,[`model.routed_experts`,`parallel.ep`],`page-rule`,P,`routed_experts % ep === 0`)),V(f,n.top_k>n.routed_experts,E(`PAGE_TOPK_WITHIN_EXPERTS`,`Top-K ${n.top_k} 超过路由专家总数 ${n.routed_experts}。`,[`model.top_k`,`model.routed_experts`],`page-rule`,P,`top_k <= routed_experts`))):(V(f,t.ep!==1,E(`CONFIG_DENSE_MODEL_REQUIRES_EP_ONE`,`Dense 模型没有路由专家，EP 必须为 1。`,[`model.routed_experts`,`parallel.ep`],`page-rule`,P,`routed_experts > 0 || ep === 1`)),V(f,n.top_k!==0,E(`CONFIG_DENSE_MODEL_REQUIRES_TOPK_ZERO`,`Dense 模型没有路由专家，Top-K 必须为 0。`,[`model.routed_experts`,`model.top_k`],`page-rule`,P,`routed_experts > 0 || top_k === 0`))),t.mode!==`orthogonal`&&V(f,a(e)%t.ep!==0,E(`PAGE_EP_DOMAIN_DIVISIBLE_BY_EP`,t.mode===`mf`?`MindFormers 口径下，DP×TP=${a(e)} 不能被 EP ${t.ep} 整除。`:`切出口径下，DP ${t.dp} 不能被 EP ${t.ep} 整除。`,t.mode===`mf`?[`parallel.dp`,`parallel.tp`,`parallel.ep`]:[`parallel.dp`,`parallel.ep`],`page-rule`,P,t.mode===`mf`?`(dp * tp) % ep === 0`:`dp % ep === 0`));let b=s(e);return V(f,b!==c.total_ranks,E(`PAGE_WORLD_SIZE_MATCHES_TOTAL_RANKS`,`并行度乘积为 ${b}，与总 Rank ${c.total_ranks} 不一致。`,[`parallel.dp`,`parallel.pp`,`parallel.tp`,`parallel.cp`,`parallel.ep`,`cluster.total_ranks`],`page-rule`,P,`dp * pp * tp * cp${o(e)===1?``:` * ep`} === total_ranks`)),c.total_ranks%c.ranks_per_node!==0&&p.push(E(`PAGE_PARTIAL_LAST_NODE`,`总 Rank ${c.total_ranks} 不能整除每节点 ${c.ranks_per_node} 卡，最后一个节点只使用部分卡。`,[`cluster.total_ranks`,`cluster.ranks_per_node`],`page-rule`,P,`total_ranks % ranks_per_node === 0`)),O({tool:`validate_parallel_config`,input:e,status:f.length?`invalid`:`valid`,errors:f,warnings:p,suggestions:f.length?[]:fe(e),assumptions:[`只校验表单和 rule_profile 对应上游中已建模的静态约束，不代表目标环境已经实机运行通过。`],data:{valid:f.length===0,world_size:b,ep_mode:t.mode,pipeline_layer_mode:m,pipeline_stage_layers:m===`dynamic`&&Array.isArray(h)?[...h]:m===`mindformers-offset`&&Array.isArray(g)&&g.length===t.vpp&&g.every(e=>Array.isArray(e)&&e.length===t.pp)?Array.from({length:t.pp},(e,n)=>{let r=g.flat().reduce((e,t)=>e+t,0),i=(t.layers-r)/(t.pp*t.vpp);return g.reduce((e,t)=>e+i+t[n],0)}):null,ep_domain:a(e),expert_data_parallel:Number.isInteger(l(e))?l(e):null}})}function _e(e,t,n,r){let i=e[t];i.has(n)||i.set(n,[]),i.get(n).push(r)}function ve(e){return Object.fromEntries(Object.entries(e).map(([e,t])=>[e,Array.from(t,([e,t])=>({id:e,ranks:t}))]))}function ye(e,t,n){let r=Math.floor(e/t),i=e%t,a=Array.isArray(n)&&n.length===t?n:Array.from({length:t},(e,t)=>r+ +(t<i)),o=[],s=0;for(let e=0;e<t;e+=1){let t=a[e];o.push({stage:e,layer_start:s,layer_end:s+t-1,layer_count:t}),s+=t}return o}function be(e,t){let n=Math.max(0,e.model.first_k_dense_layers??0),r=e.model.routed_experts>0;return t.flatMap(e=>Array.from({length:e.layer_count},(t,i)=>{let a=e.layer_start+i;return{layer:a,stage:e.stage,stage_offset:i,ffn:r&&a>=n?`moe`:`dense`}}))}function xe(e,t){if(!e)return[];let n=e/t;return Array.from({length:t},(e,t)=>({ep_index:t,expert_start:t*n,expert_end:(t+1)*n-1,experts:Array.from({length:n},(e,r)=>t*n+r)}))}function Se(e){let t=W(e);if(t.errors.length)return O({tool:`compute_rank_topology`,input:e,status:`invalid`,errors:t.errors,warnings:t.warnings,assumptions:t.assumptions,data:{valid:!1}});let n=i(e),r=f(e),a=n.mode===`mf`,o=l(e),s=a?n.cp:n.tp*n.cp,c=n.ep*s,u=o*c,d=(e,t,n,r=0)=>e*u+t*c+n*s+r,p={tp:new Map,pp:new Map,dp:new Map,cp:new Map,ep:new Map,edp:new Map},m=[];for(let t=0;t<e.cluster.total_ranks;t+=1){let r=Math.floor(t/u),i=t-r*u,o=Math.floor(i/c),l=i-o*c,d=Math.floor(l/s),f=l-d*s,h=o*n.ep+d,g=a?h%n.tp:f%n.tp,_=a?f:Math.floor(f/n.tp),v=a?Math.floor(h/n.tp):o,y=Math.floor(t/e.cluster.ranks_per_node),b={pp:`pp:offset=${i}`,tp:a?`tp:stage=${r},dp=${v},cp=${_}`:`tp:stage=${r},edp=${o},ep=${d},cp=${_}`,cp:a?`cp:stage=${r},domain=${h}`:`cp:stage=${r},edp=${o},ep=${d},tp=${g}`,ep:a?`ep:stage=${r},edp=${o},cp=${_}`:`ep:stage=${r},edp=${o},tp=${g},cp=${_}`,dp:`dp:stage=${r},tp=${g},cp=${_}`,edp:a?`edp:stage=${r},ep=${d},cp=${_}`:`edp:stage=${r},ep=${d},tp=${g},cp=${_}`};for(let[e,n]of Object.entries(b))_e(p,e,n,t);m.push({rank:t,node:y,stage:r,dp_index:v,edp_index:o,ep_index:d,tp_index:g,cp_index:_,group_ids:b})}let h=ye(e.model.total_layers,n.pp,t.data?.pipeline_stage_layers).map(e=>({...e,ranks:Array.from({length:u},(t,n)=>d(e.stage,0,0,n))})),g=be(e,h),_=xe(e.model.routed_experts,n.ep),v=Array.from({length:Math.ceil(e.cluster.total_ranks/e.cluster.ranks_per_node)},(t,n)=>{let r=n*e.cluster.ranks_per_node,i=Math.min(e.cluster.total_ranks,r+e.cluster.ranks_per_node)-1;return{node:n,rank_start:r,rank_end:i,ranks:Array.from({length:i-r+1},(e,t)=>r+t)}});return O({tool:`compute_rank_topology`,input:e,status:`valid`,warnings:t.warnings,assumptions:[`Rank 编址复现 config-relation-plane 页面口径。`,`Megatron-Core core_v0.12.1 Commit 尚未锁定，因此通信组语义标记为 page-derived。`],data:{valid:!0,semantics:`page-derived`,counts:{...r,ranks_per_stage:u,ranks_per_edp_block:c,ranks_per_ep_slice:s,nodes:v.length,total_layers:e.model.total_layers,dense_layers:g.filter(({ffn:e})=>e===`dense`).length,moe_layers:g.filter(({ffn:e})=>e===`moe`).length,routed_experts:e.model.routed_experts,experts_per_ep_slice:_[0]?.experts.length??0},stages:h,layers:g,expert_slices:_,nodes:v,ranks:m,groups:ve(p)}})}var G=1024**3,K=Object.freeze({tight:.8,alert:.88}),Ce=Object.freeze({classification:`heuristic`,calibration:`uncalibrated`,warning_headroom_ratio:.2,sources:Object.freeze([`PyTorch:docs/notes/cuda.html#memory-management:garbage_collection_threshold-example-0.8`,`DeepSpeed:docs/memory.html:additional_buffer_factor-1.5`])}),q=Object.freeze({base_gib:2,hccl_buffer_gib:.2,hccl_double_buffer:2,workspace_factor:2,workspace_floor_gib:1,fragmentation_ratio:.05,fsdp_prefetch_units:2}),we=`compute-graph-viewer-wzh:config-relation-capacity.js:114-879@1e6bb6e`,Te=`MindSpeed-LLM:mindspeed_llm/training/arguments.py@7826e88`,Ee=`compute-graph-viewer-wzh:config-test/mf_pretrain_deepseek3_671b.yaml:model.model_config.offset`;function De(e){let t=e.memory.parameter_dtype,n=e.memory.compute_dtype===`fp8`;return{weight:t===`fp32`?n?5:4:n?1:2,grad:t===`fp32`?4:2,optim:t===`fp32`?8:12,activation:2}}function Oe(e){let{parallel:t,model:n}=e;if(t.pipeline_layer_mode===`dynamic`&&Array.isArray(t.num_layer_list)&&t.num_layer_list.length===t.pp)return[...t.num_layer_list];if(t.pipeline_layer_mode===`mindformers-offset`&&Array.isArray(t.pipeline_layer_offsets)&&t.pipeline_layer_offsets.length===t.vpp&&t.pipeline_layer_offsets.every(e=>Array.isArray(e)&&e.length===t.pp)){let e=t.pipeline_layer_offsets.flat().reduce((e,t)=>e+t,0),r=(n.total_layers-e)/(t.pp*t.vpp);if(Number.isInteger(r))return Array.from({length:t.pp},(e,n)=>t.pipeline_layer_offsets.reduce((e,t)=>e+r+t[n],0))}let r=Math.floor(n.total_layers/t.pp),i=n.total_layers%t.pp;return Array.from({length:t.pp},(e,t)=>r+ +(t<i))}function ke(e){let t=Oe(e),n=[],r=0;for(let e=0;e<t.length;e+=1){let i=t[e];n.push({stage:e,start:r,end:r+i-1,count:i}),r+=i}return n}function Ae(e,t){return e.model.routed_experts===0||t<(e.model.first_k_dense_layers??0)}function je(e,t){let{model:n,parallel:r}=e,a=i(e),o=n.hidden_size,s=r.tp,c=a.mode===`mf`||!r.expert_tensor_parallel?1:s,l=n.routed_experts>0?n.routed_experts/r.ep:0,u=0,d=0,f=0,p=0,m=0,h=!1;for(let r=t.start;r<=t.end;r+=1){let t=u/s+d/c+f;u+=4*o*o,Ae(e,r)?u+=3*o*(n.ffn_hidden_size??4*o):(h=!0,d+=l*3*o*(n.expert_ffn_hidden_size??n.ffn_hidden_size??4*o),u+=n.shared_experts*3*o*(n.expert_ffn_hidden_size??n.ffn_hidden_size??4*o),f+=o*n.routed_experts),m=Math.max(m,u/s+d/c+f-t)}let g=(t.stage===0?n.vocab_size*o:0)+(t.stage===r.pp-1?n.vocab_size*o:0);r.vocab_embedding_data_parallel?p+=g:u+=g;let _=d/c,v=r.vocab_embedding_data_parallel?g:g/s;return{total:u/s+f+p+_,expert:_,largest_unit:Math.max(m,v),has_moe:h}}function Me(e){let t={other:Math.max(1,c(e)),expert:Math.max(1,l(e))},n={other:1,expert:1};return e.memory.shard_mode===`fsdp2`?{weight:t,grad:t,optim:t}:e.memory.shard_mode===`zero1`?{weight:n,grad:n,optim:t}:{weight:n,grad:n,optim:n}}function J(e,t,n){return((e.total-e.expert)/t.other+e.expert/t.expert)*n}function Ne(e,t){let n=e.parallel.tp,r=e.parallel.sequence_parallel,i={none:r?34:10*n+24,selective:r?17:9*n+8,full:r?2:2*n},a=e.memory.recompute_mode;if(a!==`layers`)return t.count*i[a];let o=Math.min(t.count,e.memory.recompute_layers??0);return o*i.full+(t.count-o)*i.none}function Pe(e,t){let n=e.parallel.pp,r=e.parallel.vpp,i=r<=1?Math.max(1,n-t):(2*(n-t-1)+(r-1)*n+1)/r;return{actual:Math.min(i,e.batch.micro_batch_count),full_pipeline:i}}function Fe(e){return e>1?`over`:e>K.alert?`alert`:e>K.tight?`tight`:`safe`}function Y(e){return e/G}function Ie(e){let t=W(e);if(t.errors.length)return O({tool:`estimate_training_capacity`,input:e,status:`invalid`,errors:t.errors,warnings:t.warnings,assumptions:t.assumptions,confidence:`theoretical`,data:{valid:!1}});let n=De(e),r=ke(e),i=Me(e),a=e.memory.lora_enabled,o=[e.parallel.tp,e.parallel.pp,e.parallel.dp,e.parallel.cp,e.parallel.ep].filter(e=>e>1).length+ +(e.parallel.ep>1),s=r.map(t=>{let r=je(e,t),s=a?t.count*8*(e.memory.lora_rank??1)*e.model.hidden_size/e.parallel.tp:0,c=a?{total:s,expert:0}:r,l=J(r,i.weight,n.weight)+(a?J({total:s,expert:0},i.weight,n.weight):0),u=J(c,i.grad,n.grad),d=J(c,i.optim,n.optim),f=Pe(e,t.stage),p=Ne(e,t)*e.batch.micro_batch_size*(e.batch.sequence_length/e.parallel.cp)*e.model.hidden_size/e.parallel.tp*f.actual,m=l+u+d+p,h=q.base_gib*G,g=o*q.hccl_buffer_gib*q.hccl_double_buffer*G,_=e.batch.micro_batch_size*(e.batch.sequence_length/e.parallel.cp)*e.model.hidden_size*n.activation/e.parallel.tp,v=r.has_moe?Math.max(q.workspace_floor_gib*G,q.workspace_factor*e.model.top_k*_):q.workspace_floor_gib*G,y=m*q.fragmentation_ratio,b=e.memory.shard_mode===`fsdp2`?r.largest_unit*q.fsdp_prefetch_units*n.weight:0,x=g+v+y+b,S=e.cluster.card_memory_gib*G,C=h+m+x,w=C/S;return{stage:t.stage,layers:t.count,parameter_count_on_card:r.total,trainable_parameter_count_on_card:c.total,capacity_gib:e.cluster.card_memory_gib,total_gib:Y(C),ratio:w,level:Fe(w),inflight_micro_batches:f.actual,full_pipeline_inflight:f.full_pipeline,micro_batch_count:e.batch.micro_batch_count,vpp_chunks:e.parallel.vpp,recomputed_layers:e.memory.recompute_mode===`layers`?Math.min(t.count,e.memory.recompute_layers??0):0,values_gib:{base:Y(h),weight:Y(l),gradient:Y(u),optimizer:Y(d),activation:Y(p),reserve:Y(x)},reserve_parts_gib:{communication:Y(g),workspace:Y(v),fragmentation:Y(y),fsdp_unshard:Y(b)}}}),c=s.reduce((e,t)=>t.total_gib>e.total_gib?t:e),l=[...t.warnings];return c.level===`over`&&l.push(E(`CAPACITY_THEORETICAL_OOM`,`理论估算中 Stage ${c.stage} 使用 ${c.total_gib.toFixed(1)} GiB，超过单卡 ${c.capacity_gib} GiB。`,[`cluster.card_memory_gib`,`batch.micro_batch_size`,`batch.sequence_length`,`memory.shard_mode`],`page-rule`,we)),O({tool:`estimate_training_capacity`,input:e,status:`estimated`,warnings:l,assumptions:[`结果复现页面六段容量口径，属于理论估算，不是设备实测峰值。`,`运行时底座、HCCL buffer、workspace、碎片率和 FSDP2 预取深度使用页面经验系数。`,`80% 警戒线是未校准的保守策略：当前估算已含运行时预留，仍额外保留 20% 以覆盖静态估算误差；它不是框架 OOM 标准。`,...e.model.routed_experts>0&&e.model.first_k_dense_layers===void 0?[`未提供 first_k_dense_layers，按所有 Transformer 层均为 MoE 层估算。`]:[]],confidence:`theoretical`,data:{valid:!0,thresholds:K,threshold_policy:Ce,pipeline_layout_sources:{dynamic:Te,mindformers_offset:Ee},runtime_coefficients:q,bottleneck_stage:c.stage,bottleneck_level:c.level,stages:s}})}var X=Object.freeze({dp:1024,pp:1024,tp:1024,cp:1024,ep:1024,ranks:65536}),Z=Object.freeze([`dp`,`pp`,`tp`,`cp`,`ep`]),Le=25e3;function Q(e,t){return t===`ranks`?e.cluster.total_ranks:e.parallel[t]}function Re(e,t,n){t===`ranks`?e.cluster.total_ranks=n:e.parallel[t]=n}function ze(e,t){if(!Number.isSafeInteger(e)||e<1)return[];let n=new Set;for(let r=1;r*r<=e;r+=1)e%r===0&&(r<=t&&n.add(r),e/r<=t&&n.add(e/r));return[...n]}function $(e,t){return Math.abs(Math.log2(t/e))}function Be(e,t,n){let r=Q(e,t),i=n[t],a=new Set([1,r-1,r+1]);for(let e=1;e<=i;e*=2)a.add(e);let o=[e.cluster.total_ranks];t===`pp`&&o.push(e.model.total_layers),t===`tp`&&o.push(e.model.num_attention_heads,e.model.ffn_hidden_size),t===`cp`&&o.push(e.batch.sequence_length),t===`ep`&&o.push(e.model.routed_experts,e.parallel.dp),t===`dp`&&o.push(e.parallel.ep);for(let e of o)for(let t of ze(e,i))a.add(t);return[...a].filter(e=>Number.isSafeInteger(e)&&e>=1&&e<=i&&e!==r).sort((e,t)=>$(r,e)-$(r,t)||e-t)}function Ve(e,t){return e.changes.length-t.changes.length||e.distance-t.distance||Number(e.changes.some(({field:e})=>e===`ranks`))-Number(t.changes.some(({field:e})=>e===`ranks`))||e.key.localeCompare(t.key)}function He(e,{field:t,value:n,editableFields:r=[...Z,`ranks`],lockedFields:i=[],fieldLimits:a=X}={}){let o=Object.fromEntries(Object.entries(X).map(([e,t])=>[e,Math.min(t,a[e]??t)])),c=new Set(r),l=new Set(i);if(!c.has(t)||!Object.hasOwn(X,t)||!Number.isSafeInteger(n)||n<1||n>o[t])return{status:`unavailable`,reason:`输入超出当前原型的整数范围。`,selection:null,changes:[]};let u=structuredClone(e);Re(u,t,n);let d=Object.fromEntries([...c].map(t=>[t,Q(e,t)])),f=[...c].filter(e=>e!==t&&!l.has(e)),p=Z.filter(e=>c.has(e)&&f.includes(e)),m=f.includes(`ranks`),h=null,g=0,_=!1;function v(e){if(g>=Le){_=!0;return}let t=s(e);if(!Number.isSafeInteger(t)||t!==e.cluster.total_ranks)return;let n=f.filter(t=>Q(e,t)!==d[t]).map(t=>({field:t,old_value:d[t],new_value:Q(e,t)})),r={changes:n,distance:n.reduce((e,t)=>e+$(t.old_value,t.new_value),0),key:n.map(({field:e,new_value:t})=>`${e}:${t}`).join(`|`)};h&&Ve(r,h)>=0||(g+=1,W(e).status===`valid`&&(h={...r,config:structuredClone(e)}))}if(v(u),!h||h.changes.length){let e=structuredClone(u);if(m){let t=s(e);Number.isSafeInteger(t)&&t>=1&&t<=o.ranks&&(e.cluster.total_ranks=t,v(e)),e.cluster.total_ranks=u.cluster.total_ranks}let t=u.parallel.ep_mode===`orthogonal`?Z:Z.filter(e=>e!==`ep`),n=u.cluster.total_ranks,r=structuredClone(u);function y(e,n,i){if(_||h&&i>h.changes.length)return;if(e===t.length){if(n!==1)return;if(u.parallel.ep_mode!==`orthogonal`&&p.includes(`ep`)){let e=u.parallel.ep,t=[e,...Be(r,`ep`,o)];for(let e of t)if(r.parallel.ep=e,v(r),_)break;r.parallel.ep=e}else v(r);return}let a=t[e],s=Q(u,a),c=p.includes(a)?ze(n,o[a]).sort((e,t)=>Number(e!==s)-Number(t!==s)||$(s,e)-$(s,t)||e-t):[s];for(let t of c)if(n%t===0&&(r.parallel[a]=t,y(e+1,n/t,i+Number(t!==s)),_))break;r.parallel[a]=s}if(y(0,n,0),m&&(!h||h.changes.length>=2)){let e=structuredClone(u),t=p;function b(n,r){if(_)return;let i=s(e);if(Number.isSafeInteger(i)&&i>=1&&i<=o.ranks&&(e.cluster.total_ranks=i,v(e)),!(r===0||h&&h.changes.length<=1))for(let i=n;i<t.length;i+=1){let n=t[i],a=Q(u,n);for(let t of Be(e,n,o))if(e.parallel[n]=t,b(i+1,r-1),_)break;if(e.parallel[n]=a,_)break}}b(0,2)}}return h?{status:`balanced`,selection:Object.fromEntries([...c].map(e=>[e,Q(h.config,e)])),changes:h.changes,search_exhausted:_}:{status:`unavailable`,reason:_?`当前搜索范围内未找到同时满足锁定字段与静态约束的组合，已保留原值。`:`这个数值无法与未锁字段组成通过静态校验的配置，已保留原值。`,selection:d,changes:[],search_exhausted:_}}return e.REBALANCE_FIELD_LIMITS=X,e.computeRankTopology=Se,e.estimateTrainingCapacity=Ie,e.rebalanceParallelConfig=He,e.topologyScalars=f,e.validateParallelConfig=W,e})({});
+/* CONFIG_CORE_BUNDLE_END */</script>
+  <script>
+    // Interactive cases call the bundled config-core; the static fixtures remain read-only.
+    const cases = {
+      layers:{fixture:'A03',question:'项目里的模型现在是 31 层，我想把 PP 开到 2。帮我检查能不能均匀分层，要怎么调整？',variants:{'31 层':{title:'余下 1 层，无法均匀分配',description:'均匀 PP 要求每个 Stage 层数一致。两组各放 15 层后还剩 1 层。',badge:'需要处理',tone:'bad',total:31,each:15,remainder:1,code:'MINDSPEED_LAYERS_DIVISIBLE_BY_PP'},'32 层':{title:'32 层可均匀分配到 2 个 Stage',description:'只把模型总层数试调为 32 后，config-core 的静态并行校验通过。',badge:'静态校验通过',tone:'good',total:32,each:16,remainder:0,code:null}},active:'31 层',fields:[['model.total_layers','31 → 32（试调）'],['parallel.pp','2'],['parallel.pipeline_layer_mode','uniform']],rule:'total_layers % pp === 0',source:'Megatron-LM:megatron/training/arguments.py@core_v0.12.1'},
+      heads:{fixture:'A04',question:'我们准备把 TP 设为 4，模型目前有 30 个注意力头。帮我看看这样切分会不会有问题，怎么调整合适？',variants:{'30 头':{title:'每份 7 个，还剩 2 个注意力头',description:'TP 切分需要注意力头数可整除。余数直接标在分组末端。',badge:'需要处理',tone:'bad',total:30,each:7,remainder:2,code:'PAGE_HEADS_DIVISIBLE_BY_TP'},'40 头':{title:'40 个注意力头可均匀切分',description:'只把模型注意力头数试调为 40 后，config-core 的静态并行校验通过。',badge:'静态校验通过',tone:'good',total:40,each:10,remainder:0,code:null}},active:'30 头',fields:[['model.num_attention_heads','30 → 40（试调）'],['model.num_key_value_heads','5'],['parallel.tp','4'],['cluster.total_ranks','32']],rule:'num_attention_heads % tp === 0',source:'compute-graph-viewer-wzh:config-relation-observer.js:1519@1e6bb6e'},
+      product:{fixture:'双口径示例',question:'请检查本项目当前的并行切分配置。我想把总 Rank 调到 32，先给我一套调整方案，我看看需要改哪些参数。',active:'split',modes:{orthogonal:{title:'每个 Rank 都有五维坐标',note:'正交口径：EP 独占 Rank，进入 world_size 乘积。',rule:'dp * pp * tp * cp * ep === total_ranks'},split:{title:'EP 从 DP 切出',rule:'dp * pp * tp * cp === total_ranks'}},source:'config-core:page-rules.js / compute-rank-topology.js'},
+      'worldsize-v2':{question:'目标 32 Rank，当前配置有多少？',title:'目标 32 Rank，当前配置计算 48 Rank',badge:'总 Rank 冲突',tone:'bad'},
+      compatibility:{fixture:'规则清单',question:'如果同时启用 MC2 与 CoC，或者为 AMPipe 漏配前置特性，配置会有什么问题？',title:'配置选项冲突与前置条件',badge:'场景待构建',tone:'estimate'},
+      capacity:{fixture:'A01',question:'项目准备使用单卡 64 GiB 的昇腾 NPU。帮我估一下这套训练配置的显存风险，哪个 Stage 最紧？'}
+    };
+    const caseSources={
+      layers:'我已调用 MCP 工具 validate_parallel_config，核对总层数与 PP 的整除约束。',
+      heads:'我已调用 MCP 工具 validate_parallel_config，核对注意力头数与 TP 的整除约束。',
+      'worldsize-v2':'修复建议来自 V2 服务 suggest_config_fixes 的结构化结果。',
+      compatibility:'此页签仅预览规则范围，尚未调用 MCP 或对具体配置执行静态校验。',
+      capacity:'本页调用内嵌 config-core 的 estimateTrainingCapacity 进行本地试算；没有发起 MCP 调用。'
+    };
+    const baseFactorConfig=/* FACTOR_BASE_START */{"schema_version":"1.0","rule_profile":{"framework":"mindspeed-core","version":"0.12.1","source_commit":"65634689bed75ee9b6df666d526f7f16051a3db5"},"model":{"id":"test-moe","total_layers":32,"hidden_size":4096,"num_attention_heads":32,"num_key_value_heads":8,"ffn_hidden_size":11008,"expert_ffn_hidden_size":14336,"vocab_size":32000,"routed_experts":8,"top_k":2,"shared_experts":1},"parallel":{"dp":4,"pp":2,"tp":2,"cp":1,"ep":2,"vpp":1,"pipeline_layer_mode":"uniform","ep_mode":"split","cp_mode":"ulysses","sequence_parallel":true,"vocab_embedding_data_parallel":true,"expert_tensor_parallel":false},"cluster":{"total_ranks":16,"ranks_per_node":8,"card_model":"Ascend test card","card_memory_gib":64},"batch":{"micro_batch_size":1,"sequence_length":4096,"micro_batch_count":4,"global_batch_size":16},"memory":{"compute_dtype":"bf16","parameter_dtype":"fp32","recompute_mode":"selective","shard_mode":"zero1","lora_enabled":false},"policy":{"locked_fields":[],"objective":"minimal-change"}}/* FACTOR_BASE_END */;
+    const capacitySelection={card_memory_gib:64,micro_batch_size:1,sequence_length:4096,micro_batch_count:4,pp:2,recompute_mode:'selective',shard_mode:'zero1'};
+    const initialCapacitySelection=structuredClone(capacitySelection);
+    const capacityLocks=new Set();
+    function capacityState(){
+      const input=structuredClone(baseFactorConfig);
+      input.model.total_layers=8;
+      input.cluster.card_memory_gib=capacitySelection.card_memory_gib;
+      input.batch.micro_batch_size=capacitySelection.micro_batch_size;
+      input.batch.sequence_length=capacitySelection.sequence_length;
+      input.batch.micro_batch_count=capacitySelection.micro_batch_count;
+      input.parallel.pp=capacitySelection.pp;
+      input.cluster.total_ranks=input.parallel.dp*input.parallel.pp*input.parallel.tp*input.parallel.cp;
+      input.batch.global_batch_size=input.batch.micro_batch_size*input.batch.micro_batch_count*input.parallel.dp;
+      input.memory.recompute_mode=capacitySelection.recompute_mode;
+      input.memory.shard_mode=capacitySelection.shard_mode;
+      return ConstraintLensCore.estimateTrainingCapacity(input);
+    }
+    const capacityNumberFields=[
+      {label:'单卡 HBM · GiB',key:'card_memory_gib',min:16,max:256,step:8},
+      {label:'Micro Batch',key:'micro_batch_size',min:1,max:16,step:1},
+      {label:'序列长度 · token',key:'sequence_length',min:512,max:32768,step:512},
+      {label:'微批数',key:'micro_batch_count',min:1,max:32,step:1},
+      {label:'PP Stage',key:'pp',values:[1,2,4,8]},
+    ];
+    const capacityModes=[
+      {label:'重计算',key:'recompute_mode',options:[['none','关闭'],['selective','选择性'],['full','全开']]},
+      {label:'状态分片',key:'shard_mode',options:[['none','关闭'],['zero1','ZeRO-1'],['fsdp2','FSDP2']]},
+    ];
+    const capacityLockButton=(key,label)=>{
+      const locked=capacityLocks.has(key);
+      return `<button type="button" class="lock-toggle ${locked?'locked':''}" data-capacity-lock="${key}" aria-pressed="${locked}" aria-label="${locked?'解锁':'锁定'} ${label}" title="${locked?'已锁定：点击解锁':'锁定后固定当前值'}"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${locked?'M7 10V7a5 5 0 0 1 10 0v3':'M7 10V7a5 5 0 0 1 9-3'}"/><rect x="5" y="10" width="14" height="11" rx="2"/></svg></button>`;
+    };
+    const capacityFieldPosition=(field)=>field.values?field.values.indexOf(capacitySelection[field.key]):capacitySelection[field.key];
+    const capacityFieldValue=(field,position)=>field.values?field.values[position]:position;
+    const capacityFieldProgress=(field)=>{
+      const min=field.values?0:field.min,max=field.values?field.values.length-1:field.max;
+      return `${(capacityFieldPosition(field)-min)/(max-min)*100}%`;
+    };
+    function capacityNumberControl(field){
+      const {key,label}=field,locked=capacityLocks.has(key);
+      const min=field.values?0:field.min,max=field.values?field.values.length-1:field.max;
+      const position=capacityFieldPosition(field),step=field.values?1:field.step;
+      return `<div class="factor ${locked?'is-locked':''}" data-capacity-row="${key}"><div class="factor-heading"><div class="factor-top"><label for="capacity-${key}"><small>${label}</small></label><div class="factor-stepper"><button type="button" data-capacity-step="${key}" data-step-direction="-1" aria-label="减少 ${label}" ${locked||position<=min?'disabled':''}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5.5 12h13"/></svg></button><input id="capacity-${key}" data-capacity-number="${key}" type="number" min="${field.values?field.values[0]:min}" max="${field.values?field.values.at(-1):max}" step="${step}" value="${capacitySelection[key]}" aria-label="填写 ${label}" ${locked?'disabled':''}><button type="button" data-capacity-step="${key}" data-step-direction="1" aria-label="增加 ${label}" ${locked||position>=max?'disabled':''}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5.5v13"/><path d="M5.5 12h13"/></svg></button></div></div>${capacityLockButton(key,label)}</div><input type="range" data-capacity-range="${key}" min="${min}" max="${max}" step="${step}" value="${position}" style="--range-progress:${capacityFieldProgress(field)}" aria-label="滑动调整 ${label}" ${locked?'disabled':''}></div>`;
+    }
+    function renderCapacityControls(){
+      const numbers=capacityNumberFields.map(capacityNumberControl).join('');
+      const modes=capacityModes.map(({label,key,options})=>`<div class="capacity-mode ${capacityLocks.has(key)?'is-locked':''}" data-capacity-row="${key}"><div class="capacity-mode-heading"><span>${label}</span>${capacityLockButton(key,label)}</div><div class="choice ep-mode-choice" role="group" aria-label="${label}">${options.map(([value,name])=>`<button type="button" data-capacity-choice="${key}" data-capacity-value="${value}" class="${capacitySelection[key]===value?'active':''}" aria-pressed="${capacitySelection[key]===value}" ${capacityLocks.has(key)?'disabled':''}>${name}</button>`).join('')}</div></div>`).join('');
+      return `<div class="capacity-controls factor-line">${numbers}${modes}<div class="capacity-feedback" id="capacity-feedback" role="status" aria-live="polite"></div></div>`;
+    }
+    const factorSelections={orthogonal:{dp:2,pp:2,ep:2,cp:2,tp:2,ranks:32},split:{dp:4,pp:2,ep:2,cp:2,tp:2,ranks:32}};
+    const worldsizeV2Selection={dp:6,pp:2,tp:2,cp:1,ep:2,ranks:32,mode:'orthogonal'};
+    const initialWorldsizeV2Selection=structuredClone(worldsizeV2Selection);
+    let worldsizeV2SelectedSuggestion=null;
+    let worldsizeV2WasMatched=false;
+    let worldsizeV2HoverTimer=0;
+    let worldsizeV2Mcp={key:null,status:'idle',suggestions:[],error:''};
+    let worldsizeV2McpTimer=0;
+    let worldsizeV2McpSerial=0;
+    let worldsizeV2McpAbort=null;
+    const worldsizeV2Locks=new Set();
+    const factorLocks={orthogonal:new Set(),split:new Set()};
+    const activeLocks=()=>factorLocks[cases.product.active];
+    const flashTimers=new Map();let feedbackTimer=0;
+    const initialCase=new URLSearchParams(location.search).get('case');
+    let current=Object.hasOwn(cases,initialCase)?initialCase:'worldsize-v2';let selectedProductRank=0;let productLayerVisible=false;let currentFactor=null;
+    const initialMode=new URLSearchParams(location.search).get('mode');
+    if(current==='product'&&Object.hasOwn(cases.product.modes,initialMode))cases.product.active=initialMode;
+    if(current==='product'){
+      const query=new URLSearchParams(location.search);
+      const selection=factorSelections[cases.product.active];
+      for(const field of Object.keys(selection)){
+        const value=Number(query.get(field));const limit=ConstraintLensCore.REBALANCE_FIELD_LIMITS[field];
+        if(query.has(field)&&Number.isSafeInteger(value)&&value>=1&&value<=limit)selection[field]=value;
+      }
+    }
+    const initialFactorSelections=structuredClone(factorSelections);
+    const initialActive={product:cases.product.active,layers:cases.layers.active,heads:cases.heads.active};
+    const $=id=>document.getElementById(id);
+    const escapeHtml=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    function currentConfigChanged(){
+      if(current==='product')return cases.product.active!==initialActive.product||Object.keys(factorSelections).some(mode=>Object.keys(factorSelections[mode]).some(field=>factorSelections[mode][field]!==initialFactorSelections[mode][field]));
+      if(current==='worldsize-v2')return worldsizeV2Locks.size>0||Object.keys(initialWorldsizeV2Selection).some(field=>worldsizeV2Selection[field]!==initialWorldsizeV2Selection[field]);
+      if(current==='capacity')return capacityLocks.size>0||Object.keys(capacitySelection).some(key=>capacitySelection[key]!==initialCapacitySelection[key]);
+      return Object.hasOwn(initialActive,current)&&cases[current].active!==initialActive[current];
+    }
+    const sliderProgress=(value,maximum)=>`${(value-1)/(maximum-1)*100}%`;
+    function factorChip(label,field,selection,extraClass=''){
+      const limit=ConstraintLensCore.REBALANCE_FIELD_LIMITS[field];
+      const sliderMax=Math.max(field==='ranks'?128:16,selection[field]);
+      const locked=activeLocks().has(field);
+      const shackle=locked?'M7 10V7a5 5 0 0 1 10 0v3':'M7 10V7a5 5 0 0 1 9-3';
+      return `<div class="factor ${extraClass}" data-factor-row="${field}"><div class="factor-heading"><div class="factor-top"><label for="factor-${field}"><small>${label}</small></label><div class="factor-stepper"><button type="button" data-factor-step="${field}" data-step-direction="-1" aria-label="减少 ${label}" ${selection[field]<=1?'disabled':''}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5.5 12h13"/></svg></button><input id="factor-${field}" type="number" data-factor="${field}" min="1" max="${limit}" step="1" inputmode="numeric" value="${selection[field]}" aria-label="填写 ${label}"><button type="button" data-factor-step="${field}" data-step-direction="1" aria-label="增加 ${label}" ${selection[field]>=limit?'disabled':''}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5.5v13"/><path d="M5.5 12h13"/></svg></button></div></div><button type="button" class="lock-toggle ${locked?'locked':''}" data-lock="${field}" aria-pressed="${locked}" aria-label="${locked?'解锁':'锁定'} ${label}，${locked?'允许':'阻止'}被动调整" title="${locked?'已锁定：点击解锁':'未锁定：点击固定数值'}"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${shackle}"/><rect x="5" y="10" width="14" height="11" rx="2"/></svg></button></div><input type="range" data-factor-range="${field}" min="1" max="${sliderMax}" step="1" value="${selection[field]}" style="--range-progress:${sliderProgress(selection[field],sliderMax)}" aria-label="滑动调整 ${label}"></div>`;
+    }
+    function renderFactorControls(state,mode){
+      const {selection}=state;
+      const order=mode==='orthogonal'?[['DP','dp'],['PP','pp'],['EP','ep'],['CP','cp'],['TP','tp']]:[['DP','dp'],['PP','pp'],['TP','tp'],['CP','cp']];
+      const fields=order.map(([label,field])=>factorChip(label,field,selection,field==='tp'?'tp-factor':'')).join('');
+      const splitEp=mode==='split'?factorChip('EP','ep',selection,'nested-factor'):'';
+      return `<div class="factor-line">${fields}${splitEp}${factorChip('总 Rank','ranks',selection,'target-factor')}</div><div class="balance-feedback" id="balance-feedback" role="status" aria-live="polite"></div>`;
+    }
+    function renderEquation(state,mode){
+      const {selection,snapshot}=state;
+      const order=mode==='orthogonal'?[['DP','dp'],['PP','pp'],['EP','ep'],['CP','cp'],['TP','tp']]:[['DP','dp'],['PP','pp'],['TP','tp'],['CP','cp']];
+      const factors=order.map(([label,field],index)=>`${index?'<span class="times" aria-hidden="true">×</span>':''}<span class="equation-factor ${field==='tp'?'tp-equation':''}"><small>${label}</small><strong>${selection[field]}</strong></span>`).join('');
+      return `<div class="equation"><div class="equation-factors">${factors}<span class="equals" aria-hidden="true">=</span><span class="result" title="由 config-core 计算">${snapshot.world}</span></div></div>`;
+    }
+    function factorState(selection,mode){
+      const input=structuredClone(baseFactorConfig);
+      for(const field of ['dp','pp','tp','cp','ep'])if(field in selection)input.parallel[field]=selection[field];
+      input.parallel.ep_mode=mode;
+      input.cluster.total_ranks=selection.ranks;
+      const validation=ConstraintLensCore.validateParallelConfig(input);
+      const world=validation.data.world_size;
+      const extent=Math.max(world,selection.ranks);
+      const check={status:validation.status,codes:validation.errors.map(error=>error.code),worldPct:Number((world/extent*100).toFixed(2)),targetPct:Number((selection.ranks/extent*100).toFixed(2)),gap:Math.abs(world-selection.ranks),comparison:world===selection.ranks?'equal':world<selection.ranks?'short':'over'};
+      const scalars=ConstraintLensCore.topologyScalars(input);
+      const snapshot={world,axis:scalars.d_axis,edp:scalars.edp};
+      if(validation.status==='valid'&&selection.ranks<=128){
+        const topology=ConstraintLensCore.computeRankTopology(input);
+        if(topology.status==='valid'){
+          const ranks=topology.data.ranks;
+          snapshot.rankRows=Array.from({length:selection.pp},(_,stage)=>Array.from({length:scalars.edp},(_,outer)=>Array.from({length:selection.ep},(_,ep)=>Array.from({length:selection.cp},(_,cp)=>ranks.filter(rank=>rank.stage===stage&&rank.edp_index===outer&&rank.ep_index===ep&&rank.cp_index===cp).sort((a,b)=>a.tp_index-b.tp_index).map(rank=>rank.rank)))));
+          snapshot.stages=topology.data.stages;
+          snapshot.layers=topology.data.layers;
+          snapshot.ranks=ranks;
+          snapshot.expertSlices=topology.data.expert_slices;
+        }
+      }
+      return {input,selection,snapshot,check,errors:validation.errors,warnings:validation.warnings};
+    }
+    function worldsizeV2State(selection=worldsizeV2Selection){
+      const input=structuredClone(baseFactorConfig);
+      for(const field of ['dp','pp','tp','cp','ep'])input.parallel[field]=selection[field];
+      input.parallel.ep_mode=selection.mode;
+      input.cluster.total_ranks=selection.ranks;
+      const validation=ConstraintLensCore.validateParallelConfig(input);
+      const scalars=ConstraintLensCore.topologyScalars(input);
+      const dataRows=selection.mode==='orthogonal'?scalars.rank_count_per_stage/selection.ep:scalars.rank_count_per_stage;
+      return {input,selection,world:scalars.world,dataRows,copyColumns:scalars.world/dataRows,validation};
+    }
+    function worldsizeV2Suggestions(state){
+      return state.validation.status!=='valid'&&worldsizeV2Mcp.key===worldsizeV2RequestKey(state)&&worldsizeV2Mcp.status==='ready'?worldsizeV2Mcp.suggestions:[];
+    }
+    function worldsizeV2SuggestionChanges(item){
+      return item.changes;
+    }
+    function worldsizeV2SuggestionKey(item){
+      return worldsizeV2SuggestionChanges(item).map(change=>`${change.field}:${change.to}`).join('|');
+    }
+    const worldsizeV2Paths={dp:'parallel.dp',pp:'parallel.pp',tp:'parallel.tp',cp:'parallel.cp',ep:'parallel.ep',ranks:'cluster.total_ranks'};
+    function worldsizeV2RequestKey(state){
+      return JSON.stringify([state.selection,[...worldsizeV2Locks].sort()]);
+    }
+    function worldsizeV2McpInput(state){
+      const input=structuredClone(state.input);
+      input.policy.locked_fields=[
+        'model.num_attention_heads','model.num_key_value_heads','model.top_k','parallel.vpp',
+        ...[...worldsizeV2Locks].map(field=>worldsizeV2Paths[field]),
+      ];
+      return input;
+    }
+    function worldsizeV2McpSuggestions(result,state){
+      if(result?.tool!=='suggest_config_fixes'||!Array.isArray(result.data?.suggestions))throw new Error('V2 服务返回的修复结果不完整。');
+      return result.data.suggestions.flatMap(item=>{
+        if(!Array.isArray(item.changes)||!item.changes.length)return [];
+        const changes=item.changes.map(change=>{
+          const field=Object.keys(worldsizeV2Paths).find(key=>worldsizeV2Paths[key]===change.path);
+          return {field,from:change.old_value,to:change.new_value};
+        }).sort((left,right)=>Object.keys(worldsizeV2Paths).indexOf(left.field)-Object.keys(worldsizeV2Paths).indexOf(right.field));
+        if(changes.some(change=>!change.field||worldsizeV2Locks.has(change.field)||change.from!==state.selection[change.field]||!Number.isSafeInteger(change.to)||change.to<1||change.to>(change.field==='ranks'?256:16)))return [];
+        const proposed=item.proposed_config;
+        if(!proposed||proposed.parallel?.ep_mode!==state.selection.mode)return [];
+        const selection=Object.assign({...state.selection},...changes.map(change=>({[change.field]:change.to})));
+        if(Object.keys(worldsizeV2Paths).some(field=>(field==='ranks'?proposed.cluster?.total_ranks:proposed.parallel?.[field])!==selection[field]))return [];
+        return [{changes,requiresCapacityConfirmation:changes.some(change=>change.field==='ranks')}];
+      }).slice(0,3);
+    }
+    function scheduleWorldsizeV2Mcp(state){
+      const key=worldsizeV2RequestKey(state);
+      if(worldsizeV2Mcp.key===key&&['pending','ready','error'].includes(worldsizeV2Mcp.status))return;
+      clearTimeout(worldsizeV2McpTimer);
+      worldsizeV2McpAbort?.abort();
+      const serial=++worldsizeV2McpSerial;
+      if(state.validation.status==='valid'){
+        worldsizeV2Mcp={key,status:'ready',suggestions:[],error:''};
+        return;
+      }
+      const apiBase=globalThis.__MINDSPEED_WEB_SERVICE__?.apiBase;
+      if(!apiBase){
+        worldsizeV2Mcp={key,status:'error',suggestions:[],error:'请从 V2 服务工作台打开此页以获取修复建议。'};
+        $('case-source-text').textContent=worldsizeV2Mcp.error;
+        return;
+      }
+      worldsizeV2Mcp={key,status:'pending',suggestions:[],error:''};
+      worldsizeV2McpTimer=setTimeout(async()=>{
+        const controller=new AbortController();
+        worldsizeV2McpAbort=controller;
+        try{
+          const response=await fetch(`${apiBase}/tools/suggest_config_fixes`,{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(worldsizeV2McpInput(state)),signal:controller.signal});
+          const body=await response.json().catch(()=>({}));
+          if(!response.ok)throw new Error(response.status===401?'V2 服务会话未登录，请先登录工作台。':body.message||`V2 修复工具调用失败（HTTP ${response.status}）。`);
+          const suggestions=worldsizeV2McpSuggestions(body.structuredContent,state);
+          if(serial!==worldsizeV2McpSerial)return;
+          worldsizeV2Mcp={key,status:'ready',suggestions,error:''};
+        }catch(error){
+          if(serial!==worldsizeV2McpSerial||error.name==='AbortError')return;
+          worldsizeV2Mcp={key,status:'error',suggestions:[],error:error.message||'V2 修复工具暂时不可用。'};
+        }
+        if(current==='worldsize-v2')render();
+      },120);
+    }
+    function worldsizeV2RankCells(state){
+      if(!state)return [];
+      const input=structuredClone(state.input);
+      input.cluster.total_ranks=state.world;
+      const topology=ConstraintLensCore.computeRankTopology(input);
+      if(topology.status!=='valid')return [];
+      const columns=Array.from({length:state.copyColumns},()=>[]);
+      for(const rank of topology.data.ranks){
+        const column=state.selection.mode==='orthogonal'?rank.stage*state.selection.ep+rank.ep_index:rank.stage;
+        columns[column]?.push(rank);
+      }
+      return Array.from({length:state.world},(_,index)=>columns[index%state.copyColumns]?.[Math.floor(index/state.copyColumns)]??null);
+    }
+    function worldsizeV2Cell(rank,index,layer,columns,rows,covered=false){
+      const label=rank?`Rank ${rank.rank} · DP${rank.dp_index} · PP${rank.stage} · TP${rank.tp_index} · CP${rank.cp_index} · EP${rank.ep_index}`:`第 ${index+1} 格`;
+      const edges=`${index%columns===columns-1?' v2-cell-last-column':''}${Math.floor(index/columns)===rows-1?' v2-cell-last-row':''}${covered?' is-covered':''}`;
+      return `<span class="v2-${layer==='actual'?'actual':'target'}-cell${edges}" data-v2-tooltip="${escapeHtml(label)}" data-v2-layer="${layer}" aria-hidden="true"></span>`;
+    }
+    function hideWorldsizeV2Tooltip(){
+      clearTimeout(worldsizeV2HoverTimer);
+      worldsizeV2HoverTimer=0;
+      document.querySelector('.v2-hover-tip')?.remove();
+    }
+    function scheduleWorldsizeV2Tooltip(cell){
+      hideWorldsizeV2Tooltip();
+      worldsizeV2HoverTimer=setTimeout(()=>{
+        if(!cell.isConnected||current!=='worldsize-v2')return;
+        const tip=document.createElement('div');
+        tip.className='v2-hover-tip';
+        tip.dataset.layer=cell.dataset.v2Layer;
+        tip.innerHTML='<i class="v2-hover-dot" aria-hidden="true"></i><span></span>';
+        tip.lastElementChild.textContent=cell.dataset.v2Tooltip;
+        document.body.append(tip);
+        const rect=cell.getBoundingClientRect();
+        const center=rect.left+rect.width/2;
+        const x=Math.max(tip.offsetWidth/2+8,Math.min(window.innerWidth-tip.offsetWidth/2-8,center));
+        const above=rect.top-tip.offsetHeight-8;
+        tip.style.left=`${x}px`;
+        tip.style.top=`${above>=8?above:rect.bottom+8}px`;
+      },1000);
+    }
+    function renderWorldsizeV2Advice(suggestions){
+      if(!suggestions.length)return '';
+      const controls=suggestions.map((item,index)=>{
+        const key=worldsizeV2SuggestionKey(item);
+        const itemChanges=worldsizeV2SuggestionChanges(item);
+        const description=itemChanges.map(change=>`${change.field==='ranks'?'总 Rank':change.field.toUpperCase()} ${change.from}→${change.to}`).join(' · ');
+        const itemRank=itemChanges.find(change=>change.field==='ranks');
+        return `<button type="button" class="v2-advice-button" data-v2-suggestion-key="${key}" aria-pressed="${key===worldsizeV2SelectedSuggestion}"${item.requiresCapacityConfirmation?` title="仅在实际可用 ${itemRank.to} Rank 时采用"`:''}>${index+1}. ${index===0?'优先 · ':''}${description}${item.requiresCapacityConfirmation?' · 需确认资源':''}</button>`;
+      }).join('');
+      return `<div class="v2-advice"><strong title="来自 V2 服务 suggest_config_fixes 的 structuredContent">修复建议</strong>${controls}<button type="button" class="v2-advice-try" data-v2-try title="将所选方案写入 Control">试用</button></div>`;
+    }
+    function renderWorldsizeV2(state){
+      const {selection,world,dataRows,copyColumns,validation}=state;
+      const suggestions=worldsizeV2Suggestions(state);
+      const selected=suggestions.find(item=>worldsizeV2SuggestionKey(item)===worldsizeV2SelectedSuggestion)??suggestions[0];
+      worldsizeV2SelectedSuggestion=selected?worldsizeV2SuggestionKey(selected):null;
+      const proposedSelection=selected?Object.assign({...selection},...worldsizeV2SuggestionChanges(selected).map(change=>({[change.field]:change.to}))):null;
+      const proposal=proposedSelection?worldsizeV2State(proposedSelection):null;
+      const target=proposal?.world??selection.ranks;
+      const advice=renderWorldsizeV2Advice(suggestions);
+      if(world>512||target>512){
+        worldsizeV2WasMatched=false;
+        const changes=selected?worldsizeV2SuggestionChanges(selected):[];
+        const marks=[
+          [['dp','cp','tp'],'↓','↑'],
+          [['pp','ep'],'←','→'],
+          [['ranks'],'↓','↑'],
+        ].flatMap(([fields,down,up])=>{
+          const smaller=changes.filter(change=>fields.includes(change.field)&&change.to<change.from).map(change=>change.field==='ranks'?'总 Rank':change.field.toUpperCase());
+          const larger=changes.filter(change=>fields.includes(change.field)&&change.to>change.from).map(change=>change.field==='ranks'?'总 Rank':change.field.toUpperCase());
+          return [...(smaller.length?[`${down} 缩小 ${smaller.join('｜')}`]:[]),...(larger.length?[`${up} 提高 ${larger.join('｜')}`]:[])];
+        });
+        return `<div class="v2-restored v2-restored--limited"><div class="v2-limit">目标Rank = ${target}　计算Rank = ${world}<small>超出逐格展示范围</small><div class="v2-limit-marks">${marks.map(mark=>`<span>${mark}</span>`).join('')}</div></div><div class="v2-footer">${advice}</div></div>`;
+      }
+      let targetColumns=proposal?.copyColumns??(validation.status==='valid'?copyColumns:1);
+      if(!proposal&&validation.status!=='valid')for(let columns=2;columns<copyColumns;columns++)if(target%columns===0)targetColumns=columns;
+      const targetRows=proposal?.dataRows??(validation.status==='valid'?dataRows:target/targetColumns);
+      const matched=validation.status==='valid';
+      const celebrate=matched&&!worldsizeV2WasMatched;
+      worldsizeV2WasMatched=matched;
+      const changes=selected?worldsizeV2SuggestionChanges(selected):[];
+      const rankChange=changes.find(change=>change.field==='ranks');
+      const axisNames=(fields,direction)=>changes.filter(change=>fields.includes(change.field)&&Math.sign(change.to-change.from)===direction&&(direction>0||change.from>1)).map(change=>change.field.toUpperCase());
+      const verticalNames=axisNames(['dp','cp','tp'],Math.sign(targetRows-dataRows));
+      const horizontalNames=axisNames(['pp','ep'],Math.sign(targetColumns-copyColumns));
+      const hasVerticalArrow=targetRows!==dataRows&&verticalNames.length>0;
+      const hasHorizontalArrow=targetColumns!==copyColumns&&horizontalNames.length>0;
+      const hasBottomArrow=hasHorizontalArrow||!!rankChange;
+      const matrixInset=hasHorizontalArrow&&rankChange?80:hasBottomArrow?42:24;
+      const maxRows=Math.max(targetRows,dataRows);
+      const availableWidth=Math.min(250,Math.floor(window.innerWidth*.42));
+      const cellSize=Math.max(1,Math.min(16,Math.floor(420/maxRows),Math.floor(availableWidth/Math.max(targetColumns,copyColumns))));
+      const matrixWidth=Math.max(targetColumns,copyColumns)*cellSize;
+      const matrixHeight=maxRows*cellSize;
+      const chartWidth=Math.max(matrixWidth+48,hasVerticalArrow?matrixWidth+188:0,hasBottomArrow?210:0);
+      const targetTop=matrixInset+(maxRows-targetRows)*cellSize;
+      const actualTop=matrixInset+(maxRows-dataRows)*cellSize;
+      const widthGap=Math.abs(copyColumns-targetColumns)*cellSize;
+      const chartStyle=`--v2-cell-size:${cellSize}px;--v2-chart-width:${chartWidth}px;--v2-chart-height:${matrixHeight+matrixInset*2}px;--v2-matrix-height:${matrixHeight}px;--v2-matrix-inset:${matrixInset}px;--v2-target-width:${targetColumns*cellSize}px;--v2-wide-width:${matrixWidth}px;--v2-half-wide-width:${matrixWidth/2}px;--v2-narrow-width:${Math.min(targetColumns,copyColumns)*cellSize}px;--v2-width-gap:${widthGap}px;--v2-half-width-gap:${widthGap/2}px;--v2-target-top:${Math.min(targetTop,actualTop)}px;--v2-arrow-height:${Math.abs(actualTop-targetTop)}px;--v2-arrow-label-top:${Math.max(matrixInset,(targetTop+actualTop)/2-8)}px`;
+      const targetRanks=worldsizeV2RankCells(proposal??(validation.status==='valid'?state:null));
+      const actualRanks=worldsizeV2RankCells(state);
+      const coveredTargetRows=Math.min(targetRows,dataRows);
+      const coveredTargetColumns=Math.min(targetColumns,copyColumns);
+      const targetCells=Array.from({length:target},(_,index)=>worldsizeV2Cell(targetRanks[index],index,'target',targetColumns,targetRows,Math.floor(index/targetColumns)>=targetRows-coveredTargetRows&&index%targetColumns<coveredTargetColumns)).join('');
+      const actualCells=Array.from({length:world},(_,index)=>worldsizeV2Cell(actualRanks[index],index,'actual',copyColumns,dataRows)).join('');
+      const verticalArrow=targetRows===dataRows||!verticalNames.length?'':`<div class="v2-arrow v2-arrow--up${targetRows<dataRows?' v2-arrow--down':''}" aria-hidden="true"></div><span class="v2-arrow-label v2-arrow-label--up">${targetRows>dataRows?'提高':'缩小'} ${verticalNames.join('｜')}</span>`;
+      const horizontalArrow=targetColumns===copyColumns||!horizontalNames.length?'':`<div class="v2-arrow v2-arrow--left${targetColumns>copyColumns?' v2-arrow--right':''}" aria-hidden="true"></div><span class="v2-arrow-label v2-arrow-label--left">${targetColumns<copyColumns?'缩小':'提高'} ${horizontalNames.join('｜')}</span>`;
+      const rankArrow=rankChange?`<div class="v2-arrow v2-arrow--rank${rankChange.to<rankChange.from?' v2-arrow--rank-decrease':''}" aria-hidden="true"></div><span class="v2-arrow-label v2-arrow-label--rank">总 Rank ${rankChange.from}→${rankChange.to}${selected.requiresCapacityConfirmation?' · 需确认资源':''}</span>`:'';
+      const legend=validation.status==='valid'?'':`<div class="v2-legend"><span><i class="v2-legend-blue"></i>目标Rank = ${target}</span><span><i class="v2-legend-red"></i>计算Rank = ${world}</span></div>`;
+      return `<div class="v2-restored">
+        <div class="v2-artboard${matched?' is-v2-overlap':''}${celebrate?' is-v2-success':''}${hasHorizontalArrow&&rankChange?' has-v2-double-bottom':''}" style="${chartStyle}" role="img" aria-label="${matched?'目标与计算 Rank 矩阵重合；':'蓝色所选方案与红色当前配置；'}目标 ${target} Rank，纵向 ${targetRows} 格，横向 ${targetColumns} 格；当前配置 ${world} Rank，纵向 DP 乘 CP 乘 TP 为 ${dataRows} 格，横向 PP 乘 EP 为 ${copyColumns} 格。">
+          <div class="v2-target-grid" style="--v2-target-rows:${targetRows};--v2-target-cols:${targetColumns}">${targetCells}</div>
+          <div class="v2-actual-grid" style="--v2-data-rows:${dataRows};--v2-copy-columns:${copyColumns}">${actualCells}</div>
+          ${verticalArrow}${horizontalArrow}${rankArrow}
+        </div>
+        <div class="v2-footer">${legend}${advice}</div>
+      </div>`;
+    }
+    function renderWorldsizeV2Controls(){
+      const selection=worldsizeV2Selection;
+      const controls=[['DP','dp','is-data'],['PP','pp','is-replica'],['TP','tp','is-data'],['CP','cp','is-data'],['EP','ep','is-replica'],['总 Rank','ranks','is-target']].map(([label,field,tone])=>{
+        const maximum=field==='ranks'?256:16;
+        const locked=worldsizeV2Locks.has(field);
+        const shackle=locked?'M7 10V7a5 5 0 0 1 10 0v3':'M7 10V7a5 5 0 0 1 9-3';
+        return `<div class="factor ${tone} "><div class="factor-top"><label for="v2-${field}"><small>${label}</small></label><div class="v2-input-row"><div class="factor-stepper"><button type="button" data-v2-step="${field}" data-step-direction="-1" aria-label="减少 ${label}" ${locked||selection[field]<=1?'disabled':''}>−</button><input id="v2-${field}" type="number" min="1" max="${maximum}" step="1" data-v2-number="${field}" value="${selection[field]}" inputmode="numeric" aria-label="填写 ${label}" ${locked?'disabled':''}><button type="button" data-v2-step="${field}" data-step-direction="1" aria-label="增加 ${label}" ${locked||selection[field]>=maximum?'disabled':''}>+</button></div><button type="button" class="lock-toggle ${locked?'locked':''}" data-v2-lock="${field}" aria-pressed="${locked}" aria-label="${locked?'解锁':'锁定'} ${label}" title="${locked?'解锁':'锁定'} ${label}"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${shackle}"/><rect x="5" y="10" width="14" height="11" rx="2"/></svg></button></div></div><input type="range" min="1" max="${maximum}" step="1" value="${selection[field]}" data-v2-range="${field}" style="--range-progress:${sliderProgress(selection[field],maximum)}" aria-label="滑动调整 ${label}" ${locked?'disabled':''}></div>`;
+      }).join('');
+      return `<div class="v2-controls"><div class="v2-mode" role="group" aria-label="EP 计数口径"><button type="button" data-v2-mode="orthogonal" aria-pressed="${selection.mode==='orthogonal'}">EP 正交</button><button type="button" data-v2-mode="split" aria-pressed="${selection.mode==='split'}">EP 切出</button></div>${controls}<div class="v2-feedback" id="v2-feedback" role="status" aria-live="polite"></div></div>`;
+    }
+    function syncWorldsizeV2ControlHighlights(){
+      const suggestions=worldsizeV2Suggestions(worldsizeV2State());
+      const selected=suggestions.find(item=>worldsizeV2SuggestionKey(item)===worldsizeV2SelectedSuggestion);
+      const fields=new Set(selected?worldsizeV2SuggestionChanges(selected).map(change=>change.field):[]);
+      $('context-control').querySelectorAll('.v2-controls .factor').forEach(row=>{
+        const field=row.querySelector('[data-v2-number]')?.dataset.v2Number;
+        row.classList.toggle('is-suggested',fields.has(field));
+      });
+    }
+    function comparisonText(snapshot,check,total){
+      return check.comparison==='equal'?(check.status==='valid'?`并行乘积与 ${total} 个 Rank 对齐`:`乘积与 ${total} 个 Rank 对齐，但其他静态约束未通过`):check.comparison==='short'?`并行乘积为 ${snapshot.world}，比 ${total} 少 ${check.gap}`:`并行乘积为 ${snapshot.world}，比 ${total} 多 ${check.gap}`;
+    }
+    function renderComparison(snapshot,check,total){
+      const text=comparisonText(snapshot,check,total);
+      return `<div class="measure"><div class="measure-head"><span>并行乘积</span><strong>${snapshot.world} Rank</strong></div><div class="scale" role="img" aria-label="并行乘积 ${snapshot.world} Rank"><span class="scale-fill ${check.comparison==='equal'?'good-fill':''}" style="width:${check.worldPct}%"></span></div><div class="measure-head" style="margin-top:15px"><span>总 Rank</span><strong>${total} Rank</strong></div><div class="scale" role="img" aria-label="总 Rank ${total}"><span class="scale-target" style="width:${check.targetPct}%"></span></div><div class="annotation ${check.comparison==='equal'?'ok':''}">${text}</div></div>`;
+    }
+    function renderDivision(scene,variant){const count=scene==='layers'?2:4;const unit=scene==='layers'?'层':'头';const groupName=scene==='layers'?'Stage':'TP';return `<div class="division-top"><strong>${variant.total}</strong> ${unit} <span aria-hidden="true">÷</span> <strong>${count}</strong> ${groupName}</div><div class="groups ${variant.tone==='good'?'valid':''}">${Array.from({length:count},(_,i)=>`<div class="group"><small>${groupName} ${i+1}</small><strong>${variant.each}</strong><span>${unit}</span></div>`).join('')}${variant.remainder?`<div class="leftover"><small>余下</small><strong>${variant.remainder}</strong><span>${unit}</span></div>`:''}</div><div class="annotation ${variant.tone==='good'?'ok':''}">${variant.remainder?'余数 '+variant.remainder+' · 当前均匀切分不成立':'没有余数 · 均匀切分成立'}</div>`}
+    function productNote(scene,state){
+      const {selection,snapshot,check}=state;
+      return scene.active==='orthogonal'?scene.modes.orthogonal.note:selection.ep===1?'切出式口径：EP 为 1，没有进一步切分 DP；EP 不再乘入 world_size。':check.status==='valid'?`切出式口径：DP ${selection.dp} 在图中分为 EDP ${snapshot.edp} × EP ${selection.ep}；EP 不再乘入 world_size。`:'切出式口径：EP 从 DP 内切出，不再乘入 world_size。';
+    }
+    function renderCompatibilityPreview(){
+      return '<div class="compatibility-preview"><p>下一步在此展示配置选项之间的互斥关系和启用前提，并给出对应诊断码。</p><ul><li>MC2 与 CoC 互斥 · <code>MINDSPEED_MC2_COC_MUTUALLY_EXCLUSIVE</code></li><li>AMPipe 要求 FlashAttention · <code>MINDSPEED_AMPIPE_REQUIRES_FLASH_ATTENTION</code></li><li>自适应与静态重计算互斥 · <code>MINDSPEED_ADAPTIVE_RECOMPUTE_CONFLICTS_WITH_STATIC_RECOMPUTE</code></li></ul></div>';
+    }
+    function agentReply(variant,factor){
+      if(current==='worldsize-v2'){
+        const state=worldsizeV2State();
+        if(state.validation.status==='valid')return `当前 ${state.world} Rank，与目标对齐；本地静态校验通过。`;
+        if(state.world===state.selection.ranks)return `当前 ${state.world} Rank，与目标数量对齐；仍有其他静态约束待处理。`;
+        const {dp,pp,tp,cp,ep,ranks,mode}=state.selection;
+        return `DP ${dp} × PP ${pp} × TP ${tp} × CP ${cp}${mode==='orthogonal'?` × EP ${ep}`:''} = ${state.world}，与总 Rank ${ranks} 冲突。`;
+      }
+      if(factor){
+        const {selection,snapshot,check,errors}=factor;
+        if(check.status!=='valid')return `并行乘积为 ${snapshot.world}，目标为 ${selection.ranks} 个 Rank；当前有 ${errors.length} 条静态约束未通过。请核对参数和下方规则依据。`;
+        if(!snapshot.rankRows)return `并行乘积 ${snapshot.world} 与总 Rank 对齐，静态校验通过。Rank 数量较多，当前只展示乘积与校验判断。`;
+        return `并行乘积 ${snapshot.world} 与总 Rank 对齐，静态校验通过。拓扑展开为 ${selection.pp} 个 PP Stage，可点选 Rank 查看它在图中的位置。`;
+      }
+      if(current==='layers')return variant.remainder?`总层数 ${variant.total} 除以 PP 2 余 ${variant.remainder}，当前无法均匀分层。请核对模型层数或 PP。`:`总层数 ${variant.total} 可均匀分到 2 个 PP Stage，每个 Stage ${variant.each} 层。当前满足均匀分层约束。`;
+      if(current==='heads')return variant.remainder?`注意力头数 ${variant.total} 除以 TP 4 余 ${variant.remainder}，当前无法均匀切分。请核对头数或 TP。`:`注意力头数 ${variant.total} 可均匀切给 TP 4，每份 ${variant.each} 个头。当前满足注意力头切分约束。`;
+      if(current==='compatibility')return '第五个 gallery 选项已就位。这里将围绕 MC2／CoC 互斥、AMPipe 前置条件等规则构建可交互示例；当前尚未检查具体训练配置。';
+      if(current==='capacity'){
+        const result=capacityState();
+        if(result.status!=='estimated')return `当前参数未通过静态约束，容量暂不可估算：${result.errors.map(error=>error.message).join('；')}`;
+        const peak=result.data.stages[result.data.bottleneck_stage];
+        return `本地理论试算：Stage ${peak.stage} 单卡约 ${peak.total_gib.toFixed(1)} / ${peak.capacity_gib} GiB（${Math.round(peak.ratio*100)}%），为最紧 Stage。结果标记为 theoretical，运行时峰值仍需实机验证。`;
+      }
+      return '';
+    }
+    function renderLayerMatrix(snapshot,stage){
+      const layers=snapshot.layers.filter(layer=>layer.stage===stage.stage);
+      const ranks=snapshot.ranks.filter(rank=>rank.stage===stage.stage);
+      const expertSlices=new Map(snapshot.expertSlices.map(slice=>[slice.ep_index,slice]));
+      const ruler=`<div class="product-layer-ruler"><span class="layer-ruler-corner">Rank / Layer</span>${layers.map(layer=>`<span title="Layer ${layer.layer} · ${layer.ffn==='moe'?'MoE':'Dense'}">L${layer.layer}<small>${layer.ffn==='moe'?'MoE':'Dense'}</small></span>`).join('')}</div>`;
+      const rows=ranks.map((rank,index)=>{
+        const previous=ranks[index-1];
+        const groupStart=previous&&(previous.edp_index!==rank.edp_index||previous.ep_index!==rank.ep_index||previous.cp_index!==rank.cp_index);
+        const slice=expertSlices.get(rank.ep_index);
+        const cells=layers.map(layer=>{
+          const moe=layer.ffn==='moe'&&slice;
+          const expertLabel=moe?`E${slice.expert_start}–${slice.expert_end}`:'';
+          const detail=moe?`持有专家 E${slice.expert_start}–E${slice.expert_end}`:'Dense 层';
+          return `<span class="layer-cell ${moe?'layer-cell--moe':''}" title="R${rank.rank} · L${layer.layer} · TP${rank.tp_index} · ${detail}">${expertLabel}</span>`;
+        }).join('');
+        return `<button type="button" class="layer-rank-row layer-ep-${rank.ep_index%4} ${groupStart?'group-start':''}" data-product-rank="${rank.rank}" data-product-stage="${stage.stage}" data-product-outer="${rank.edp_index}" data-product-ep="${rank.ep_index}" data-product-cp="${rank.cp_index}" data-product-tp="${rank.tp_index}" data-product-group="${stage.stage}-${rank.edp_index}-${rank.ep_index}-${rank.cp_index}" aria-label="Rank ${rank.rank}，${snapshot.axis} ${rank.edp_index}，EP ${rank.ep_index}，CP ${rank.cp_index}，TP ${rank.tp_index}，贯穿 Layer ${stage.layer_start} 到 ${stage.layer_end}" aria-pressed="false"><span class="layer-rank-name"><strong>R${rank.rank} · TP${rank.tp_index}</strong><small>${snapshot.axis}${rank.edp_index} · EP${rank.ep_index} · CP${rank.cp_index}</small></span>${cells}</button>`;
+      }).join('');
+      return `<section class="product-stage"><div class="product-stage-head"><span>PP Stage ${stage.stage} · L${stage.layer_start}–L${stage.layer_end}</span><span>Rank ${ranks[0].rank}–${ranks.at(-1).rank}</span></div><div class="product-layer-scroll" role="region" tabindex="0" aria-label="PP Stage ${stage.stage} 的 Rank 与 Layer 分布"><div class="product-layer-matrix" style="--layer-count:${layers.length}">${ruler}${rows}</div></div></section>`;
+    }
+    function renderProduct(scene,state){
+      const {selection,snapshot,check}=state;
+      const mode=scene.active;
+      const header=renderEquation(state,mode);
+      if(!snapshot.rankRows)return header+renderComparison(snapshot,check,selection.ranks)+`<p class="product-status-note">${check.status==='valid'?'静态校验通过；超过 128 Rank 时只显示乘积与判断，避免铺满页面。':'当前组合未通过静态校验，暂不绘制 Rank 拓扑。'}</p>`;
+      const viewToggle=`<div class="product-view-toolbar"><span>${productLayerVisible?'Rank × Layer':'Rank 分组'}</span><button type="button" class="product-layer-toggle" data-product-layer-toggle aria-pressed="${productLayerVisible}" aria-label="显示 Layer 分布" title="切换 Stage 内的 Layer 列"><span class="product-layer-toggle-track" aria-hidden="true"></span>Layer</button></div>`;
+      if(productLayerVisible)return header+viewToggle+`<div class="product-stages product-stages--layers">${snapshot.stages.map(stage=>renderLayerMatrix(snapshot,stage)).join('')}</div>`;
+      const stages=snapshot.rankRows.map((outerRows,stage)=>`<section class="product-stage"><div class="product-stage-head"><span>PP Stage ${stage}</span><span>Rank ${outerRows[0][0][0][0]}–${outerRows.at(-1).at(-1).at(-1).at(-1)}</span></div>${outerRows.map((epGroups,outer)=>`<div class="product-replica"><span class="product-replica-name">${snapshot.axis}${outer}</span><div class="ep-panes" style="--ep-count:${selection.ep}">${epGroups.map((cpGroups,ep)=>`<div class="ep-pane" title="EP ${ep} 是专家并行 Rank 切片；同一 PP Stage 中每个 MoE 层的专家都会按 EP 切分，不代表第 ${ep} 个 MoE 层。"><div class="ep-title">EP ${ep}</div>${cpGroups.map((tpRanks,cp)=>`<div class="cp-line" style="--tp-count:${selection.tp}"><span class="cp-line-label">CP${cp}</span>${tpRanks.map((rank,tp)=>`<button type="button" class="tp-rank" data-product-rank="${rank}" data-product-stage="${stage}" data-product-outer="${outer}" data-product-ep="${ep}" data-product-cp="${cp}" data-product-tp="${tp}" data-product-group="${stage}-${outer}-${ep}-${cp}" aria-label="Rank ${rank}，Stage ${stage}，${snapshot.axis} ${outer}，EP ${ep}，CP ${cp}，TP ${tp}" aria-pressed="false"><span class="tp-id">TP${tp}</span><span class="rank-id">R${rank}</span></button>`).join('')}</div>`).join('')}</div>`).join('')}</div></div>`).join('')}</section>`).join('');
+      return header+viewToggle+`<div class="product-stages" style="--pp-count:${selection.pp}">${stages}</div>`;
+    }
+    const capacityTouchesWarning=(result,peak)=>peak.total_gib>=peak.capacity_gib*result.data.thresholds.tight;
+    function renderCapacity(result){
+      if(result.status!=='estimated')return `<p class="capacity-note">当前配置未通过静态校验：${escapeHtml(result.errors.map(error=>error.message).join('；'))}</p>`;
+      const stages=result.data.stages;
+      const peak=stages.reduce((a,b)=>b.total_gib>a.total_gib?b:a);
+      const low=stages.reduce((a,b)=>b.total_gib<a.total_gib?b:a);
+      const cap=peak.capacity_gib;
+      const overCapacity=peak.total_gib>cap;
+      const axis=overCapacity?peak.total_gib*1.04:cap;
+      const pct=value=>`${Math.min(100,value/axis*100).toFixed(2)}%`;
+      const threshold=result.data.thresholds;
+      const stageBars=stages.map(entry=>`<div class="capacity-stage ${entry.stage===peak.stage?'active':''}" title="Stage ${entry.stage}：${entry.total_gib.toFixed(1)} GiB，${entry.layers} 层，同 Stage Rank 理论占用相同"><strong>${entry.total_gib.toFixed(1)}</strong><div class="capacity-stage-bars"><i style="--stage-pct:${Math.max(3,entry.total_gib/axis*100).toFixed(1)}%"></i></div><span>PP${entry.stage}</span></div>`).join('');
+      const chartStyle=`--min-pct:${pct(low.total_gib)};--max-pct:${pct(peak.total_gib)};--min-card-pct:${Math.min(100,low.total_gib/cap*100).toFixed(2)}%;--max-card-pct:${Math.min(100,peak.total_gib/cap*100).toFixed(2)}%;--tight-pct:${pct(cap*threshold.tight)};--cap-pct:${pct(cap)};--overflow-pct:${pct(Math.max(0,peak.total_gib-cap))}`;
+      const fitText=overCapacity?`装不下 · 超出 ${(peak.total_gib-cap).toFixed(1)} GiB`:`可装下 · 剩余 ${(cap-peak.total_gib).toFixed(1)} GiB`;
+      const touchesWarning=capacityTouchesWarning(result,peak);
+      const warningText=overCapacity?`最大理论需求 ${peak.total_gib.toFixed(1)} GiB，已超出单卡容量 ${(peak.total_gib-cap).toFixed(1)} GiB。`:`理论需求区间已触及 ${Math.round(threshold.tight*100)}% 关注线右侧，最大需求 ${peak.total_gib.toFixed(1)} GiB。`;
+      return `<div class="capacity-summary" data-level="${peak.level}"><strong>${fitText}</strong><span>最大理论需求 ${peak.total_gib.toFixed(1)} / 单卡 ${cap} GiB · ${Math.round(peak.ratio*100)}%</span></div>
+        ${touchesWarning?`<div class="capacity-warning" data-level="${peak.level}" role="status"><strong>容量告警</strong><span>${warningText}</span></div>`:''}
+        <div class="capacity-chart capacity-hbm" style="${chartStyle}" role="img" aria-label="单卡 HBM 容量 ${cap} GiB；最大理论需求 PP${peak.stage} ${peak.total_gib.toFixed(1)} GiB，${fitText}；最小理论需求 PP${low.stage} ${low.total_gib.toFixed(1)} GiB；${Math.round(threshold.tight*100)}% 关注线">
+          <div class="capacity-hbm__head"><span>最小 PP${low.stage} <strong>${low.total_gib.toFixed(1)} GiB</strong></span><span>最大 PP${peak.stage} <strong>${peak.total_gib.toFixed(1)} GiB</strong></span></div>
+          <div class="capacity-hbm__track"><div class="capacity-hbm__capacity"><div class="capacity-hbm__used"></div><div class="capacity-hbm__interval"></div></div><div class="capacity-hbm__overflow"></div><i class="capacity-hbm__mark capacity-hbm__mark--min"></i><i class="capacity-hbm__mark capacity-hbm__mark--max"></i><i class="capacity-hbm__mark capacity-hbm__mark--tight"></i></div>
+          <div class="capacity-hbm__axis"><span>0 GiB</span><span class="capacity-hbm__cap-label">单卡容量 ${cap} GiB</span></div>
+          <div class="capacity-hbm__keys"><span class="used"><i></i>理论需求区间 · 100%</span>${overCapacity?'<span class="overflow"><i></i>超出容量</span>':''}<span class="range"><i></i>白线：PP 最小 / 最大</span><span class="tight"><i></i>${Math.round(threshold.tight*100)}% 关注 ${(cap*threshold.tight).toFixed(1)} GiB</span></div>
+        </div><p class="capacity-hbm__scope">横柱边框表示单卡 HBM 容量，渐变覆盖整根容量柱；亮色区间表示各 PP Stage 的理论占用范围。</p>
+        <div class="capacity-stage-list" role="img" aria-label="各 PP Stage 单卡理论占用：${stages.map(entry=>`PP${entry.stage} ${entry.total_gib.toFixed(1)} GiB`).join('，')}">${stageBars}</div><div class="capacity-note">同一 PP Stage 的各 Rank 理论占用相同。估算标记为 theoretical；关注线属于未校准的启发式策略，运行时峰值需实机验证。</div>`;
+    }
+    function updateProductDetail(){
+      const cells=[...$('visual').querySelectorAll('[data-product-rank]')];
+      let selected=cells.find(cell=>Number(cell.dataset.productRank)===selectedProductRank);
+      if(!selected&&cells.length){selected=cells[0];selectedProductRank=Number(selected.dataset.productRank);}
+      if(!selected)return;
+      const peers=cells.filter(cell=>cell.dataset.productGroup===selected.dataset.productGroup);
+      cells.forEach(cell=>{const active=cell===selected;cell.classList.toggle('active',active);cell.classList.toggle('peer',!active&&peers.includes(cell));cell.setAttribute('aria-pressed',String(active));});
+    }
+    function clearTransientFeedback(){
+      for(const timer of flashTimers.values())clearTimeout(timer);
+      flashTimers.clear();clearTimeout(feedbackTimer);
+    }
+    function showFeedback(message){
+      const element=$('balance-feedback');if(!element)return;
+      element.textContent=message;clearTimeout(feedbackTimer);
+      feedbackTimer=setTimeout(()=>{if(element.isConnected)element.textContent='';},3000);
+    }
+    function syncFactorControls(selection){
+      for(const [field,value] of Object.entries(selection)){
+        const number=$('context-control').querySelector(`[data-factor="${field}"]`);
+        const range=$('context-control').querySelector(`[data-factor-range="${field}"]`);
+        if(!number||!range)continue;
+        const maximum=Math.max(field==='ranks'?128:16,value);
+        number.value=String(value);
+        range.max=String(maximum);range.value=String(value);
+        range.style.setProperty('--range-progress',sliderProgress(value,maximum));
+        const row=number.closest('[data-factor-row]');
+        row.querySelector('[data-step-direction="-1"]').disabled=value<=1;
+        row.querySelector('[data-step-direction="1"]').disabled=value>=ConstraintLensCore.REBALANCE_FIELD_LIMITS[field];
+      }
+    }
+    function syncCapacityControls(){
+      const root=$('context-control');
+      for(const field of capacityNumberFields){
+        const row=root.querySelector(`[data-capacity-row="${field.key}"]`);
+        if(!row)continue;
+        const position=capacityFieldPosition(field);
+        const min=field.values?0:field.min,max=field.values?field.values.length-1:field.max;
+        row.querySelector('[data-capacity-number]').value=String(capacitySelection[field.key]);
+        const range=row.querySelector('[data-capacity-range]');
+        range.value=String(position);
+        range.style.setProperty('--range-progress',capacityFieldProgress(field));
+        row.querySelector('[data-step-direction="-1"]').disabled=capacityLocks.has(field.key)||position<=min;
+        row.querySelector('[data-step-direction="1"]').disabled=capacityLocks.has(field.key)||position>=max;
+      }
+      for(const {key} of capacityModes){
+        root.querySelectorAll(`[data-capacity-choice="${key}"]`).forEach(button=>{
+          const active=button.dataset.capacityValue===capacitySelection[key];
+          button.classList.toggle('active',active);
+          button.setAttribute('aria-pressed',String(active));
+        });
+      }
+    }
+    function applyCapacityChange(key,value){
+      if(capacityLocks.has(key))return;
+      const numeric=capacityNumberFields.find(field=>field.key===key);
+      const mode=capacityModes.find(field=>field.key===key);
+      const valid=numeric
+        ?Number.isSafeInteger(value)&&(numeric.values?numeric.values.includes(value):value>=numeric.min&&value<=numeric.max&&(value-numeric.min)%numeric.step===0)
+        :mode?.options.some(([option])=>option===value);
+      if(!valid){
+        syncCapacityControls();
+        const feedback=$('capacity-feedback');
+        if(feedback)feedback.textContent=numeric?.values?'PP 仅支持 1、2、4、8。':'请输入控件允许的数值。';
+        return;
+      }
+      capacitySelection[key]=value;
+      syncCapacityControls();
+      const feedback=$('capacity-feedback');if(feedback)feedback.textContent='';
+      render(true);
+    }
+    function flashPassiveChanges(changes){
+      for(const {field} of changes){
+        const row=$('context-control').querySelector(`[data-factor-row="${field}"]`);
+        if(!row)continue;
+        clearTimeout(flashTimers.get(field));row.classList.remove('passive-changed');
+        void row.offsetWidth;row.classList.add('passive-changed');
+        flashTimers.set(field,setTimeout(()=>{row.classList.remove('passive-changed');flashTimers.delete(field);},3000));
+      }
+    }
+    function applyFactorChange(field,value){
+      const selection=factorSelections[cases.product.active];
+      const limit=ConstraintLensCore.REBALANCE_FIELD_LIMITS[field];
+      if(!Number.isSafeInteger(value)||value<1||value>limit){syncFactorControls(selection);showFeedback('请输入允许范围内的正整数。');return;}
+      const outcome=ConstraintLensCore.rebalanceParallelConfig(currentFactor.input,{field,value,editableFields:Object.keys(selection),lockedFields:[...activeLocks()]});
+      if(outcome.status!=='balanced'){syncFactorControls(selection);showFeedback(outcome.reason);return;}
+      Object.assign(selection,outcome.selection);
+      syncFactorControls(selection);
+      clearTimeout(flashTimers.get(field));flashTimers.delete(field);
+      $('context-control').querySelector(`[data-factor-row="${field}"]`)?.classList.remove('passive-changed');
+      render(true);
+      flashPassiveChanges(outcome.changes);
+      showFeedback(outcome.changes.length?`已自动调整 ${outcome.changes.map(change=>`${change.field==='ranks'?'总 Rank':change.field.toUpperCase()} ${change.old_value}→${change.new_value}`).join('、')}`:'配置已保持平衡');
+    }
+    function applyWorldsizeV2Change(field,value,preserveControls=false){
+      const maximum=field==='ranks'?256:16;
+      if(!Object.hasOwn(worldsizeV2Selection,field)||field==='mode'||worldsizeV2Locks.has(field)||!Number.isSafeInteger(value)||value<1||value>maximum){
+        render();
+        const feedback=$('v2-feedback');if(feedback)feedback.textContent=`请输入 1～${maximum} 的整数。`;
+        return;
+      }
+      worldsizeV2Selection[field]=value;
+      render(preserveControls);
+      if(preserveControls){
+        const number=$('context-control').querySelector(`[data-v2-number="${field}"]`);
+        const range=$('context-control').querySelector(`[data-v2-range="${field}"]`);
+        if(number)number.value=value;
+        if(range){range.value=value;range.style.setProperty('--range-progress',sliderProgress(value,maximum));}
+        $('context-control').querySelectorAll(`[data-v2-step="${field}"]`).forEach(button=>button.disabled=Number(button.dataset.stepDirection)<0?value<=1:value>=maximum);
+      }
+    }
+    function steppedFactorValue(field,direction){
+      const value=factorSelections[cases.product.active][field];
+      let next=1;
+      if(direction>0){while(next<=value)next*=2;}
+      else{while(next*2<value)next*=2;}
+      return Math.min(next,ConstraintLensCore.REBALANCE_FIELD_LIMITS[field]);
+    }
+    function syncVisualHeight(){
+      const interaction=$('interaction');
+      if(interaction.hidden){$('visual').style.setProperty('--control-height','0px');return;}
+      const style=getComputedStyle(interaction);
+      const spacing=['paddingTop','paddingBottom','borderTopWidth','borderBottomWidth'].reduce((sum,key)=>sum+parseFloat(style[key]||0),0);
+      $('visual').style.setProperty('--control-height',`${Math.ceil($('context-control').getBoundingClientRect().height+spacing)}px`);
+    }
+    function syncWorldsizeV2Layout(){
+      const restored=$('visual').querySelector('.v2-restored');
+      const artboard=restored?.querySelector('.v2-artboard');
+      if(!artboard)return;
+      const footerHeight=restored.querySelector('.v2-footer')?.getBoundingClientRect().height??0;
+      const requiredHeight=Math.ceil(artboard.getBoundingClientRect().height+2*(footerHeight+(footerHeight?12:0)));
+      const value=`${requiredHeight}px`;
+      if(restored.style.minHeight!==value)restored.style.minHeight=value;
+    }
+    function render(preserveControls=false){
+      hideWorldsizeV2Tooltip();
+      if(!preserveControls)clearTransientFeedback();
+      const scene=cases[current];const variant=scene.variants?.[scene.active]??scene.modes?.[scene.active]??scene;
+      const factor=current==='product'?factorState(factorSelections[scene.active],scene.active):null;
+      currentFactor=factor;
+      $('case-panel').setAttribute('aria-labelledby',`tab-${current}`);
+      const capacity=current==='capacity'?capacityState():null;
+      const v2=current==='worldsize-v2'?worldsizeV2State():null;
+      const peak=capacity?.status==='estimated'?capacity.data.stages[capacity.data.bottleneck_stage]:null;
+      const low=peak?capacity.data.stages.reduce((a,b)=>b.total_gib<a.total_gib?b:a):null;
+      const capacityLevel=peak?.level==='safe'&&capacityTouchesWarning(capacity,peak)?'tight':peak?.level;
+      const v2McpCurrent=v2&&worldsizeV2Mcp.key===worldsizeV2RequestKey(v2)?worldsizeV2Mcp:null;
+      $('case-source-text').textContent=v2?v2.validation.status==='valid'?'当前配置已对齐，无需请求修复建议。':v2McpCurrent?.status==='ready'?v2McpCurrent.suggestions.length?'修复建议来自 V2 服务 suggest_config_fixes 的 structuredContent。':'V2 服务未返回可在当前画布试用的修复方案。':v2McpCurrent?.status==='error'?v2McpCurrent.error:globalThis.__MINDSPEED_WEB_SERVICE__?.apiBase?'正在请求 V2 服务的修复建议。':'请从 V2 服务工作台打开此页以获取修复建议。':factor?factor.snapshot.rankRows?'我已调用 MCP 工具 validate_parallel_config 和 compute_rank_topology，取得并行校验与 Rank 拓扑。':'我已调用 MCP 工具 validate_parallel_config，取得并行约束判断。':caseSources[current];
+      $('case-question').textContent=v2?`目标 ${v2.selection.ranks} Rank，当前配置有多少？`:scene.question;
+      const capacityRelation=peak?(peak.total_gib>peak.capacity_gib?'超过':peak.total_gib===peak.capacity_gib?'达到':'低于'):null;
+      $('case-title').textContent=v2?`目标 ${v2.selection.ranks} Rank，当前配置计算 ${v2.world} Rank`:factor?factor.check.status==='valid'?factor.snapshot.rankRows?`${factor.snapshot.world} 个 Rank 的五维拓扑`:`${factor.snapshot.world} 个 Rank 的静态校验通过`:comparisonText(factor.snapshot,factor.check,factor.selection.ranks):capacity?(peak?`理论估算 ${low.total_gib.toFixed(1)}～${peak.total_gib.toFixed(1)} GiB，${capacityRelation}单卡容量 ${peak.capacity_gib} GiB`:'当前配置暂不可估算'):variant.title;
+      const tone=v2?(v2.validation.status==='valid'?'good':'bad'):factor?(factor.check.status==='valid'?'good':'bad'):capacity?(capacityLevel==='safe'?'good':'estimate'):variant.tone;
+      $('restore-current').hidden=!currentConfigChanged();
+      $('case-badge').className=`badge ${tone}`;$('case-badge').textContent=v2?(v2.validation.status==='valid'?'静态校验通过':v2.world!==v2.selection.ranks?'总 Rank 冲突':'其他静态约束'):factor?(factor.check.status==='valid'?(factor.warnings.length?'静态校验通过 · 有提示':'静态校验通过'):'需要处理'):capacity?(peak?({safe:'理论安全',tight:'理论偏满',alert:'理论预警',over:'理论超出'}[capacityLevel]):'暂不可估算'):variant.badge;
+      $('visual').innerHTML=v2?renderWorldsizeV2(v2):current==='layers'||current==='heads'?renderDivision(current,variant):current==='product'?renderProduct(scene,factor):current==='compatibility'?renderCompatibilityPreview():renderCapacity(capacity);
+      $('visual').classList.toggle('is-v2-visual',!!v2);
+      const splitTitle=scene.active==='split'?productNote(scene,factor):'切出式口径：EP 从 DP 内切出，不再乘入 world_size。';
+      if(!preserveControls)$('context-control').innerHTML=v2?renderWorldsizeV2Controls():factor?`<div class="choice ep-mode-choice" aria-label="EP 口径示例"><button type="button" data-mode="orthogonal" class="${scene.active==='orthogonal'?'active':''}" aria-pressed="${scene.active==='orthogonal'}" title="${escapeHtml(scene.modes.orthogonal.note)}">EP 正交</button><button type="button" data-mode="split" class="${scene.active==='split'?'active':''}" aria-pressed="${scene.active==='split'}" title="${escapeHtml(splitTitle)}">EP 切出</button></div>${renderFactorControls(factor,scene.active)}`:capacity?renderCapacityControls():scene.variants?`<div class="choice" aria-label="预计算试调选项">${Object.keys(scene.variants).map(value=>`<button type="button" data-variant="${escapeHtml(value)}" class="${scene.active===value?'active':''}" aria-pressed="${scene.active===value}">${escapeHtml(value)}</button>`).join('')}</div>`:'';
+      if(v2)syncWorldsizeV2ControlHighlights();
+      if(preserveControls&&factor)$('context-control').querySelector('[data-mode="split"]').title=splitTitle;
+      $('workspace').classList.toggle('no-controls',!factor&&!capacity&&!v2&&!scene.variants);
+      $('interaction').hidden=!factor&&!capacity&&!v2&&!scene.variants;
+      $('agent-reply').textContent=agentReply(variant,factor);
+      if(!preserveControls)$('reply-feedback').textContent='';
+      if(current==='product')updateProductDetail();
+      document.querySelectorAll('[role=tab]').forEach(tab=>{const active=tab.dataset.case===current;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;});
+      requestAnimationFrame(()=>{syncVisualHeight();syncWorldsizeV2Layout();});
+      if(v2)scheduleWorldsizeV2Mcp(v2);
+    }
+    $('restore-current').addEventListener('click',()=>{
+      if(!currentConfigChanged())return;
+      if(current==='product'){
+        cases.product.active=initialActive.product;
+        for(const mode of Object.keys(initialFactorSelections)){Object.assign(factorSelections[mode],initialFactorSelections[mode]);factorLocks[mode].clear();}
+      }else if(current==='capacity'){Object.assign(capacitySelection,initialCapacitySelection);capacityLocks.clear();}
+      else if(current==='worldsize-v2'){Object.assign(worldsizeV2Selection,initialWorldsizeV2Selection);worldsizeV2Locks.clear();worldsizeV2SelectedSuggestion=null;}
+      else cases[current].active=initialActive[current];
+      render();
+    });
+    document.querySelector('.width-switch').addEventListener('click',event=>{const button=event.target.closest('[data-width-mode]');if(!button)return;const mode=button.dataset.widthMode;document.querySelector('.shell').dataset.shellWidth=mode;document.querySelectorAll('[data-width-mode]').forEach(option=>option.setAttribute('aria-pressed',String(option===button)));requestAnimationFrame(syncWorldsizeV2Layout);});
+    document.querySelector('.gallery').addEventListener('click',event=>{const tab=event.target.closest('[data-case]');if(!tab)return;current=tab.dataset.case;render();});
+    document.querySelector('.gallery').addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;const tabs=[...document.querySelectorAll('[role=tab]')];let index=tabs.findIndex(tab=>tab.dataset.case===current);index=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;current=tabs[index].dataset.case;render();tabs[index].focus();event.preventDefault();});
+    $('context-control').addEventListener('click',event=>{
+      const v2Lock=event.target.closest('[data-v2-lock]');
+      if(v2Lock){const field=v2Lock.dataset.v2Lock;if(worldsizeV2Locks.has(field))worldsizeV2Locks.delete(field);else worldsizeV2Locks.add(field);render();return;}
+      const v2Mode=event.target.closest('[data-v2-mode]');
+      if(v2Mode){worldsizeV2Selection.mode=v2Mode.dataset.v2Mode;render();return;}
+      const v2Step=event.target.closest('[data-v2-step]');
+      if(v2Step){const field=v2Step.dataset.v2Step;applyWorldsizeV2Change(field,worldsizeV2Selection[field]+Number(v2Step.dataset.stepDirection));return;}
+      const capacityStep=event.target.closest('[data-capacity-step]');
+      if(capacityStep){
+        const field=capacityNumberFields.find(item=>item.key===capacityStep.dataset.capacityStep);
+        if(!field||capacityLocks.has(field.key))return;
+        const position=capacityFieldPosition(field)+(field.values?1:field.step)*Number(capacityStep.dataset.stepDirection);
+        applyCapacityChange(field.key,capacityFieldValue(field,Math.max(field.values?0:field.min,Math.min(field.values?field.values.length-1:field.max,position))));
+        return;
+      }
+      const capacityLock=event.target.closest('[data-capacity-lock]');
+      if(capacityLock){
+        const key=capacityLock.dataset.capacityLock;
+        if(capacityLocks.has(key))capacityLocks.delete(key);else capacityLocks.add(key);
+        render();
+        $('context-control').querySelector(`[data-capacity-lock="${key}"]`)?.focus();
+        return;
+      }
+      const capacityChoice=event.target.closest('[data-capacity-choice]');
+      if(capacityChoice){applyCapacityChange(capacityChoice.dataset.capacityChoice,capacityChoice.dataset.capacityValue);return;}
+      const step=event.target.closest('[data-factor-step]');
+      if(step){
+        const field=step.dataset.factorStep;
+        applyFactorChange(field,steppedFactorValue(field,Number(step.dataset.stepDirection)));
+        return;
+      }
+      const lock=event.target.closest('[data-lock]');
+      if(lock){
+        const field=lock.dataset.lock;const locks=activeLocks();
+        if(locks.has(field))locks.delete(field);else locks.add(field);
+        const locked=locks.has(field);const label=lock.closest('.factor').querySelector('small').textContent;
+        lock.classList.toggle('locked',locked);lock.setAttribute('aria-pressed',String(locked));
+        lock.setAttribute('aria-label',`${locked?'解锁':'锁定'} ${label}，${locked?'允许':'阻止'}被动调整`);
+        lock.title=locked?'已锁定：点击解锁':'未锁定：点击固定数值';
+        lock.querySelector('path').setAttribute('d',locked?'M7 10V7a5 5 0 0 1 10 0v3':'M7 10V7a5 5 0 0 1 9-3');
+        return;
+      }
+      const button=event.target.closest('[data-variant],[data-mode]');if(!button)return;
+      cases[current].active=button.dataset.variant??button.dataset.mode;render();
+    });
+    $('context-control').addEventListener('change',event=>{
+      const v2Number=event.target.closest('input[data-v2-number]');
+      if(v2Number){applyWorldsizeV2Change(v2Number.dataset.v2Number,Number(v2Number.value));return;}
+      const capacityNumber=event.target.closest('input[data-capacity-number]');
+      if(capacityNumber){applyCapacityChange(capacityNumber.dataset.capacityNumber,Number(capacityNumber.value));return;}
+      const number=event.target.closest('input[data-factor]');if(!number)return;
+      applyFactorChange(number.dataset.factor,Number(number.value));
+    });
+    $('context-control').addEventListener('input',event=>{
+      const v2Range=event.target.closest('input[data-v2-range]');
+      if(v2Range){applyWorldsizeV2Change(v2Range.dataset.v2Range,Number(v2Range.value),true);return;}
+      const capacityRange=event.target.closest('input[data-capacity-range]');
+      if(capacityRange){
+        const field=capacityNumberFields.find(item=>item.key===capacityRange.dataset.capacityRange);
+        if(field)applyCapacityChange(field.key,capacityFieldValue(field,Number(capacityRange.value)));
+        return;
+      }
+      const range=event.target.closest('input[data-factor-range]');if(!range)return;
+      applyFactorChange(range.dataset.factorRange,Number(range.value));
+    });
+    $('context-control').addEventListener('keydown',event=>{if(event.key==='Enter'&&event.target.matches('input[data-factor],input[data-capacity-number],input[data-v2-number]'))event.target.blur();});
+    $('visual').addEventListener('click',event=>{
+      if(event.target.closest('[data-v2-try]')){
+        const suggestions=worldsizeV2Suggestions(worldsizeV2State());
+        const selected=suggestions.find(item=>worldsizeV2SuggestionKey(item)===worldsizeV2SelectedSuggestion);
+        if(!selected)return;
+        for(const change of worldsizeV2SuggestionChanges(selected))worldsizeV2Selection[change.field]=change.to;
+        worldsizeV2SelectedSuggestion=null;
+        render();
+        return;
+      }
+      const suggestion=event.target.closest('[data-v2-suggestion-key]');
+      if(suggestion){
+        hideWorldsizeV2Tooltip();
+        worldsizeV2SelectedSuggestion=suggestion.dataset.v2SuggestionKey;
+        $('visual').innerHTML=renderWorldsizeV2(worldsizeV2State());
+        syncWorldsizeV2ControlHighlights();
+        syncWorldsizeV2Layout();
+        return;
+      }
+      if(event.target.closest('[data-product-layer-toggle]')){productLayerVisible=!productLayerVisible;render(true);return;}
+      const button=event.target.closest('[data-product-rank]');
+      if(!button)return;
+      selectedProductRank=Number(button.dataset.productRank);
+      updateProductDetail();
+    });
+    $('visual').addEventListener('pointerover',event=>{
+      const cell=event.target.closest('[data-v2-tooltip]');
+      if(current==='worldsize-v2'&&cell)scheduleWorldsizeV2Tooltip(cell);
+    });
+    $('visual').addEventListener('pointerout',event=>{
+      const cell=event.target.closest('[data-v2-tooltip]');
+      if(cell&&!cell.contains(event.relatedTarget))hideWorldsizeV2Tooltip();
+    });
+    document.querySelector('.reply-actions').addEventListener('click',async event=>{
+      const button=event.target.closest('[data-reply-action]');if(!button)return;
+      const action=button.dataset.replyAction;
+      if(action==='like'||action==='dislike'){
+        const active=button.getAttribute('aria-pressed')==='true';
+        document.querySelectorAll('.reply-actions [aria-pressed]').forEach(item=>item.setAttribute('aria-pressed','false'));
+        button.setAttribute('aria-pressed',String(!active));
+        $('reply-feedback').textContent='';
+        return;
+      }
+      try{
+        await navigator.clipboard.writeText(action==='share'?location.href:$('agent-reply').textContent);
+        $('reply-feedback').textContent=action==='share'?'分享链接已复制':'答复已复制';
+      }catch{$('reply-feedback').textContent='复制失败，请检查浏览器剪贴板权限';}
+    });
+    if('ResizeObserver' in window){
+      new ResizeObserver(syncVisualHeight).observe($('context-control'));
+      let observedVisualWidth=0;
+      new ResizeObserver(()=>{const width=$('visual').clientWidth;if(width!==observedVisualWidth){observedVisualWidth=width;syncWorldsizeV2Layout();}}).observe($('visual'));
+    }
+    window.addEventListener('resize',syncVisualHeight);
+    window.addEventListener('resize',()=>{hideWorldsizeV2Tooltip();if(current==='worldsize-v2'){$('visual').innerHTML=renderWorldsizeV2(worldsizeV2State());syncWorldsizeV2Layout();}});
+    window.addEventListener('scroll',hideWorldsizeV2Tooltip,true);
+    render();
+  </script>
+</body>
+</html>

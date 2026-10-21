@@ -1,0 +1,67 @@
+{
+  "factor_moves_rank": {
+    "status": "balanced",
+    "selection": { "dp": 3, "pp": 2, "tp": 2, "cp": 2, "ep": 2, "ranks": 48 },
+    "changes": [{ "field": "ranks", "old_value": 32, "new_value": 48 }],
+    "search_exhausted": false
+  },
+  "locked_active_still_moves_rank": {
+    "status": "balanced",
+    "selection": { "dp": 3, "pp": 2, "tp": 2, "cp": 2, "ep": 2, "ranks": 48 },
+    "changes": [{ "field": "ranks", "old_value": 32, "new_value": 48 }],
+    "search_exhausted": false
+  },
+  "rank_moves_factor": {
+    "status": "balanced",
+    "selection": { "dp": 3, "pp": 2, "tp": 2, "cp": 2, "ep": 2, "ranks": 48 },
+    "changes": [{ "field": "dp", "old_value": 2, "new_value": 3 }],
+    "search_exhausted": false
+  },
+  "locked_factor_is_skipped": {
+    "status": "balanced",
+    "selection": { "dp": 2, "pp": 2, "tp": 2, "cp": 4, "ep": 2, "ranks": 64 },
+    "changes": [{ "field": "cp", "old_value": 2, "new_value": 4 }],
+    "search_exhausted": false
+  },
+  "impossible_tp_keeps_previous": {
+    "status": "unavailable",
+    "selection": { "dp": 2, "pp": 2, "tp": 2, "cp": 2, "ep": 2, "ranks": 32 },
+    "changes": [],
+    "search_exhausted": false
+  },
+  "locked_rank_blocks_factor": {
+    "status": "unavailable",
+    "selection": { "dp": 2, "pp": 2, "tp": 2, "cp": 2, "ep": 2, "ranks": 32 },
+    "changes": [],
+    "search_exhausted": false
+  },
+  "split_dp_changes_ep_and_rank": {
+    "status": "balanced",
+    "selection": { "dp": 3, "pp": 2, "tp": 2, "cp": 2, "ep": 1, "ranks": 24 },
+    "changes": [
+      { "field": "ep", "old_value": 2, "new_value": 1 },
+      { "field": "ranks", "old_value": 32, "new_value": 24 }
+    ],
+    "search_exhausted": false
+  },
+  "three_factor_rank_repair": {
+    "status": "balanced",
+    "selection": { "dp": 2, "pp": 4, "tp": 2, "cp": 1, "ep": 2, "ranks": 32 },
+    "changes": [
+      { "field": "dp", "old_value": 6, "new_value": 2 },
+      { "field": "pp", "old_value": 7, "new_value": 4 },
+      { "field": "tp", "old_value": 3, "new_value": 2 }
+    ],
+    "search_exhausted": false
+  },
+  "bounded_prime_rank_fallback": {
+    "status": "balanced",
+    "selection": { "dp": 6, "pp": 4, "tp": 2, "cp": 1, "ep": 2, "ranks": 96 },
+    "changes": [
+      { "field": "pp", "old_value": 7, "new_value": 4 },
+      { "field": "tp", "old_value": 3, "new_value": 2 },
+      { "field": "ranks", "old_value": 58, "new_value": 96 }
+    ],
+    "search_exhausted": false
+  }
+}
