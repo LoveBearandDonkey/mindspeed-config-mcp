@@ -9,6 +9,7 @@
     "complete": true,
     "source_sha256": "c4b05e7e5306c232c3054dd72923136dd57a207f96bf1abd655bd7949aa8505f",
     "state": "ready",
+    "mcp_candidate_count": 0,
     "dialogue_source_version": "0.1.1",
     "solution_note": "当前已覆盖字段未显示需要调整的配置项。",
     "follow_up_prompt": ""

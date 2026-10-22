@@ -1,0 +1,73 @@
+# configs/openpangu/run_openpangu_2_0_flash_92b.yaml
+# openPangu 2.0 flash 92B · MindSpore + MindFormers 训练配置
+#
+# 结构常量取自仓内 openPangu-2.0-Flash架构参考.md §4（source-verified：官方 config.json + openPangu-2.0-Infer 源码），默认并行度取自同文 §6.1（2048 卡 · DP512/PP4/TP1/CP1/EP64）；并行度 / batch / 开关是左边四域的当前值，改一个数这份 yaml 立刻跟着变
+#
+# 硬件与集群规模不写在本文件里，由启动命令给出（见下栏）：
+#   昇腾 910B · 单卡 HBM 64 GB · 256 节点 × 8 卡 = 2048 rank
+# 框架校验 dp×mp×pp×cp = 512×1×4×1 = 2048，须等于 msrun 的 worker_num（mp = parallel_config.model_parallel，即 TP；ep 从 dp 内切出，不进乘积）
+
+seed: 0
+run_mode: 'train'
+output_dir: './output'
+
+trainer:
+  type: CausalLanguageModelingTrainer
+  model_name: 'openpangu_2_0_flash_92b'
+
+runner_config:
+  epochs: 1
+  batch_size: 12288                   # 全局 batch = MBS 1 × DP 512 × micro_batch_num 24；图内按 dp 切、再分微批 → 每卡每次前反向 1
+  sink_mode: True
+  sink_size: 1
+
+context:
+  mode: 0                             # 0 = Graph Mode
+  device_target: 'Ascend'
+  max_device_memory: '58GB'           # 昇腾 910B 单卡 HBM 64 GB，留约 6 GB 给通信与算子工作区
+  jit_level: 'O1'
+
+parallel:
+  parallel_mode: 1                    # 1 = SEMI_AUTO_PARALLEL
+  full_batch: True                    # 每张卡都读整份全局 batch，再在图内按 dp 切 —— 上面 batch_size 的口径由它定
+  enable_parallel_optimizer: True     # ZeRO-1：只切优化器状态，专家 ÷ EDP=8，其余权重 ÷ 512
+
+parallel_config:
+  data_parallel: 512                  # 含 EP 组在内的真 DP，专家只在 EDP=8 维上复制
+  model_parallel: 1                   # 即 TP，须整除 num_heads 48
+  pipeline_stage: 4                   # 即 PP，分层见 model_config.offset
+  context_parallel: 1                 # 即 CP
+  expert_parallel: 64                 # 即 EP，从 DP 内切出：EDP = DP/EP = 8
+  micro_batch_num: 24                 # 流水线的 micro_batch_num（= 梯度累积步数）。≥ pipeline_stage 4，流水线灌得满；在飞份数由 1F1B 公式定
+  use_seq_parallel: False             # 关：LayerNorm / 残差流的激活在 TP 组内整份复制
+  vocab_emb_dp: True                  # 词表走 DP：每卡背满 151552×2560，不沿词表维切 TP
+
+recompute_config:
+  recompute: True                     # 全开：每层只留输入，反向重算一遍前向
+  select_recompute: False
+
+moe_config:
+  expert_num: 256                     # 路由专家总数
+  num_experts_chosen: 8               # 即 Top-K
+  shared_expert_num: 1
+  capacity_factor: 1.5
+  aux_loss_factor: 0.05
+  routing_policy: 'TopkRouterV2'
+
+model:
+  arch:
+    type: PanguForCausalLM
+  model_config:
+    num_layers: 46
+    hidden_size: 2560
+    num_heads: 48
+    vocab_size: 151552
+    seq_length: 4096
+    intermediate_size: 9216           # Dense MLP，L0–L1
+    moe_intermediate_size: 1024       # MoE FFN，共 44 层
+    first_k_dense_replace: 2
+    offset: [1, 1, 0, 0]              # 相对均分 11 层的偏移 → 各 stage 12,12,11,11
+    mtp_depth: 3
+    params_dtype: 'bfloat16'          # 参数以 bf16 常驻（权重段 2 B/参数），那份 fp32 master 记在优化器的 12 B 里
+    compute_dtype: 'bfloat16'
+    use_flash_attention: True

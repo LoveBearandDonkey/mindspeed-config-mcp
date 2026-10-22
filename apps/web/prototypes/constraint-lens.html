@@ -7,7 +7,7 @@
   <style>
     :root{font-family:Inter,"Segoe UI","Microsoft YaHei",sans-serif;color:#1b2430;background:#f7f8fa;font-synthesis:none}
     *{box-sizing:border-box}body{margin:0}button{font:inherit}button:focus-visible,summary:focus-visible{outline:3px solid #2378dc;outline-offset:3px}
-    .shell{max-width:960px;margin:auto;padding:0 30px 78px}.mast{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:20px;padding:9px 0;background:#fff;border-bottom:1px solid #ececec}
+    .shell{max-width:960px;margin:auto;padding:0 30px 78px}.sticky-nav{position:sticky;top:0;z-index:20;padding-bottom:20px;background:#fff}.mast{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:20px;padding:9px 0;background:#fff;border-bottom:1px solid #ececec}
     .brand{display:flex;align-items:center;gap:12px;white-space:nowrap;font-size:13px;font-weight:700;letter-spacing:.02em}.brand-short{display:none}.mark{display:grid;place-items:center;width:29px;height:29px;flex:none;border-radius:9px;color:white;background:#202a38;font-size:16px}
     .gallery{display:flex;gap:5px;width:max-content;max-width:100%;overflow-x:auto;padding:5px;background:#e9edf1;border-radius:15px;margin-bottom:20px}
     .gallery button{border:0;background:transparent;color:#576576;border-radius:11px;padding:10px 17px;white-space:nowrap;cursor:pointer;font-size:13px}.gallery button[aria-selected=true]{background:#fff;color:#1c2734;box-shadow:0 1px 5px #1c29351a;font-weight:660}
@@ -29,9 +29,9 @@
     :root{color:#111;background:#fff}
     button:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid #1689ee;outline-offset:2px}
     .width-switch{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:10px;background:#f1f1f1}.width-switch button{border:0;border-radius:8px;padding:7px 9px;background:transparent;color:#666;font-size:11px;white-space:nowrap;cursor:pointer}.width-switch button[aria-pressed=true]{background:#fff;color:#111;box-shadow:0 1px 4px #00000012;font-weight:600}.brand{color:#202020}.mark{background:#111;border-radius:9px}
-    .mast-actions{display:flex;align-items:center;gap:8px;min-width:0}.source-switch{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:10px;background:#f1f1f1}.source-switch button{border:0;border-radius:8px;padding:7px 11px;background:transparent;color:#666;font-size:11px;white-space:nowrap;cursor:pointer}.source-switch button[aria-pressed=true]{background:#fff;color:#126ab1;box-shadow:0 1px 4px #00000012;font-weight:650}@media(max-width:550px){.mast{flex-wrap:wrap}.mast-actions{width:100%;justify-content:flex-end}}
+    .mast-actions{display:flex;align-items:center;gap:8px;min-width:0}.source-switch{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:10px;background:#f1f1f1}.source-switch button{border:0;border-radius:8px;padding:7px 11px;background:transparent;color:#666;font-size:11px;white-space:nowrap;cursor:pointer}.source-switch button[aria-pressed=true]{background:#fff;color:#111;box-shadow:0 1px 4px #00000012;font-weight:650}@media(max-width:550px){.mast{flex-wrap:wrap}.mast-actions{width:100%;justify-content:flex-end}}
 
-    .gallery{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(max-content,1fr);width:100%;gap:0;padding:3px;background:#f1f1f1;border-radius:20px;margin-bottom:20px}.gallery button{color:#626262;border-radius:18px;padding:11px 12px;font-size:13px}.gallery button[aria-selected=true]{color:#111;background:#fff;box-shadow:0 1px 5px #00000012;font-weight:550}
+    .gallery{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(max-content,1fr);width:100%;gap:0;padding:3px;background:#f1f1f1;border-radius:20px;margin-bottom:0}.gallery button{color:#626262;border-radius:18px;padding:11px 12px;font-size:13px}.gallery button[aria-selected=true]{color:#111;background:#fff;box-shadow:0 1px 5px #00000012;font-weight:550}
     .panel{border-color:#dedede;border-radius:22px;box-shadow:none}.panel-top{padding:30px 31px 0;border-bottom:0}.question{display:block;width:max-content;max-width:100%;margin:0 0 27px auto;background:#f4f4f4;color:#191919;border-radius:19px;padding:11px 15px;font-size:13px;line-height:1.35}.meta{color:#858585;border-bottom:1px solid #dedede;padding-bottom:15px;font-size:11px;flex-wrap:wrap;align-items:flex-start}.meta .source{font-weight:400;flex:1 1 380px;min-width:0;line-height:1.5}.lead-row{align-items:center;padding-top:19px}.lead-row h2{font-size:19px;letter-spacing:-.015em;line-height:1.4;font-weight:560;color:#111;margin:0 0 5px}.badge{border-radius:9px;padding:6px 9px;font-size:11px;font-weight:500}.badge.bad{color:#ae5c31;background:#fff1e8}.badge.good{color:#3178a5;background:#eaf5fd}.badge.estimate{color:#ae5c31;background:#fff1e8}
     .lead-actions{display:flex;align-items:center;gap:8px;flex:none}.lead-actions .badge{margin-top:0}.restore-button{border:1px solid #dedede;border-radius:8px;background:#fff;color:#555;padding:6px 9px;font-size:11px;cursor:pointer;white-space:nowrap}.restore-button:hover{background:#f7f7f7}.restore-button[hidden]{display:none}
     .panel-body{padding:23px 31px 28px;container-type:inline-size}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 235px;gap:18px;align-items:start}.workspace.no-controls{grid-template-columns:minmax(0,1fr)}.visual{grid-column:1;grid-row:1;min-width:0;min-height:330px;border:1px solid #dedede;background-color:#FAFAFA;border-radius:12px;padding:21px}.interaction{grid-column:2;grid-row:1;display:block;margin:0;padding:2px 0 0;min-width:0}.interaction[hidden]{display:none}.control{display:block}
@@ -47,11 +47,11 @@
     .capacity-note{color:#6e6e6e}.product-stages{gap:10px}.product-stage{border-color:#dedede;border-radius:10px;padding:10px}.product-stage-head{color:#2b2b2b}.product-stage-head span:last-child{color:#888}.product-replica{grid-template-columns:35px minmax(0,1fr);gap:5px}.product-replica-name{color:#777}.ep-pane{border-color:#e2e2e2;background:#fafafa;border-radius:8px;padding:5px}.ep-title{color:#666}.tp-rank{border-color:#b6d9f4;background:#edf7ff;color:#2479b7}.tp-rank.peer{border-color:#70b8ee;background:#e0f0fd}.tp-rank.active{background:#1689ee;border-color:#1689ee}
     .product-replica-name{align-self:center;padding-top:0;font-size:10px}.product-replica .tp-rank,.product-replica .rank-id{font-size:10px}
     .capacity-name,.capacity-legend{color:#777}.capacity-name strong,.capacity-value{color:#111}.capacity-track{background:#e7e7e7}.capacity-used{background:#f5a065}.capacity-limit{border-color:#333}
-    .capacity-summary{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}.capacity-summary strong{font-size:22px;color:#171717;font-variant-numeric:tabular-nums}.capacity-summary span{font-size:12px;color:#777}.capacity-chart{position:relative;height:160px;margin:22px 0 10px;border-bottom:1px solid #c9c9c9;background:linear-gradient(to top,transparent 24%,#ededed 24% 24.5%,transparent 24.5% 49%,#ededed 49% 49.5%,transparent 49.5% 74%,#ededed 74% 74.5%,transparent 74.5%)}.capacity-chart-bar{position:absolute;left:15%;bottom:0;width:20%;height:var(--used-pct);min-height:2px;border-radius:7px 7px 0 0;background:linear-gradient(to top,#1689ee 0%,#54b8d6 48%,#f2aa65 78%,#e57861 100%)}.capacity-chart-line{position:absolute;left:4%;right:4%;bottom:var(--line-pct);height:0;border-top:1px dashed #999}.capacity-chart-line span{position:absolute;left:44%;top:-9px;padding:0 4px;background:#fafafa;color:#666;font-size:11px;white-space:nowrap}.capacity-chart-line.capacity-boundary{border-color:#333}.capacity-chart-line.capacity-warning{border-color:#cf8750}.capacity-chart-line.capacity-alert{border-color:#bd5f58}.capacity-chart-line.capacity-marker{left:11%;right:55%;border-top:2px solid #222}.capacity-range{display:flex;justify-content:space-between;gap:12px;color:#686868;font-size:11px}.capacity-stage-list{display:flex;gap:8px;margin-top:22px;align-items:flex-end;min-height:110px}.capacity-stage{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;color:#555;font-size:11px;font-variant-numeric:tabular-nums}.capacity-stage strong{font-weight:600}.capacity-stage i{display:block;width:100%;max-width:50px;height:var(--stage-pct);min-height:3px;border-radius:4px 4px 0 0;background:linear-gradient(to top,#1689ee,#e57861)}.capacity-stage.active strong{color:#1689ee}.capacity-stage-bars{display:flex;align-items:flex-end;justify-content:center;width:100%;height:64px;border-bottom:1px solid #d4d4d4}.capacity-controls{display:grid;gap:4px}.capacity-controls .factor{padding:7px 0}.capacity-controls select{min-width:96px;padding:6px 8px;border:1px solid #dedede;border-radius:8px;background:#fff;color:#171717;font-size:12px}.capacity-note{margin-top:16px}
+    .capacity-summary{display:block}.capacity-summary strong{font-size:clamp(13px,3.5vw,22px);color:#171717;font-variant-numeric:tabular-nums;white-space:nowrap}.capacity-chart{position:relative;height:160px;margin:22px 0 10px;border-bottom:1px solid #c9c9c9;background:linear-gradient(to top,transparent 24%,#ededed 24% 24.5%,transparent 24.5% 49%,#ededed 49% 49.5%,transparent 49.5% 74%,#ededed 74% 74.5%,transparent 74.5%)}.capacity-chart-bar{position:absolute;left:15%;bottom:0;width:20%;height:var(--used-pct);min-height:2px;border-radius:7px 7px 0 0;background:linear-gradient(to top,#1689ee 0%,#54b8d6 48%,#f2aa65 78%,#e57861 100%)}.capacity-chart-line{position:absolute;left:4%;right:4%;bottom:var(--line-pct);height:0;border-top:1px dashed #999}.capacity-chart-line span{position:absolute;left:44%;top:-9px;padding:0 4px;background:#fafafa;color:#666;font-size:11px;white-space:nowrap}.capacity-chart-line.capacity-boundary{border-color:#333}.capacity-chart-line.capacity-alert{border-color:#bd5f58}.capacity-chart-line.capacity-marker{left:11%;right:55%;border-top:2px solid #222}.capacity-range{display:flex;justify-content:space-between;gap:12px;color:#686868;font-size:11px}.capacity-stage-list{display:flex;gap:8px;margin-top:22px;align-items:flex-end;min-height:110px}.capacity-stage{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:4px;color:#555;font-size:11px;font-variant-numeric:tabular-nums}.capacity-stage strong{font-weight:600}.capacity-stage i{display:block;width:100%;max-width:50px;height:var(--stage-pct);min-height:3px;border-radius:4px 4px 0 0;background:linear-gradient(to top,#1689ee,#e57861)}.capacity-stage.active strong{color:#1689ee}.capacity-stage-bars{display:flex;align-items:flex-end;justify-content:center;width:100%;height:64px;border-bottom:1px solid #d4d4d4}.capacity-controls{display:grid;gap:4px}.capacity-controls .factor{padding:7px 0}.capacity-controls select{min-width:96px;padding:6px 8px;border:1px solid #dedede;border-radius:8px;background:#fff;color:#171717;font-size:12px}.capacity-note{margin-top:16px}
     .capacity-chart-line span{display:none}.capacity-boundaries,.capacity-thresholds{display:flex;flex-wrap:wrap;justify-content:space-between;gap:5px 12px;font-size:11px;color:#666}.capacity-boundaries{margin-top:12px}.capacity-thresholds{margin-top:6px}.capacity-boundaries span,.capacity-thresholds span{white-space:nowrap}.capacity-boundaries i,.capacity-thresholds i{display:inline-block;width:12px;border-top:2px solid #222;vertical-align:middle;margin-right:4px}.capacity-thresholds i{border-top-style:dashed}.capacity-thresholds .tight i{border-color:#cf8750}.capacity-thresholds .alert i{border-color:#bd5f58}.capacity-thresholds .cap i{border-color:#333}
-    .capacity-chart.capacity-hbm{height:auto;margin:22px 0 0;border:0;background:none}.capacity-hbm__head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:9px;font-size:11px;color:#555}.capacity-hbm__head strong{font-variant-numeric:tabular-nums;color:#222}.capacity-hbm__track{position:relative;height:32px}.capacity-hbm__capacity{position:absolute;inset:0 auto 0 0;width:var(--cap-pct);overflow:hidden;border:1px solid #cbd4dc;border-radius:7px;background:#e7edf1;box-shadow:inset 0 1px 3px #273b4b16}.capacity-hbm__used{height:100%;width:var(--fill-pct);background:linear-gradient(90deg,#1689ee 0%,#57bed6 58%,#eaa563 100%)}.capacity-hbm__overflow{position:absolute;left:var(--cap-pct);top:2px;bottom:2px;width:var(--overflow-pct);background:repeating-linear-gradient(135deg,#c95855 0 8px,#df7770 8px 16px);border-radius:0 5px 5px 0}.capacity-hbm__mark{position:absolute;top:-7px;bottom:-7px;width:2px;z-index:1;background:#fff;box-shadow:0 0 0 1px #2229}.capacity-hbm__mark--min{left:var(--min-pct)}.capacity-hbm__mark--max{left:var(--max-pct)}.capacity-hbm__mark--tight{top:1px;bottom:1px;width:0;left:var(--tight-pct);border-left:2px dashed #9b5135;box-shadow:none}.capacity-hbm__axis{position:relative;height:20px;margin-top:8px;color:#777;font-size:10px;font-variant-numeric:tabular-nums}.capacity-hbm__axis .capacity-hbm__cap-label{position:absolute;left:var(--cap-pct);transform:translateX(-100%);white-space:nowrap;color:#333}.capacity-hbm__keys{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:12px;color:#666;font-size:11px}.capacity-hbm__keys span{white-space:nowrap}.capacity-hbm__keys i{display:inline-block;width:12px;height:8px;margin-right:4px;vertical-align:middle;border-top:2px solid #333}.capacity-hbm__keys .used i{border:0;border-radius:2px;background:linear-gradient(90deg,#1689ee,#eaa563)}.capacity-hbm__keys .overflow i{border:0;border-radius:2px;background:#c95855}.capacity-hbm__keys .tight i{border-color:#bd7a43;border-top-style:dashed}.capacity-hbm__keys .range i{border-color:#777}.capacity-hbm__scope{margin:10px 0 0;color:#707070;font-size:11px}.capacity-controls .factor{border-bottom:1px solid #ededed}.capacity-controls .factor-stepper input[type=number]{width:55px}.capacity-controls .factor.is-locked,.capacity-mode.is-locked{opacity:.62}.capacity-mode{padding:10px 0;border-bottom:1px solid #ededed}.capacity-mode-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;color:#555;font-size:12px}.capacity-mode .choice{width:100%;margin:0}.capacity-mode .choice button{flex:1;min-width:0;padding:7px 4px;font-size:11px}.capacity-mode .choice button:disabled{cursor:not-allowed}.capacity-feedback{min-height:17px;color:#a45325;font-size:11px;line-height:1.4}.capacity-feedback:empty{display:none}
+    .capacity-chart.capacity-hbm{height:auto;margin:22px 0 0;border:0;background:none}.capacity-hbm__head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:9px;font-size:11px;color:#555}.capacity-hbm__head strong{font-variant-numeric:tabular-nums;color:#222}.capacity-hbm__track{position:relative;height:32px}.capacity-hbm__capacity{position:absolute;inset:0 auto 0 0;width:var(--cap-pct);overflow:hidden;border:1px solid #cbd4dc;border-radius:7px;background:#e7edf1;box-shadow:inset 0 1px 3px #273b4b16}.capacity-hbm__used{height:100%;width:var(--fill-pct);background:linear-gradient(90deg,#1689ee 0%,#57bed6 58%,#eaa563 100%)}.capacity-hbm__overflow{position:absolute;left:var(--cap-pct);top:2px;bottom:2px;width:var(--overflow-pct);background:repeating-linear-gradient(135deg,#c95855 0 8px,#df7770 8px 16px);border-radius:0 5px 5px 0}.capacity-hbm__mark{position:absolute;top:-7px;bottom:-7px;width:2px;z-index:1;background:#fff;box-shadow:0 0 0 1px #2229}.capacity-hbm__mark--min{left:var(--min-pct)}.capacity-hbm__mark--max{left:var(--max-pct)}.capacity-hbm__mark--tight{top:1px;bottom:1px;width:0;left:var(--tight-pct);border-left:2px dashed #9b5135;box-shadow:none}.capacity-hbm__keys{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:12px;color:#666;font-size:11px}.capacity-hbm__keys span{white-space:nowrap}.capacity-hbm__keys i{display:inline-block;width:12px;height:8px;margin-right:4px;vertical-align:middle;border-top:2px solid #333}.capacity-hbm__keys .used i{border:0;border-radius:2px;background:linear-gradient(90deg,#1689ee,#eaa563)}.capacity-hbm__keys .overflow i{border:0;border-radius:2px;background:#c95855}.capacity-hbm__keys .tight i{border-color:#bd7a43;border-top-style:dashed}.capacity-hbm__keys .range i{border-color:#777}.capacity-hbm__scope{margin:10px 0 0;color:#707070;font-size:11px}.capacity-controls .factor{border-bottom:0}.capacity-controls .factor-stepper input[type=number]{width:55px}.capacity-controls .factor.is-locked,.capacity-mode.is-locked{opacity:.62}.capacity-mode{padding:10px 0;border-bottom:0}.capacity-mode-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;color:#555;font-size:12px}.capacity-mode .choice{width:100%;margin:0}.capacity-mode .choice button{flex:1;min-width:0;padding:7px 4px;font-size:11px}.capacity-mode .choice button:disabled{cursor:not-allowed}.capacity-feedback{min-height:17px;color:#a45325;font-size:11px;line-height:1.4}.capacity-feedback:empty{display:none}
     .capacity-hbm{--memory-gradient:linear-gradient(90deg,#1689ee 0%,#57bed6 48%,#eaa563 78%,#e57861 100%)}.capacity-hbm__used,.capacity-hbm__interval{position:absolute;inset:0;width:100%;height:100%;background:var(--memory-gradient)}.capacity-hbm__used{opacity:.5}.capacity-hbm__interval{clip-path:inset(0 calc(100% - var(--max-card-pct)) 0 var(--min-card-pct))}.capacity-hbm__keys .used i{background:var(--memory-gradient)}
-    .lead-row h2{margin:0}.capacity-summary[data-level=over] strong{color:#b4544a}.capacity-warning{display:flex;align-items:baseline;gap:8px;margin-top:12px;padding:9px 11px;border:1px solid #ebc9a3;border-radius:8px;background:#fff5e9;color:#945324;font-size:11px;line-height:1.5}.capacity-warning strong{flex:none;font-size:11px}.capacity-warning[data-level=alert],.capacity-warning[data-level=over]{border-color:#e8b9b1;background:#fff0ed;color:#a64b42}
+    .lead-row h2{margin:0}
     .choice{display:flex;gap:3px;width:max-content;max-width:100%;background:#f1f1f1;border-radius:10px;padding:3px}.choice button{color:#666;border-radius:8px;padding:8px 10px}.choice button.active{color:#111;background:#fff;box-shadow:0 1px 4px #00000012;font-weight:550}.ep-mode-choice{width:100%;margin-bottom:14px}.ep-mode-choice button{flex:1;min-width:0}
     .details-grid{gap:20px}.disclosure{border-color:#e3e3e3}.disclosure summary{color:#555;font-weight:500}.disclosure p,.disclosure li{color:#858585}.disclosure code{color:#666}
     @container (max-width:780px){.workspace{grid-template-columns:minmax(0,1fr)}.interaction{grid-column:1;grid-row:1;padding:0 0 14px;border-bottom:1px solid #e4e4e4}.visual{grid-column:1;grid-row:2;min-height:230px}.factor-line{grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:4px 14px}.factor{padding:5px 0}.workspace.no-controls .visual{grid-row:1}}
@@ -63,14 +63,19 @@
     .meta .source{display:inline-flex;align-items:flex-start;gap:8px}.meta .source svg{width:17px;height:17px;flex:none;margin-top:1px;color:#26835b}.meta .source span{min-width:0}.title-line{display:flex;align-items:center;gap:16px;flex-wrap:wrap}.title-line h2{margin:0}.title-line .badge{margin:0}.badge.good{color:#24734e;background:#e8f6ed}.lead-row>div:first-child{min-width:0}
     .workspace{align-items:stretch}.visual{align-self:stretch;min-height:max(330px,var(--control-height,0px))}.agent-response{margin-top:21px}.agent-response p{margin:0;color:#303030;font-size:13px;line-height:1.7}.reply-actions{display:flex;align-items:center;gap:5px;margin-top:12px}.reply-actions button{display:grid;place-items:center;width:29px;height:29px;padding:5px;border:0;border-radius:7px;background:transparent;color:#878787;cursor:pointer}.reply-actions button:hover,.reply-actions button[aria-pressed=true]{background:#f1f1f1;color:#292929}.reply-actions svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.reply-feedback{margin-left:7px;color:#777;font-size:11px}.reply-feedback:empty{display:none}
     @container (max-width:780px){.visual{min-height:max(230px,var(--control-height,0px))}}
-    @container (max-width:500px){.capacity-controls.factor-line{grid-template-columns:1fr}}
+    @container (max-width:500px){.visual{grid-row:1;min-height:230px}.interaction{grid-row:2;padding:0;border:0}.capacity-controls.factor-line{grid-template-columns:1fr}}
     .product-view-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px;color:#707070;font-size:11px}.product-layer-toggle{display:inline-flex;align-items:center;gap:7px;padding:5px 7px;border:0;background:transparent;color:#505050;font-size:11px;cursor:pointer}.product-layer-toggle-track{width:27px;height:16px;border-radius:20px;background:#d2d2d2;padding:2px;transition:background-color .15s}.product-layer-toggle-track::before{content:"";display:block;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0002;transition:transform .15s}.product-layer-toggle[aria-pressed=true] .product-layer-toggle-track{background:#1689ee}.product-layer-toggle[aria-pressed=true] .product-layer-toggle-track::before{transform:translateX(11px)}
     .product-stages--layers{grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr))}.product-stages--layers .product-stage{padding:13px}.product-layer-scroll{max-width:100%;max-height:390px;overflow:auto;border:1px solid #e5e5e5;border-radius:7px;scrollbar-color:#c6c6c6 transparent}.product-layer-matrix{width:max-content;min-width:100%;--rank-label-width:116px;--layer-cell-width:23px}.product-layer-ruler,.layer-rank-row{display:grid;grid-template-columns:var(--rank-label-width) repeat(var(--layer-count),var(--layer-cell-width));width:max-content;min-width:100%}.product-layer-ruler{position:sticky;top:0;z-index:3;background:#fff;border-bottom:1px solid #dcdcdc}.product-layer-ruler span{display:flex;flex-direction:column;align-items:center;justify-content:center;height:35px;border-right:1px solid #ededed;color:#555;font-size:10px;line-height:1.2;font-weight:600}.product-layer-ruler span small{color:#8c8c8c;font-size:9px;font-weight:400}.product-layer-ruler .layer-ruler-corner{position:sticky;left:0;z-index:4;align-items:flex-start;padding-left:10px;background:#fff;color:#777}.layer-rank-row{padding:0;border:0;border-bottom:1px solid #fff;background:#fff;color:inherit;text-align:left;cursor:pointer}.layer-rank-row.group-start{border-top:5px solid #f4f4f4}.layer-rank-name{position:sticky;left:0;z-index:2;display:flex;align-items:center;gap:7px;min-height:27px;padding:3px 7px;background:#fff;border-right:1px solid #e5e5e5;color:#2a2a2a;font-size:10px;font-weight:650;white-space:nowrap}.layer-rank-name small{color:#777;font-size:9px;font-weight:400}.layer-cell{display:flex;align-items:center;justify-content:center;min-height:27px;border-right:1px solid #d8e8f4;background:#edf7ff;box-shadow:inset 0 2px #91c7ee;color:#4384b0;font-size:9px;font-variant-numeric:tabular-nums;white-space:nowrap}.layer-cell--moe{background:var(--expert-bg);color:var(--expert-ink);box-shadow:inset 0 2px #91c7ee,inset 0 -2px var(--expert-line)}.layer-rank-row.layer-ep-0{--expert-bg:#eef8f3;--expert-ink:#3f8465;--expert-line:#9bd2b5}.layer-rank-row.layer-ep-1{--expert-bg:#f3f0fb;--expert-ink:#7a63a7;--expert-line:#c5afe8}.layer-rank-row.layer-ep-2{--expert-bg:#fff6eb;--expert-ink:#a57439;--expert-line:#eac397}.layer-rank-row.layer-ep-3{--expert-bg:#ecf8f9;--expert-ink:#42858c;--expert-line:#99d4d8}.layer-rank-row:hover .layer-rank-name,.layer-rank-row.peer .layer-rank-name{background:#eef7fe}.layer-rank-row:hover .layer-cell,.layer-rank-row.peer .layer-cell{filter:saturate(1.35)}.layer-rank-row.active .layer-rank-name{background:#1689ee;color:#fff}.layer-rank-row.active .layer-rank-name small{color:#e6f4ff}.layer-rank-row.active .layer-cell{box-shadow:inset 0 3px #1689ee,inset 0 -3px #1689ee;background:#dff0ff;color:#215e8d;font-weight:650}.layer-rank-row:focus-visible{position:relative;z-index:4;outline:2px solid #1689ee;outline-offset:-2px}
     .layer-rank-name{flex-direction:column;align-items:flex-start;justify-content:center;gap:0;min-height:32px}.layer-cell{min-height:32px}
     .compatibility-preview{display:flex;flex-direction:column;justify-content:center;min-height:286px}.compatibility-preview p{margin:0 0 18px;color:#555;font-size:13px;line-height:1.7}.compatibility-preview ul{display:grid;gap:9px;margin:0;padding:0;list-style:none}.compatibility-preview li{padding:10px 12px;border:1px solid #e4e4e4;border-radius:8px;background:#fff;color:#555;font-size:12px;line-height:1.5}.compatibility-preview code{color:#666;font-size:11px;overflow-wrap:anywhere}
-    .issue-summary{margin-top:26px;padding:27px 31px;border:1px solid #dedede;border-radius:22px;background:#fff}.issue-summary h2{margin:3px 0 8px;font-size:19px;font-weight:600;letter-spacing:-.015em}.issue-summary p{margin:0;color:#666;font-size:12px;line-height:1.7}.issue-summary .eyebrow{color:#1689ee;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}.issue-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:21px 0}.issue-card{min-width:0;padding:15px 16px;border:1px solid #e5e5e5;border-radius:11px;background:#fafafa}.issue-card h3{display:flex;align-items:baseline;gap:10px;margin:0 0 8px;color:#222;font-size:14px;font-weight:600}.issue-card h3 span{color:#1689ee;font-size:11px;font-variant-numeric:tabular-nums}.issue-card p{color:#555}.issue-card code,.issue-sources code{font-size:11px;overflow-wrap:anywhere}.issue-card .issue-code{margin-top:9px;color:#777}.issue-sources{padding-top:18px;border-top:1px solid #e9e9e9}.issue-sources h3{margin:0 0 8px;font-size:12px;font-weight:600}.issue-sources ul{margin:0;padding-left:18px;color:#666;font-size:11px;line-height:1.8}.issue-sources li{padding-left:2px}.issue-sources .scope-note{margin-top:10px}.shell[data-shell-width=narrow] .issue-summary{padding:20px}.shell[data-shell-width=narrow] .issue-list{grid-template-columns:1fr}@media(max-width:700px){.issue-summary{padding:20px}.issue-list{grid-template-columns:1fr}}
+    .issue-summary{margin-top:32px;padding:0 31px}.issue-summary h2{margin:0 0 8px;font-size:19px;font-weight:600;letter-spacing:-.015em}.issue-summary p{margin:0;color:#666;font-size:12px;line-height:1.7}.issue-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:21px 0}.issue-card{min-width:0;padding:15px 16px;border:1px solid #e5e5e5;border-radius:11px;background:#fafafa}.issue-card h3{display:flex;align-items:baseline;gap:10px;margin:0 0 8px;color:#222;font-size:14px;font-weight:600}.issue-card h3 span{color:#1689ee;font-size:11px;font-variant-numeric:tabular-nums}.issue-card p{color:#555}.issue-card code,.issue-sources code{font-size:11px;overflow-wrap:anywhere}.issue-card .issue-code{margin-top:9px;color:#777}.issue-sources{padding-top:18px;border-top:1px solid #e9e9e9}.issue-sources h3{margin:0 0 8px;font-size:12px;font-weight:600}.issue-sources ul{margin:0;padding-left:18px;color:#666;font-size:11px;line-height:1.8}.issue-sources li{padding-left:2px}.issue-sources .scope-note{margin-top:10px}.shell[data-shell-width=narrow] .issue-summary{padding:0 20px}.shell[data-shell-width=narrow] .issue-list{grid-template-columns:1fr}@media(max-width:700px){.issue-summary{padding:0 20px}.issue-list{grid-template-columns:1fr}}
     .v2-artboard{position:relative;width:100%;height:var(--v2-chart-height);background:#fafafa}.v2-target-grid,.v2-actual-grid{position:absolute;left:34%;bottom:66px;display:grid;overflow:hidden}.v2-target-grid{grid-template-columns:repeat(var(--v2-target-cols),var(--v2-cell-size));grid-template-rows:repeat(var(--v2-target-rows),var(--v2-cell-size));background:#4fa2e9}.v2-actual-grid{grid-template-columns:repeat(var(--v2-copy-columns),var(--v2-cell-size));grid-template-rows:repeat(var(--v2-data-rows),var(--v2-cell-size));z-index:1}.v2-target-cell,.v2-actual-cell{width:var(--v2-cell-size);height:var(--v2-cell-size);box-sizing:border-box;box-shadow:inset 0 0 0 1px #28303c55}.v2-actual-cell{background:rgba(246,126,130,.68);box-shadow:inset 0 0 0 1px #28303c66}.v2-arrow{position:absolute;z-index:2;color:#171717}.v2-arrow--up{left:calc(34% + var(--v2-target-width) + 12px);top:var(--v2-target-top);height:var(--v2-arrow-height);border-left:2px solid currentColor}.v2-arrow--up::before{content:"";position:absolute;top:-1px;left:-5px;border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:8px solid currentColor}.v2-arrow--left{left:calc(34% + var(--v2-target-width));width:var(--v2-width-gap);bottom:43px;border-top:2px solid currentColor}.v2-arrow--left::before{content:"";position:absolute;top:-5px;left:-1px;border-top:4px solid transparent;border-bottom:4px solid transparent;border-right:8px solid currentColor}.v2-arrow-label{position:absolute;z-index:2;color:#181818;font-size:12px;white-space:nowrap}.v2-arrow-label--up{left:calc(34% + var(--v2-target-width) + 24px);top:var(--v2-arrow-label-top)}.v2-arrow-label--left{left:calc(34% + var(--v2-target-width) + var(--v2-half-width-gap));bottom:12px;transform:translateX(-50%)}.v2-legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 13px;color:#555;font-size:11px}.v2-legend span{display:inline-flex;align-items:center;gap:5px}.v2-legend i{display:inline-block;width:10px;height:10px;border-radius:2px}.v2-legend-blue{background:#4fa2e9}.v2-legend-red{background:#f7adad}.v2-advice{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding-top:12px;border-top:1px solid #e6e6e6;color:#777;font-size:11px}.v2-advice strong{margin-right:3px;color:#262626;font-size:12px;font-weight:630}.v2-advice-button{padding:7px 9px;border:1px solid #d7d7d7;border-radius:7px;background:#fff;color:#222;font-size:11px;cursor:pointer}.v2-advice-button:hover{border-color:#1689ee;color:#126ab1}.v2-limit{padding:30px;color:#777;font-size:12px}
     .v2-controls .factor{padding:7px 0;border-bottom:0}.v2-controls .factor-top{margin-bottom:4px}.v2-controls .factor input[type=range]{margin-top:6px}.v2-controls .factor.is-data small{color:#1689ee}.v2-controls .factor.is-target small{font-weight:400}.v2-controls .factor-stepper input[type=number]{width:48px}.v2-controls .factor-stepper button{width:23px;font-size:17px;line-height:1}.v2-input-row{display:flex;align-items:center;gap:7px}.v2-controls .lock-toggle{width:24px;height:28px}.v2-controls input:disabled{opacity:.58;cursor:not-allowed}.v2-mode{display:flex;gap:3px;margin-bottom:12px;padding:3px;border-radius:9px;background:#f1f1f1}.v2-mode button{flex:1;border:0;border-radius:7px;padding:7px 5px;background:transparent;color:#666;font-size:11px;cursor:pointer}.v2-mode button[aria-pressed=true]{background:#fff;color:#111;box-shadow:0 1px 4px #00000012;font-weight:620}.v2-feedback{min-height:16px;margin-top:8px;color:#a44843;font-size:11px}.v2-feedback:empty{display:none}
+    .v2-progressive-slider{position:relative;padding-top:6px}.v2-progressive-slider::before{content:"";position:absolute;top:13px;left:8px;right:8px;height:3px;background:linear-gradient(to right,#1689ee 0 var(--range-progress),#dfdfdf var(--range-progress) 100%);mask:linear-gradient(to right,#000 0 calc(33.333% - 2px),transparent calc(33.333% - 2px) calc(33.333% + 2px),#000 calc(33.333% + 2px) calc(66.667% - 2px),transparent calc(66.667% - 2px) calc(66.667% + 2px),#000 calc(66.667% + 2px) 100%)}.v2-controls .v2-progressive-slider input[type=range]{position:relative;margin:0;background:none}
+    @container (max-width:500px){.v2-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 32px}.v2-controls .v2-mode,.v2-controls .v2-feedback{grid-column:1/-1}.v2-controls .factor{min-width:0;padding:6px 0}.v2-controls .factor-top{display:flex;align-items:center;justify-content:space-between;gap:4px;margin:0}.v2-controls .factor-top label{flex:none;white-space:nowrap}.v2-controls .v2-input-row{flex:none;justify-content:flex-end;gap:2px}.v2-controls .factor-stepper button{width:20px}.v2-controls .factor-stepper input[type=number]{width:44px}.v2-controls .factor input[type=range]{display:none}}
+    @container (max-width:500px){.v2-controls .v2-progressive-slider{display:none}}
+    @container (max-width:350px){.v2-controls{column-gap:8px}.v2-controls .factor-top{gap:2px}.v2-controls .factor small{font-size:10px}.v2-controls .factor-stepper button{width:18px}.v2-controls .factor-stepper input[type=number]{width:36px}.v2-controls .lock-toggle{width:20px}}
+    @container (max-width:260px){.v2-controls .factor-stepper button{display:none}.v2-controls .factor-stepper input[type=number]{width:44px}}
     .v2-controls .factor.is-suggested .factor-stepper{border-color:#d75f5a;background:#fff0ef;box-shadow:0 0 0 2px #d75f5a44}.v2-controls .factor.is-suggested .factor-stepper input{color:#ad403b;font-weight:700}.v2-controls .factor.is-suggested .factor-stepper button{color:#ad403b}
     @container (max-width:520px){.v2-arrow-label{font-size:10px}}
     .v2-advice-button[aria-pressed="true"]{border-color:#1689ee;background:#eef7ff;color:#126ab1;box-shadow:0 0 0 1px #1689ee55}
@@ -99,15 +104,23 @@
     .v2-arrow--rank-decrease::after{left:auto;right:0}
     .v2-arrow-label--rank{left:calc(var(--v2-matrix-left) + var(--v2-half-wide-width));bottom:calc(var(--v2-matrix-inset) - 36px);transform:translateX(-50%)}
     .v2-artboard.has-v2-double-bottom .v2-arrow--rank{bottom:calc(var(--v2-matrix-inset) - 50px)}.v2-artboard.has-v2-double-bottom .v2-arrow-label--rank{bottom:calc(var(--v2-matrix-inset) - 72px)}
-    .v2-advice-try{margin-left:auto;padding:7px 12px;border:1px solid #1689ee;border-radius:7px;background:#1689ee;color:#fff;font-size:11px;white-space:nowrap;cursor:pointer}
-    .v2-advice-try:hover{background:#0878da}.v2-advice-try:focus-visible{outline:2px solid #1689ee;outline-offset:2px}
+    .v2-advice{display:grid;align-items:stretch;gap:9px}.v2-advice-header{display:flex;align-items:center;justify-content:space-between;gap:12px}.v2-advice-options{display:flex;flex-wrap:wrap;gap:7px}.v2-advice-options .v2-advice-button{max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:left}
+    .v2-advice-priority{display:inline-block;margin:0 4px;padding:1px 5px;border:1px solid #b9e2c7;border-radius:4px;background:#eaf7ee;color:#237447;font-weight:650;white-space:nowrap}
+    .v2-advice-try{margin-left:auto;padding:7px 12px;border:1px solid #111;border-radius:7px;background:#111;color:#fff;font-size:11px;white-space:nowrap;cursor:pointer}
+    .v2-advice-try:hover{background:#292929}.v2-advice-try:focus-visible{outline:2px solid #1689ee;outline-offset:2px}
+    .v2-advice-try:disabled,.v2-advice-button:disabled{opacity:.58;cursor:not-allowed}.v2-advice-try:disabled:hover{background:#111}.v2-advice-button:disabled:hover{border-color:#d7d7d7;color:#222}
     .v2-service-state{padding-top:10px;color:#777;font-size:11px;text-align:center}.v2-service-state a{color:#126ab1;text-decoration:none}.v2-service-state a:hover{text-decoration:underline}
     .v2-service-state button{margin-left:8px;padding:0;border:0;background:none;color:#126ab1;font:inherit;cursor:pointer}.v2-service-state button:hover{text-decoration:underline}
     .v2-target-cell,.v2-actual-cell{--v2-right-line:transparent;--v2-bottom-line:transparent;border:0;background-image:linear-gradient(to right,rgba(0,0,0,.4) 0 1.5px,transparent 1.5px),linear-gradient(to bottom,rgba(0,0,0,.4) 0 1.5px,transparent 1.5px),linear-gradient(to left,var(--v2-right-line) 0 1.5px,transparent 1.5px),linear-gradient(to top,var(--v2-bottom-line) 0 1.5px,transparent 1.5px);background-repeat:no-repeat;box-shadow:none}
     .v2-cell-last-column{--v2-right-line:rgba(0,0,0,.4)}.v2-cell-last-row{--v2-bottom-line:rgba(0,0,0,.4)}
     .v2-target-cell.is-covered{background-image:none}
+    .v2-artboard.is-v2-abstract .v2-target-grid,.v2-artboard.is-v2-abstract .v2-actual-grid{display:block}
+    .v2-artboard.is-v2-abstract .v2-target-grid{width:var(--v2-target-width);height:var(--v2-target-height)}
+    .v2-artboard.is-v2-abstract .v2-actual-grid{width:var(--v2-actual-width);height:var(--v2-actual-height);background:rgba(246,126,130,.68)}
     .v2-artboard.is-v2-overlap .v2-target-grid{background:transparent;visibility:hidden}
     .v2-artboard.is-v2-overlap .v2-actual-cell{background-color:transparent}
+    .v2-artboard.is-v2-overlap.is-v2-abstract .v2-target-grid{background:#4fa2e9;visibility:visible}
+    .v2-artboard.is-v2-overlap.is-v2-abstract .v2-actual-grid{background:transparent}
     @media(prefers-reduced-motion:no-preference){
       .v2-artboard.is-v2-success .v2-actual-cell{animation:v2-match-cell 1.45s ease-out both}
       .v2-artboard.is-v2-success::after{content:"";position:absolute;z-index:2;left:var(--v2-matrix-left);bottom:var(--v2-matrix-inset);width:var(--v2-wide-width);height:var(--v2-matrix-height);pointer-events:none;animation:v2-match-glow 1.45s ease-out both}
@@ -115,30 +128,52 @@
     @keyframes v2-match-cell{0%,28%{background-color:#57cd91}100%{background-color:transparent}}
     @keyframes v2-match-glow{0%{box-shadow:0 0 0 0 #4fc78a88;opacity:1}45%{box-shadow:0 0 0 18px #4fc78a33;opacity:1}100%{box-shadow:0 0 0 30px #4fc78a00;opacity:0}}
     .visual.is-v2-visual{display:flex;flex-direction:column}
-    .visual.is-v2-visual .v2-restored{position:relative;flex:1;min-width:0}
-    .visual.is-v2-visual .v2-artboard{position:absolute;top:50%;left:50%;margin:0;transform:translate(-50%,-50%)}
-    .visual.is-v2-visual .v2-footer{position:absolute;right:0;bottom:0;left:0;display:flex;flex-direction:column}
+    .visual.is-v2-visual .v2-restored{display:flex;flex:1;flex-direction:column;min-width:0}
+    .visual.is-v2-visual .v2-artboard{position:relative;top:auto;left:auto;margin:0 auto;transform:none;flex:none}
+    .visual.is-v2-visual .v2-artboard.is-v2-overlap.is-v2-success{margin:auto}
+    .visual.is-v2-visual .v2-footer{position:static;display:flex;flex-direction:column;margin-top:auto;padding-top:12px}
     .visual.is-v2-visual .v2-restored--limited{display:flex;flex-direction:column;min-height:260px}.visual.is-v2-visual .v2-restored--limited .v2-limit{flex:1}.visual.is-v2-visual .v2-restored--limited .v2-footer{position:static;margin-top:auto}
     .visual.is-v2-visual .v2-legend:last-child{margin-bottom:0}
+    .capacity-view{display:flex;flex-direction:column;min-height:284px}.capacity-view__heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:15px}.capacity-view__heading strong{display:block;color:#171b20;font-size:14px;font-weight:650}.capacity-view__heading small{display:block;margin-top:5px;color:#858b91;font-size:11px}.capacity-view__cap{flex:none;padding:7px 10px;border:1px solid #dce2e7;border-radius:8px;background:#fff;color:#59636c;font-size:11px;font-variant-numeric:tabular-nums}.capacity-view__cap b{color:#1f2c37;font-size:13px}.capacity-bars{display:grid;gap:15px;margin:22px 0 15px}.capacity-bar-row{display:grid;grid-template-columns:87px minmax(0,1fr) 65px;align-items:center;gap:11px;min-width:0;font-variant-numeric:tabular-nums}.capacity-bar-row__name{color:#444;font-size:12px;font-weight:650}.capacity-bar-row__plot{position:relative;height:26px;min-width:0}.capacity-bar-row__capacity{position:absolute;inset:0 auto 0 0;width:var(--capacity-width);border:1px solid #d9e3eb;border-radius:6px;background:linear-gradient(90deg,#e9f0f5,#e5edf3);box-shadow:inset 0 1px 2px #314e6110}.capacity-bar-row__fill{position:absolute;inset:5px auto 5px 3px;width:var(--used-width);max-width:calc(100% - 3px);border-radius:4px;background:linear-gradient(90deg,#2398e0,#4db8d7);box-shadow:0 1px 3px #187db12c}.capacity-bar-row.is-peak .capacity-bar-row__fill{background:linear-gradient(90deg,#1689ee,#42a8d9)}.capacity-bar-row.is-over .capacity-bar-row__fill{background:linear-gradient(90deg,#f0a162,#dd6d63)}.capacity-bar-row__value{text-align:right;color:#24323d;font-size:12px;font-weight:700;white-space:nowrap}.capacity-bar-row.is-over .capacity-bar-row__value{color:#b94e49}.capacity-view__footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto;padding-top:17px;border-top:1px solid #e8eaec;color:#7b858f;font-size:11px}.capacity-view__footer b{color:#313d48;font-weight:620}.capacity-view__status{color:#a75444}.capacity-view__status.is-safe{color:#27775d}.capacity-view .v2-advice{margin-top:20px;padding-top:15px;border-top:1px solid #e8eaec}.capacity-view .v2-advice-button{font-variant-numeric:tabular-nums}.capacity-view .v2-advice-button[aria-pressed=true]{border-color:#1689ee}.capacity-advice-empty{color:#858b91;font-size:11px}
+    @container (max-width:390px){.capacity-bar-row{grid-template-columns:72px minmax(0,1fr) 59px;gap:7px}.capacity-view__heading{flex-wrap:wrap}.capacity-view__cap{padding:5px 8px}.capacity-bars{gap:13px}}
+    @container (max-width:780px){.workspace.is-capacity .visual{grid-row:1;min-height:0}.workspace.is-capacity .interaction{grid-row:2;padding:16px 0 0;border-top:1px solid #e4e4e4;border-bottom:0}}
+    .capacity-chart + .capacity-view__heading{margin-top:24px}
+    .capacity-summary.is-warning strong{color:#b4544a}
+    .capacity-hbm__overflow{left:calc(var(--cap-pct) + 4px);width:max(0px,calc(var(--overflow-pct) - 4px))}
+    .capacity-hbm__range{position:relative;height:27px;margin-top:9px}
+    .capacity-hbm__range-line{position:absolute;top:5px;left:var(--min-pct);width:calc(var(--max-pct) - var(--min-pct));border-top:2px solid #222}
+    .capacity-hbm__range-line::before,.capacity-hbm__range-line::after{content:"";position:absolute;top:-5px;border-top:4px solid transparent;border-bottom:4px solid transparent}
+    .capacity-hbm__range-line::before{left:-1px;border-right:7px solid #222}
+    .capacity-hbm__range-line::after{right:-1px;border-left:7px solid #222}
+    .capacity-hbm__head{position:relative;left:clamp(68px,var(--mid-pct),calc(100% - 68px));transform:translateX(-50%);display:grid;justify-items:center;gap:3px;width:max-content;max-width:100%;margin:0;color:#555;font-size:11px}
+    .visual.is-constraint-visual{display:flex;flex-direction:column}.split-view,.compat-view{display:flex;flex:1;flex-direction:column;min-width:0}.split-canvas,.compat-canvas{display:flex;flex:1;flex-direction:column;justify-content:center;gap:20px;min-width:0;padding:10px 0 24px}.split-summary{display:block;text-align:left}.split-summary strong{color:#b4544a;font-size:clamp(16px,3.5vw,22px);font-weight:650;line-height:1.35;font-variant-numeric:tabular-nums}.split-summary.is-valid strong{color:#111}.split-view.is-preview .split-summary::after{content:'方案预览';display:inline-block;margin-left:9px;color:#1689ee;font-size:11px;vertical-align:middle}.compat-eyebrow{color:#808080;font-size:11px;letter-spacing:.02em}
+    .split-rows{display:grid;gap:7px;width:min(100%,490px);margin:0 auto}.split-row{display:grid;grid-template-columns:84px minmax(0,1fr) 52px;align-items:center;gap:10px;min-height:35px;padding:6px 10px;border:1px solid #e5e5e5;border-radius:8px;background:#fff}.split-row-label{color:#555;font-size:11px;font-weight:600;white-space:nowrap}.split-row strong{color:#343434;font-size:11px;font-weight:650;text-align:right;white-space:nowrap}.split-dots{display:flex;flex-wrap:wrap;gap:3px;align-items:center}.split-dots i{display:block;width:11px;height:11px;flex:none;border-radius:3px;background:#62a9df}.split-row--leftover{border-color:#f2cfb9;background:#fff8f2}.split-row--leftover .split-row-label,.split-row--leftover strong{color:#a95728}.split-row--leftover .split-dots i{background:#ec9b64}.split-status,.compat-conclusion{display:flex;align-items:center;justify-content:center;gap:8px;margin:0;color:#287b58;font-size:12px;font-weight:600;text-align:center}.split-status span,.compat-conclusion span{display:grid;place-items:center;width:19px;height:19px;flex:none;border-radius:50%;background:#e6f6ed;color:#2b8a61;font-size:12px}.split-status.is-warning,.compat-conclusion:not(.is-valid){color:#a95728}.split-status.is-warning span,.compat-conclusion:not(.is-valid) span{background:#fff0e5;color:#b56232}.split-footer{width:100%;margin-top:auto}.split-footer .v2-advice{margin:0}.split-footer .v2-advice-button{line-height:1.4}.split-footer .v2-advice-button small{display:block;margin-top:3px;color:#858585;font-size:10px}.advice-empty{margin:0;color:#777;font-size:11px;line-height:1.5}
+    .case-select{display:grid;gap:7px}.case-select>span{margin-bottom:3px;color:#777;font-size:11px}.case-select button{width:100%;padding:10px 11px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;color:#444;font-size:11px;text-align:left;cursor:pointer}.case-select button:hover{border-color:#a7cce8}.case-select button[aria-pressed=true]{border-color:#9cccf0;background:#eaf6ff;color:#166ba7;font-weight:650}
+    .compat-eyebrow{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}.compat-eyebrow>span{padding:4px 7px;border:1px solid #dedede;border-radius:5px;background:#fff;color:#666}.compat-eyebrow code{overflow-wrap:anywhere;color:#888;font-size:10px}.compat-relation{display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);align-items:center;gap:10px;width:min(100%,530px);margin:0 auto}.compat-node{display:flex;min-width:0;min-height:110px;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:12px 8px;border:1px solid #dce7ee;border-radius:12px;background:#fff;text-align:center}.compat-node small{color:#929292;font-size:10px}.compat-node strong{color:#292929;font-size:14px;font-weight:630;overflow-wrap:anywhere}.compat-node span{padding:3px 7px;border-radius:5px;background:#eaf5fd;color:#1c78b3;font-size:10px}.compat-node.is-off{border-color:#e5e5e5;background:#f7f7f7}.compat-node.is-off strong{color:#777}.compat-node.is-off span{background:#ebebeb;color:#777}.compat-link{display:grid;place-items:center;width:36px;height:36px;margin:auto;border-radius:50%;font-size:19px;font-weight:600}.compat-link.is-conflict{background:#fff0e5;color:#b75d2a}.compat-link.is-valid{background:#e6f6ed;color:#2b8a61}
+    .compat-list{display:grid;gap:10px;margin-bottom:20px}.compat-rule{position:relative;padding:13px 15px 13px 43px;border:1px solid #e1e7e3;border-radius:10px;background:#fff}.compat-rule.is-conflict{border-color:#edd0bd;background:#fffaf6}.compat-rule-title{display:flex;align-items:center;flex-wrap:wrap;gap:4px;color:#2c3431;font-size:12px;line-height:1.5}.compat-rule-title strong{font-weight:650}.compat-rule-token{display:inline-flex;align-items:center;gap:2px;padding:2px 6px;border:1px solid #e4e9e5;border-radius:5px;background:#fff;white-space:nowrap}.compat-rule-token b{font-weight:700}.compat-rule-icon{position:absolute;top:50%;left:15px;transform:translateY(-50%);display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#e6f6ed;color:#287b58;font-size:11px;font-weight:700}.compat-rule.is-conflict .compat-rule-icon{background:#fff0e5;color:#b56232}.compat-rule p{margin:5px 0 0;color:#6c7770;font-size:11px;line-height:1.55}.compat-controls{display:grid;gap:17px}.compat-control-group{padding-bottom:14px;border-bottom:1px solid #e9e9e9}.compat-control-group:last-child{border-bottom:0}.compat-control-group>strong{display:block;margin-bottom:8px;color:#303030;font-size:12px;font-weight:650}.compat-control-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:32px;color:#606060;font-size:11px}.compat-switch{position:relative;flex:none;min-width:54px;padding:4px 7px;border:1px solid #d1d7db;border-radius:99px;background:#e9edef;color:#657179;font-size:10px;font-weight:700;text-align:right;cursor:pointer}.compat-switch::before{content:"";position:absolute;top:3px;left:4px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0002}.compat-switch.is-on{border-color:#1689ee;background:#1689ee;color:#fff;text-align:left}.compat-switch.is-on::before{left:auto;right:4px}.compat-switch:focus-visible{outline:2px solid #1689ee;outline-offset:2px}.compat-advice .v2-advice-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr))}.compat-advice .v2-advice-button{width:100%;line-height:1.5}.compat-advice-priority{display:inline-block;margin-right:5px;padding:1px 5px;border:1px solid #b9e2c7;border-radius:4px;background:#eaf7ee;color:#237447;font-size:10px;font-weight:700;white-space:nowrap}
+    .compat-rule-token{background:rgba(0,0,0,.06);border-color:rgba(0,0,0,.12)}.compat-rule-token b,.compat-switch{font-weight:400}.compat-switch.is-wide{min-width:82px}.compat-control-note{margin:0;color:#858585;font-size:10px;line-height:1.5}
+    @container (max-width:500px){.split-row{grid-template-columns:62px minmax(0,1fr) 42px;gap:5px;padding:6px}.split-dots i{width:9px;height:9px}.compat-relation{grid-template-columns:minmax(0,1fr) 30px minmax(0,1fr);gap:4px}.compat-node{min-height:95px}.compat-node strong{font-size:12px}.compat-link{width:27px;height:27px;font-size:16px}.split-footer .v2-advice-header strong small{display:block;margin:2px 0 0}}
+    .division-controls{display:grid;gap:3px}.division-controls .factor{padding:7px 0}.division-controls .factor-top{align-items:center;gap:10px;margin:0}.division-controls .factor-top label{flex:1;min-width:0;overflow-wrap:anywhere;white-space:normal}.division-controls .factor-stepper,.division-controls .factor select{flex:none;margin-left:auto}.division-controls .factor-stepper input[type=number]{width:62px}.division-controls .factor select{max-width:none;min-width:87px}.division-control-note{margin:8px 0 0;color:#858585;font-size:11px;line-height:1.5}.split-row-stack{width:min(100%,490px);margin:0 auto}.split-row-stack .split-rows{max-height:145px;overflow-y:auto;overscroll-behavior:contain;padding:2px 3px 5px;scrollbar-width:none;-ms-overflow-style:none}.split-view.is-resolved .split-rows{max-height:230px}.split-row-stack .split-rows::-webkit-scrollbar{display:none}.split-row-stack .split-rows.has-more{mask-image:linear-gradient(to bottom,#000 0%,#000 calc(100% - 34px),transparent 100%)}.split-row-stack .split-rows:focus-visible{outline:2px solid #1689ee;outline-offset:2px}.split-row.is-layer-row{padding-top:4px;padding-bottom:4px}.split-row-label small{display:block;margin-top:2px;color:#888;font-size:10px;font-weight:400;line-height:1.1}.split-row--shortage .split-row-label small{color:#b17456}.split-row-stack .split-row--leftover,.split-row-stack .split-row--shortage{margin:7px 3px 0;box-shadow:0 -6px 14px #fafafa}.split-row-stack .split-dots{max-height:32px;overflow:hidden}.split-row--shortage{border-color:#f2cfb9;background:#fff8f2}.split-row--shortage strong{color:#a95728}.split-row--shortage .split-dots i.is-missing{border:1px dashed #dc875b;background:#fff3ea}
   </style>
 </head>
 <body>
   <main class="shell" data-shell-width="wide">
-    <div class="mast"><div class="brand"><span class="mark" aria-hidden="true">◎</span><span class="brand-full">MindSpeed Config · V2</span><span class="brand-short">V2</span></div><div class="mast-actions"><div class="source-switch" role="group" aria-label="WorldSize V2 建议来源"><button type="button" data-v2-source="mcp" aria-pressed="false">MCP</button><button type="button" data-v2-source="original" aria-pressed="true">原始</button></div><div class="width-switch" role="group" aria-label="页面宽度"><button type="button" data-width-mode="wide" aria-pressed="true">宽屏 960</button><button type="button" data-width-mode="narrow" aria-pressed="false">窄屏 480</button></div></div></div>
-    <div class="gallery" role="tablist" aria-label="约束视图案例">
-      <button role="tab" id="tab-worldsize-v2" aria-controls="case-panel" aria-selected="true" data-case="worldsize-v2">World Size V2</button>
-      <button role="tab" id="tab-product" aria-controls="case-panel" aria-selected="false" data-case="product">World Size</button>
-      <button role="tab" id="tab-heads" aria-controls="case-panel" aria-selected="false" data-case="heads">注意力切分</button>
-      <button role="tab" id="tab-layers" aria-controls="case-panel" aria-selected="false" data-case="layers">均匀分层</button>
-      <button role="tab" id="tab-compatibility" aria-controls="case-panel" aria-selected="false" data-case="compatibility">配置选项冲突</button>
-      <button role="tab" id="tab-capacity" aria-controls="case-panel" aria-selected="false" data-case="capacity">理论容量</button>
+    <div class="sticky-nav">
+      <div class="mast"><div class="brand"><span class="mark" aria-hidden="true">◎</span><span class="brand-full">MindSpeed Config · V2</span><span class="brand-short">V2</span></div><div class="mast-actions"><div class="source-switch" role="group" aria-label="WorldSize V2 建议来源"><button type="button" data-v2-source="mcp" aria-pressed="false">MCP</button><button type="button" data-v2-source="original" aria-pressed="true">原始</button></div><div class="width-switch" role="group" aria-label="页面宽度"><button type="button" data-width-mode="wide" aria-pressed="true">宽屏 960</button><button type="button" data-width-mode="narrow" aria-pressed="false">窄屏 480</button></div></div></div>
+      <div class="gallery" role="tablist" aria-label="约束视图案例">
+        <button role="tab" id="tab-worldsize-v2" aria-controls="case-panel" aria-selected="true" data-case="worldsize-v2">World Size V2</button>
+        <button role="tab" id="tab-product" aria-controls="case-panel" aria-selected="false" data-case="product">World Size</button>
+        <button role="tab" id="tab-heads" aria-controls="case-panel" aria-selected="false" data-case="heads">注意力切分</button>
+        <button role="tab" id="tab-layers" aria-controls="case-panel" aria-selected="false" data-case="layers">均匀分层</button>
+        <button role="tab" id="tab-compatibility" aria-controls="case-panel" aria-selected="false" data-case="compatibility">配置选项冲突</button>
+        <button role="tab" id="tab-capacity" aria-controls="case-panel" aria-selected="false" data-case="capacity">理论容量</button>
+      </div>
     </div>
     <section class="panel" id="case-panel" role="tabpanel" aria-labelledby="tab-worldsize-v2">
       <div class="panel-top"><div class="question" id="case-question"></div><div class="meta"><span class="source" id="case-source"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="8"/><path d="m6.4 10 2.4 2.4 4.8-5"/></svg><span id="case-source-text"></span></span></div><div class="lead-row"><div><div class="title-line"><h2 id="case-title" aria-live="polite"></h2><span class="badge" id="case-badge"></span></div></div><div class="lead-actions"><button type="button" class="restore-button" id="restore-current" title="复原当前页签配置" hidden>复原</button></div></div></div>
       <div class="panel-body"><div class="workspace" id="workspace"><div class="interaction" id="interaction"><div class="control" id="context-control"></div></div><div class="visual" id="visual"></div></div><div class="agent-response"><p id="agent-reply"></p><div class="reply-actions" role="group" aria-label="答复操作"><button type="button" data-reply-action="like" aria-label="点赞" title="点赞" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v11H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3Zm0 0 5-8a2 2 0 0 1 2 2v5h5a3 3 0 0 1 2.9 3.7l-1.6 7A2 2 0 0 1 18.4 21H7"/></svg></button><button type="button" data-reply-action="dislike" aria-label="点踩" title="点踩" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14V3H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3Zm0 0 5 8a2 2 0 0 0 2-2v-5h5a3 3 0 0 0 2.9-3.7l-1.6-7A2 2 0 0 0 18.4 3H7"/></svg></button><button type="button" data-reply-action="share" aria-label="分享" title="分享"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m0 0L7 8m5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg></button><button type="button" data-reply-action="copy" aria-label="复制" title="复制"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button><span class="reply-feedback" id="reply-feedback" role="status" aria-live="polite"></span></div></div></div>
     </section>
     <section class="issue-summary" aria-labelledby="issue-summary-title">
-      <p class="eyebrow">V2 MCP · 静态配置诊断</p>
       <h2 id="issue-summary-title">开训前可检查的五类常见问题</h2>
       <p>按实际使用场景建议排序；当前没有用户报错频次统计，因此“常见”不代表实测频率排名。</p>
       <div class="issue-list">
@@ -153,6 +188,7 @@
         <ul>
           <li>规则清单：<code>D:\Projects\compute-graph-viewer-wzh\Profiling_Insight_and_Tool\mindspeed-intro\mindspeed-static-config-analysis.html</code> 的「08 / Rule inventory」，列有 82 个静态诊断码和 6 个非阻塞策略码。</li>
           <li>规则实现：<code>packages/config-core/src/validate-parallel-config.js</code>；Rank 乘积及 EP 口径：<code>packages/config-core/src/page-rules.js</code>。前四类主要由 V2 MCP 的 <code>validate_parallel_config</code> 检查。</li>
+          <li>视图表达参考：<a href="https://docs.nvidia.com/megatron-core/developer-guide/latest/user-guide/parallelism-guide.html" target="_blank" rel="noopener noreferrer">Megatron Core 并行策略</a>中的 TP／PP 分配方式，以及 MindSpeed 的 <a href="https://gitee.com/ascend/MindSpeed/blob/0aec6665bb56239000658cafd03fbd1d700d7b8e/docs/features/mc2.md" target="_blank" rel="noopener noreferrer">MC2 特性说明</a>和 <a href="https://gitee.com/ascend/MindSpeed/blob/d068d10ca4bf0ea06f63d8fb1e29ffdf8ea55fa3/mindspeed/arguments.py" target="_blank" rel="noopener noreferrer">AMPipe 前提检查</a>；这些资料用于设计视图，具体结论仍按所选规则 Profile 返回。</li>
           <li>容量实现：<code>packages/config-core/src/estimate-training-capacity.js</code>。第五类由独立的 <code>estimate_training_capacity</code> 估算，其告警不计入 08 楼层的 82 个静态诊断码。</li>
         </ul>
         <p class="scope-note">以上是工具能力归纳，不是对某份训练配置的实际 MCP 检查结果；静态通过和理论容量估算均不等于目标 NPU 环境实机训练通过。</p>
@@ -165,38 +201,40 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
   <script>
     // Interactive cases call the bundled config-core; the static fixtures remain read-only.
     const cases = {
-      layers:{fixture:'A03',question:'项目里的模型现在是 31 层，我想把 PP 开到 2。帮我检查能不能均匀分层，要怎么调整？',variants:{'31 层':{title:'余下 1 层，无法均匀分配',description:'均匀 PP 要求每个 Stage 层数一致。两组各放 15 层后还剩 1 层。',badge:'需要处理',tone:'bad',total:31,each:15,remainder:1,code:'MINDSPEED_LAYERS_DIVISIBLE_BY_PP'},'32 层':{title:'32 层可均匀分配到 2 个 Stage',description:'只把模型总层数试调为 32 后，config-core 的静态并行校验通过。',badge:'静态校验通过',tone:'good',total:32,each:16,remainder:0,code:null}},active:'31 层',fields:[['model.total_layers','31 → 32（试调）'],['parallel.pp','2'],['parallel.pipeline_layer_mode','uniform']],rule:'total_layers % pp === 0',source:'Megatron-LM:megatron/training/arguments.py@core_v0.12.1'},
-      heads:{fixture:'A04',question:'我们准备把 TP 设为 4，模型目前有 30 个注意力头。帮我看看这样切分会不会有问题，怎么调整合适？',variants:{'30 头':{title:'每份 7 个，还剩 2 个注意力头',description:'TP 切分需要注意力头数可整除。余数直接标在分组末端。',badge:'需要处理',tone:'bad',total:30,each:7,remainder:2,code:'PAGE_HEADS_DIVISIBLE_BY_TP'},'40 头':{title:'40 个注意力头可均匀切分',description:'只把模型注意力头数试调为 40 后，config-core 的静态并行校验通过。',badge:'静态校验通过',tone:'good',total:40,each:10,remainder:0,code:null}},active:'30 头',fields:[['model.num_attention_heads','30 → 40（试调）'],['model.num_key_value_heads','5'],['parallel.tp','4'],['cluster.total_ranks','32']],rule:'num_attention_heads % tp === 0',source:'compute-graph-viewer-wzh:config-relation-observer.js:1519@1e6bb6e'},
+      layers:{fixture:'A03',question:'模型当前有 100 层，计划分给 7 个 PP Stage，目标是每个 Stage 16 层。现在还差多少层？',targetEach:16,rule:'total_layers % pp === 0',source:'Megatron-LM:megatron/training/arguments.py@core_v0.12.1'},
+      heads:{fixture:'A04',question:'我们准备把 TP 设为 7，模型目前有 30 个注意力头。帮我看看这样切分会不会有问题，怎么调整合适？',rule:'num_attention_heads % tp === 0',source:'compute-graph-viewer-wzh:config-relation-observer.js:1519@1e6bb6e'},
       product:{fixture:'双口径示例',question:'请检查本项目当前的并行切分配置。我想把总 Rank 调到 32，先给我一套调整方案，我看看需要改哪些参数。',active:'split',modes:{orthogonal:{title:'每个 Rank 都有五维坐标',note:'正交口径：EP 独占 Rank，进入 world_size 乘积。',rule:'dp * pp * tp * cp * ep === total_ranks'},split:{title:'EP 从 DP 切出',rule:'dp * pp * tp * cp === total_ranks'}},source:'config-core:page-rules.js / compute-rank-topology.js'},
       'worldsize-v2':{question:'目标 32 Rank，当前配置有多少？',title:'目标 32 Rank，当前配置计算 48 Rank',badge:'总 Rank 冲突',tone:'bad'},
-      compatibility:{fixture:'规则清单',question:'如果同时启用 MC2 与 CoC，或者为 AMPipe 漏配前置特性，配置会有什么问题？',title:'配置选项冲突与前置条件',badge:'场景待构建',tone:'estimate'},
+      compatibility:{fixture:'规则示例',question:'配置选项之间有哪些互斥关系或启用前提？',title:'配置选项关系',badge:'需要处理',tone:'bad'},
       capacity:{fixture:'A01',question:'项目准备使用单卡 64 GiB 的昇腾 NPU。帮我估一下这套训练配置的显存风险，哪个 Stage 最紧？'}
     };
     const caseSources={
-      layers:'我已调用 MCP 工具 validate_parallel_config，核对总层数与 PP 的整除约束。',
-      heads:'我已调用 MCP 工具 validate_parallel_config，核对注意力头数与 TP 的整除约束。',
+      layers:'页面内嵌 config-core 静态复验示例；未调用 MCP。',
+      heads:'页面内嵌 config-core 静态复验示例；未调用 MCP。',
       'worldsize-v2':'修复建议来自 V2 服务 suggest_config_fixes 的结构化结果。',
-      compatibility:'此页签仅预览规则范围，尚未调用 MCP 或对具体配置执行静态校验。',
+      compatibility:'页面内嵌 config-core 静态复验规则示例；未调用 MCP。',
       capacity:'本页调用内嵌 config-core 的 estimateTrainingCapacity 进行本地试算；没有发起 MCP 调用。'
     };
     const baseFactorConfig=/* FACTOR_BASE_START */{"schema_version":"1.0","rule_profile":{"framework":"mindspeed-core","version":"0.12.1","source_commit":"65634689bed75ee9b6df666d526f7f16051a3db5"},"model":{"id":"test-moe","total_layers":32,"hidden_size":4096,"num_attention_heads":32,"num_key_value_heads":8,"ffn_hidden_size":11008,"expert_ffn_hidden_size":14336,"vocab_size":32000,"routed_experts":8,"top_k":2,"shared_experts":1},"parallel":{"dp":4,"pp":2,"tp":2,"cp":1,"ep":2,"vpp":1,"pipeline_layer_mode":"uniform","ep_mode":"split","cp_mode":"ulysses","sequence_parallel":true,"vocab_embedding_data_parallel":true,"expert_tensor_parallel":false},"cluster":{"total_ranks":16,"ranks_per_node":8,"card_model":"Ascend test card","card_memory_gib":64},"batch":{"micro_batch_size":1,"sequence_length":4096,"micro_batch_count":4,"global_batch_size":16},"memory":{"compute_dtype":"bf16","parameter_dtype":"fp32","recompute_mode":"selective","shard_mode":"zero1","lora_enabled":false},"policy":{"locked_fields":[],"objective":"minimal-change"}}/* FACTOR_BASE_END */;
-    const capacitySelection={card_memory_gib:64,micro_batch_size:1,sequence_length:4096,micro_batch_count:4,pp:2,recompute_mode:'selective',shard_mode:'zero1'};
+    const capacitySelection={card_memory_gib:64,micro_batch_size:8,sequence_length:12288,micro_batch_count:4,pp:2,recompute_mode:'selective',shard_mode:'zero1'};
     const initialCapacitySelection=structuredClone(capacitySelection);
     const capacityLocks=new Set();
-    function capacityState(){
+    function capacityState(overrides={}){
+      const selection={...capacitySelection,...overrides};
       const input=structuredClone(baseFactorConfig);
       input.model.total_layers=8;
-      input.cluster.card_memory_gib=capacitySelection.card_memory_gib;
-      input.batch.micro_batch_size=capacitySelection.micro_batch_size;
-      input.batch.sequence_length=capacitySelection.sequence_length;
-      input.batch.micro_batch_count=capacitySelection.micro_batch_count;
-      input.parallel.pp=capacitySelection.pp;
+      input.cluster.card_memory_gib=selection.card_memory_gib;
+      input.batch.micro_batch_size=selection.micro_batch_size;
+      input.batch.sequence_length=selection.sequence_length;
+      input.batch.micro_batch_count=selection.micro_batch_count;
+      input.parallel.pp=selection.pp;
       input.cluster.total_ranks=input.parallel.dp*input.parallel.pp*input.parallel.tp*input.parallel.cp;
       input.batch.global_batch_size=input.batch.micro_batch_size*input.batch.micro_batch_count*input.parallel.dp;
-      input.memory.recompute_mode=capacitySelection.recompute_mode;
-      input.memory.shard_mode=capacitySelection.shard_mode;
+      input.memory.recompute_mode=selection.recompute_mode;
+      input.memory.shard_mode=selection.shard_mode;
       return ConstraintLensCore.estimateTrainingCapacity(input);
     }
+    let capacitySelectedAdvice=null;
     const capacityNumberFields=[
       {label:'单卡 HBM · GiB',key:'card_memory_gib',min:16,max:256,step:8},
       {label:'Micro Batch',key:'micro_batch_size',min:1,max:16,step:1},
@@ -230,6 +268,11 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       return `<div class="capacity-controls factor-line">${numbers}${modes}<div class="capacity-feedback" id="capacity-feedback" role="status" aria-live="polite"></div></div>`;
     }
     const factorSelections={orthogonal:{dp:2,pp:2,ep:2,cp:2,tp:2,ranks:32},split:{dp:4,pp:2,ep:2,cp:2,tp:2,ranks:32}};
+    const worldsizeV2MaxRanks=2048;
+    const worldsizeV2MaxDetailedEdge=512;
+    const worldsizeV2MaxSuggestions=7;
+    const worldsizeV2FieldLimits={dp:248,pp:248,tp:248,cp:248,ep:248,ranks:worldsizeV2MaxRanks};
+    const worldsizeV2FactorSliderValues=[...Array.from({length:16},(_,index)=>2+index*2),...Array.from({length:11},(_,index)=>40+index*8),...Array.from({length:4},(_,index)=>152+index*32)];
     const worldsizeV2Selection={dp:6,pp:2,tp:2,cp:1,ep:2,ranks:32,mode:'orthogonal'};
     const initialWorldsizeV2Selection=structuredClone(worldsizeV2Selection);
     let worldsizeV2SelectedSuggestion=null;
@@ -240,7 +283,7 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
     let worldsizeV2McpSerial=0;
     let worldsizeV2McpAbort=null;
     let worldsizeV2Source=globalThis.__MINDSPEED_WEB_SERVICE__?.apiBase?'mcp':'original';
-    let worldsizeV2Original={key:null,suggestions:[]};
+    let worldsizeV2Original={key:null,suggestions:[],limitBlockers:[]};
     const worldsizeV2Locks=new Set();
     const factorLocks={orthogonal:new Set(),split:new Set()};
     const activeLocks=()=>factorLocks[cases.product.active];
@@ -259,12 +302,33 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
     }
     const initialFactorSelections=structuredClone(factorSelections);
     const initialActive={product:cases.product.active,layers:cases.layers.active,heads:cases.heads.active};
+    const selectedAdvice={layers:null,heads:null,compatibility:null};
+    const divisionSelection={layers:{total:100,count:7,ranks:56,mode:'uniform'},heads:{total:30,kv:5,count:7,ranks:56}};
+    const initialDivisionSelection=structuredClone(divisionSelection);
+    const initialCompatibilitySelection={mc2:true,coc:true,ampipe:true,flashAttention:false,adaptiveRecompute:true,staticRecompute:true};
+    const compatibilitySelection=structuredClone(initialCompatibilitySelection);
+    const compatibilityScenarios=[
+      {label:'MC2 与 CoC',left:'Ascend MC2',right:'CoC',leftKey:'mc2',rightKey:'coc',code:'MINDSPEED_MC2_COC_MUTUALLY_EXCLUSIVE',reason:'MindSpeed 尚不支持两种计算通信优化叠加，双开会在启动检查时报错。'},
+      {label:'AMPipe 与 FlashAttention',left:'AMPipe',right:'FlashAttention',leftKey:'ampipe',rightKey:'flashAttention',code:'MINDSPEED_AMPIPE_REQUIRES_FLASH_ATTENTION',reason:'AMPipe 的流水线依赖 FlashAttention，关闭后缺少可用的注意力路径。'},
+      {label:'自适应与静态重计算',left:'自适应重计算',right:'静态重计算',leftKey:'adaptiveRecompute',rightKey:'staticRecompute',code:'MINDSPEED_ADAPTIVE_RECOMPUTE_CONFLICTS_WITH_STATIC_RECOMPUTE',reason:'自适应会自行决定重算范围，静态设置会被它覆盖，无法同时生效。'},
+    ];
+    const compatibilityOptionDisplay={
+      mc2:{label:'Ascend MC2',argument:'--use-ascend-mc2',on:'配入',off:'不配'},
+      coc:{label:'CoC',argument:'--use-ascend-coc',on:'配入',off:'不配'},
+      ampipe:{label:'AMPipe degree',argument:'--ampipe-degree',on:'2',off:'1'},
+      flashAttention:{label:'FlashAttention',argument:'--use-flash-attn',on:'配入',off:'不配'},
+      adaptiveRecompute:{label:'自适应重计算',argument:'--adaptive-recompute-device-swap',on:'配入',off:'不配'},
+      staticRecompute:{label:'静态重计算',argument:'--recompute-granularity',on:'selective',off:'不配'},
+    };
+    const compatibilityValue=(key,enabled)=>compatibilityOptionDisplay[key][enabled?'on':'off'];
     const $=id=>document.getElementById(id);
     const escapeHtml=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
     function currentConfigChanged(){
       if(current==='product')return cases.product.active!==initialActive.product||Object.keys(factorSelections).some(mode=>Object.keys(factorSelections[mode]).some(field=>factorSelections[mode][field]!==initialFactorSelections[mode][field]));
       if(current==='worldsize-v2')return worldsizeV2Locks.size>0||Object.keys(initialWorldsizeV2Selection).some(field=>worldsizeV2Selection[field]!==initialWorldsizeV2Selection[field]);
       if(current==='capacity')return capacityLocks.size>0||Object.keys(capacitySelection).some(key=>capacitySelection[key]!==initialCapacitySelection[key]);
+      if(current==='compatibility')return Object.keys(compatibilitySelection).some(key=>compatibilitySelection[key]!==initialCompatibilitySelection[key]);
+      if(current==='layers'||current==='heads')return Object.keys(divisionSelection[current]).some(key=>divisionSelection[current][key]!==initialDivisionSelection[current][key]);
       return Object.hasOwn(initialActive,current)&&cases[current].active!==initialActive[current];
     }
     const sliderProgress=(value,maximum)=>`${(value-1)/(maximum-1)*100}%`;
@@ -322,6 +386,49 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       const dataRows=selection.mode==='orthogonal'?scalars.rank_count_per_stage/selection.ep:scalars.rank_count_per_stage;
       return {input,selection,world:scalars.world,dataRows,copyColumns:scalars.world/dataRows,validation};
     }
+    function worldsizeV2FallbackSuggestions(state,fieldLimits,count,keys=new Set()){
+      const suggestions=[];
+      const locked=[...worldsizeV2Locks,'ranks'];
+      for(const field of ['pp','tp','cp','ep','dp']){
+        if(worldsizeV2Locks.has(field))continue;
+        const current=state.selection[field];
+        const values=[current*2,current/2,1,2,4,8,16,32,64,128,248];
+        for(const value of values){
+          if(!Number.isSafeInteger(value)||value<1||value>fieldLimits[field]||value===current)continue;
+          const repair=ConstraintLensCore.rebalanceParallelConfig(state.input,{field,value,lockedFields:locked,fieldLimits});
+          if(repair.status!=='balanced')continue;
+          const proposal={...state.selection,...repair.selection};
+          if(worldsizeV2State(proposal).validation.status!=='valid')continue;
+          const changes=Object.keys(worldsizeV2Paths).filter(name=>proposal[name]!==state.selection[name]).map(name=>({field:name,from:state.selection[name],to:proposal[name]}));
+          const alternative={changes,requiresCapacityConfirmation:false};
+          const alternativeKey=worldsizeV2SuggestionKey(alternative);
+          if(!changes.length||keys.has(alternativeKey))continue;
+          keys.add(alternativeKey);
+          suggestions.push(alternative);
+          if(suggestions.length>=count)return suggestions;
+        }
+      }
+      return suggestions;
+    }
+    function worldsizeV2LimitBlockers(changes){
+      return changes.filter(change=>change.field!=='ranks'&&change.to>worldsizeV2FieldLimits[change.field]).map(change=>({field:change.field,value:change.to,maximum:worldsizeV2FieldLimits[change.field]}));
+    }
+    function worldsizeV2CurrentLimitBlockers(state){
+      const key=worldsizeV2RequestKey(state);
+      return worldsizeV2Source==='original'?(worldsizeV2Original.key===key?worldsizeV2Original.limitBlockers:[]):(worldsizeV2Mcp.key===key?worldsizeV2Mcp.limitBlockers:[]);
+    }
+    function worldsizeV2McpLimitBlockers(result,state){
+      const blocked=new Map();
+      for(const item of result?.data?.suggestions??[]){
+        if(!Array.isArray(item.changes)||item.changes.some(change=>change.path===worldsizeV2Paths.ranks)||item.proposed_config?.parallel?.ep_mode!==state.selection.mode)continue;
+        for(const change of item.changes){
+          const field=Object.keys(worldsizeV2Paths).find(key=>worldsizeV2Paths[key]===change.path);
+          if(!field||worldsizeV2Locks.has(field)||change.old_value!==state.selection[field]||!Number.isSafeInteger(change.new_value)||change.new_value<=worldsizeV2FieldLimits[field])continue;
+          if(!blocked.has(field)||change.new_value<blocked.get(field).value)blocked.set(field,{field,value:change.new_value,maximum:worldsizeV2FieldLimits[field]});
+        }
+      }
+      return [...blocked.values()];
+    }
     function worldsizeV2Suggestions(state){
       if(state.validation.status==='valid')return [];
       const key=worldsizeV2RequestKey(state);
@@ -329,31 +436,16 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
         if(worldsizeV2Original.key!==key){
           const result=ConstraintLensCore.suggestConfigFixes(worldsizeV2McpInput(state));
           const suggestions=worldsizeV2McpSuggestions(result,state).sort((left,right)=>Number(left.requiresCapacityConfirmation)-Number(right.requiresCapacityConfirmation));
-          if(suggestions.length<3){
-            const keys=new Set(suggestions.map(worldsizeV2SuggestionKey));
-            const locked=[...worldsizeV2Locks,'ranks'];
-            for(const field of ['pp','tp','cp','ep','dp']){
-              if(worldsizeV2Locks.has(field))continue;
-              const current=state.selection[field];
-              const values=[current*2,current/2,1,2,4,8,16];
-              for(const value of values){
-                if(!Number.isSafeInteger(value)||value<1||value>16||value===current)continue;
-                const repair=ConstraintLensCore.rebalanceParallelConfig(state.input,{field,value,lockedFields:locked});
-                if(repair.status!=='balanced')continue;
-                const proposal={...state.selection,...repair.selection};
-                if(worldsizeV2State(proposal).validation.status!=='valid')continue;
-                const changes=Object.keys(worldsizeV2Paths).filter(name=>proposal[name]!==state.selection[name]).map(name=>({field:name,from:state.selection[name],to:proposal[name]}));
-                const alternative={changes,requiresCapacityConfirmation:false};
-                const alternativeKey=worldsizeV2SuggestionKey(alternative);
-                if(!changes.length||keys.has(alternativeKey))continue;
-                keys.add(alternativeKey);
-                suggestions.splice(suggestions.findIndex(item=>item.requiresCapacityConfirmation)<0?suggestions.length:suggestions.findIndex(item=>item.requiresCapacityConfirmation),0,alternative);
-                if(suggestions.length>=3)break;
-              }
-              if(suggestions.length>=3)break;
+          if(suggestions.length<worldsizeV2MaxSuggestions)suggestions.push(...worldsizeV2FallbackSuggestions(state,worldsizeV2FieldLimits,worldsizeV2MaxSuggestions-suggestions.length,new Set(suggestions.map(worldsizeV2SuggestionKey))));
+          let limitBlockers=[];
+          if(!suggestions.length){
+            limitBlockers=worldsizeV2McpLimitBlockers(result,state);
+            if(!limitBlockers.length){
+              const relaxedLimits=Object.fromEntries(Object.entries(worldsizeV2FieldLimits).map(([field,maximum])=>[field,field==='ranks'?maximum:Math.max(maximum,worldsizeV2MaxRanks)]));
+              limitBlockers=worldsizeV2LimitBlockers(worldsizeV2FallbackSuggestions(state,relaxedLimits,1)[0]?.changes??[]);
             }
           }
-          worldsizeV2Original={key,suggestions};
+          worldsizeV2Original={key,suggestions:suggestions.slice(0,worldsizeV2MaxSuggestions),limitBlockers};
         }
         return worldsizeV2Original.suggestions;
       }
@@ -373,6 +465,7 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       const input=structuredClone(state.input);
       input.policy.locked_fields=[
         'model.num_attention_heads','model.num_key_value_heads','model.top_k','parallel.vpp',
+        worldsizeV2Paths.ranks,
         ...[...worldsizeV2Locks].map(field=>worldsizeV2Paths[field]),
       ];
       return input;
@@ -385,13 +478,13 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
           const field=Object.keys(worldsizeV2Paths).find(key=>worldsizeV2Paths[key]===change.path);
           return {field,from:change.old_value,to:change.new_value};
         }).sort((left,right)=>Object.keys(worldsizeV2Paths).indexOf(left.field)-Object.keys(worldsizeV2Paths).indexOf(right.field));
-        if(changes.some(change=>!change.field||worldsizeV2Locks.has(change.field)||change.from!==state.selection[change.field]||!Number.isSafeInteger(change.to)||change.to<1||change.to>(change.field==='ranks'?256:16)))return [];
+        if(changes.some(change=>!change.field||change.field==='ranks'||worldsizeV2Locks.has(change.field)||change.from!==state.selection[change.field]||!Number.isSafeInteger(change.to)||change.to<1||change.to>worldsizeV2FieldLimits[change.field]))return [];
         const proposed=item.proposed_config;
         if(!proposed||proposed.parallel?.ep_mode!==state.selection.mode)return [];
         const selection=Object.assign({...state.selection},...changes.map(change=>({[change.field]:change.to})));
         if(Object.keys(worldsizeV2Paths).some(field=>(field==='ranks'?proposed.cluster?.total_ranks:proposed.parallel?.[field])!==selection[field]))return [];
         return [{changes,requiresCapacityConfirmation:changes.some(change=>change.field==='ranks')}];
-      }).slice(0,3);
+      }).slice(0,worldsizeV2MaxSuggestions);
     }
     function scheduleWorldsizeV2Mcp(state){
       const key=worldsizeV2RequestKey(state);
@@ -418,8 +511,9 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
           const body=await response.json().catch(()=>({}));
           if(!response.ok)throw new Error(response.status===401?'V2 服务会话未登录，请先登录工作台。':body.message||`V2 修复工具调用失败（HTTP ${response.status}）。`);
           const suggestions=worldsizeV2McpSuggestions(body.structuredContent,state);
+          const limitBlockers=worldsizeV2McpLimitBlockers(body.structuredContent,state);
           if(serial!==worldsizeV2McpSerial)return;
-          worldsizeV2Mcp={key,status:'ready',suggestions,error:''};
+          worldsizeV2Mcp={key,status:'ready',suggestions,limitBlockers,error:''};
         }catch(error){
           if(serial!==worldsizeV2McpSerial||error.name==='AbortError')return;
           worldsizeV2Mcp={key,status:'error',suggestions:[],error:error.message||'V2 修复工具暂时不可用。'};
@@ -468,20 +562,28 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
         tip.style.top=`${above>=8?above:rect.bottom+8}px`;
       },1000);
     }
-    function renderWorldsizeV2Advice(suggestions){
-      if(!suggestions.length)return '';
-      const controls=suggestions.map((item,index)=>{
+    function renderWorldsizeV2Advice(state,suggestions){
+      if(!suggestions.length){
+        const limitBlockers=state.validation.status==='valid'?[]:worldsizeV2CurrentLimitBlockers(state);
+        if(!limitBlockers?.length)return '';
+        const unavailable=limitBlockers.slice(0,worldsizeV2MaxSuggestions).map(item=>`<button type="button" class="v2-advice-button" disabled title="${item.field.toUpperCase()} 超过控件上限，无法试用">超限项 · ${item.field.toUpperCase()} ${item.value}（上限 ${item.maximum}）</button>`).join('');
+        return `<div class="v2-advice"><div class="v2-advice-header"><strong>修复建议</strong><button type="button" class="v2-advice-try" disabled title="超限项无法试用">试用</button></div><div class="v2-advice-options" role="group" aria-label="受控件上限限制的选项">${unavailable}</div></div>`;
+      }
+      const controls=suggestions.slice(0,worldsizeV2MaxSuggestions).map((item,index)=>{
         const key=worldsizeV2SuggestionKey(item);
         const itemChanges=worldsizeV2SuggestionChanges(item);
         const description=itemChanges.map(change=>`${change.field==='ranks'?'总 Rank':change.field.toUpperCase()} ${change.from}→${change.to}`).join(' · ');
         const itemRank=itemChanges.find(change=>change.field==='ranks');
-        return `<button type="button" class="v2-advice-button" data-v2-suggestion-key="${key}" aria-pressed="${key===worldsizeV2SelectedSuggestion}"${item.requiresCapacityConfirmation?` title="仅在实际可用 ${itemRank.to} Rank 时采用"`:''}>${index+1}. ${index===0?'优先 · ':''}${description}${item.requiresCapacityConfirmation?' · 需确认资源':''}</button>`;
+        return `<button type="button" class="v2-advice-button" data-v2-suggestion-key="${key}" aria-pressed="${key===worldsizeV2SelectedSuggestion}"${item.requiresCapacityConfirmation?` title="仅在实际可用 ${itemRank.to} Rank 时采用"`:''}>${index+1}. ${index===0?'<span class="v2-advice-priority">优先</span> ':''}${description}${item.requiresCapacityConfirmation?' · 需确认资源':''}</button>`;
       }).join('');
       const source=worldsizeV2Source==='mcp'?'来自 V2 服务 suggest_config_fixes 的 structuredContent':'来自当前页面内嵌 config-core 的静态复验';
-      return `<div class="v2-advice"><strong title="${source}">修复建议</strong>${controls}<button type="button" class="v2-advice-try" data-v2-try title="将所选方案写入 Control">试用</button></div>`;
+      return `<div class="v2-advice"><div class="v2-advice-header"><strong title="${source}">修复建议</strong><button type="button" class="v2-advice-try" data-v2-try title="将所选方案写入 Control">试用</button></div><div class="v2-advice-options" role="group" aria-label="推荐方案">${controls}</div></div>`;
     }
     function renderWorldsizeV2ServiceState(state,suggestions){
-      if(worldsizeV2Source!=='mcp'||state.validation.status==='valid'||suggestions.length)return '';
+      if(state.validation.status==='valid'||suggestions.length)return '';
+      const limitBlockers=worldsizeV2CurrentLimitBlockers(state);
+      if(limitBlockers?.length)return `<div class="v2-service-state" role="status">找到的候选方案需要 ${limitBlockers.map(item=>`${item.field.toUpperCase()} ${item.value}（控件上限 ${item.maximum}）`).join('、')}；超限项仅供查看，无法在视图标注或试用。</div>`;
+      if(worldsizeV2Source==='original')return `<div class="v2-service-state" role="status">总 Rank ${state.selection.ranks} 已固定；在当前控件范围和锁定条件下，未找到通过静态校验的方案。</div>`;
       if(!globalThis.__MINDSPEED_WEB_SERVICE__?.apiBase)return '<div class="v2-service-state"><a href="https://42.192.111.92/mindspeed-config-v2/prototypes/constraint-lens.html">从 V2 服务打开以获取建议 ↗</a></div>';
       const request=worldsizeV2Mcp.key===worldsizeV2RequestKey(state)?worldsizeV2Mcp:null;
       if(request?.status==='error'&&request.error.includes('会话未登录')){
@@ -498,10 +600,10 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       worldsizeV2SelectedSuggestion=selected?worldsizeV2SuggestionKey(selected):null;
       const proposedSelection=selected?Object.assign({...selection},...worldsizeV2SuggestionChanges(selected).map(change=>({[change.field]:change.to}))):null;
       const proposal=proposedSelection?worldsizeV2State(proposedSelection):null;
-      const target=proposal?.world??selection.ranks;
-      const advice=renderWorldsizeV2Advice(suggestions);
+      const target=selection.ranks;
+      const advice=renderWorldsizeV2Advice(state,suggestions);
       const serviceState=renderWorldsizeV2ServiceState(state,suggestions);
-      if(world>512||target>512){
+      if(world>worldsizeV2MaxRanks||target>worldsizeV2MaxRanks){
         worldsizeV2WasMatched=false;
         const changes=selected?worldsizeV2SuggestionChanges(selected):[];
         const marks=[
@@ -513,7 +615,7 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
           const larger=changes.filter(change=>fields.includes(change.field)&&change.to>change.from).map(change=>change.field==='ranks'?'总 Rank':change.field.toUpperCase());
           return [...(smaller.length?[`${down} 缩小 ${smaller.join('｜')}`]:[]),...(larger.length?[`${up} 提高 ${larger.join('｜')}`]:[])];
         });
-        return `<div class="v2-restored v2-restored--limited"><div class="v2-limit">目标Rank = ${target}　计算Rank = ${world}<small>超出逐格展示范围</small><div class="v2-limit-marks">${marks.map(mark=>`<span>${mark}</span>`).join('')}</div></div><div class="v2-footer">${serviceState}${advice}</div></div>`;
+        return `<div class="v2-restored v2-restored--limited"><div class="v2-limit">目标Rank = ${target}　计算Rank = ${world}<small>超出图形展示范围（最大 2048 Rank）</small><div class="v2-limit-marks">${marks.map(mark=>`<span>${mark}</span>`).join('')}</div></div><div class="v2-footer">${serviceState}${advice}</div></div>`;
       }
       let targetColumns=proposal?.copyColumns??(validation.status==='valid'?copyColumns:1);
       if(!proposal&&validation.status!=='valid')for(let columns=2;columns<copyColumns;columns++)if(target%columns===0)targetColumns=columns;
@@ -522,50 +624,84 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       const celebrate=matched&&!worldsizeV2WasMatched;
       worldsizeV2WasMatched=matched;
       const changes=selected?worldsizeV2SuggestionChanges(selected):[];
-      const rankChange=changes.find(change=>change.field==='ranks');
       const axisNames=(fields,direction)=>changes.filter(change=>fields.includes(change.field)&&Math.sign(change.to-change.from)===direction&&(direction>0||change.from>1)).map(change=>change.field.toUpperCase());
       const verticalNames=axisNames(['dp','cp','tp'],Math.sign(targetRows-dataRows));
       const horizontalNames=axisNames(['pp','ep'],Math.sign(targetColumns-copyColumns));
       const hasVerticalArrow=targetRows!==dataRows&&verticalNames.length>0;
       const hasHorizontalArrow=targetColumns!==copyColumns&&horizontalNames.length>0;
-      const hasBottomArrow=hasHorizontalArrow||!!rankChange;
-      const matrixInset=hasHorizontalArrow&&rankChange?80:hasBottomArrow?42:24;
+      const hasBottomArrow=hasHorizontalArrow;
+      const matrixInset=hasBottomArrow?42:24;
       const maxRows=Math.max(targetRows,dataRows);
+      const maxColumns=Math.max(targetColumns,copyColumns);
+      const abstract=Math.max(maxRows,maxColumns)>worldsizeV2MaxDetailedEdge;
       const availableWidth=Math.min(250,Math.floor(window.innerWidth*.42));
-      const cellSize=Math.max(1,Math.min(16,Math.floor(420/maxRows),Math.floor(availableWidth/Math.max(targetColumns,copyColumns))));
-      const matrixWidth=Math.max(targetColumns,copyColumns)*cellSize;
+      const cellSize=abstract?Math.min(16,420/maxRows,availableWidth/maxColumns):Math.max(1,Math.min(16,Math.floor(420/maxRows),Math.floor(availableWidth/maxColumns)));
+      const matrixWidth=maxColumns*cellSize;
       const matrixHeight=maxRows*cellSize;
       const chartWidth=Math.max(matrixWidth+48,hasVerticalArrow?matrixWidth+188:0,hasBottomArrow?210:0);
       const targetTop=matrixInset+(maxRows-targetRows)*cellSize;
       const actualTop=matrixInset+(maxRows-dataRows)*cellSize;
       const widthGap=Math.abs(copyColumns-targetColumns)*cellSize;
-      const chartStyle=`--v2-cell-size:${cellSize}px;--v2-chart-width:${chartWidth}px;--v2-chart-height:${matrixHeight+matrixInset*2}px;--v2-matrix-height:${matrixHeight}px;--v2-matrix-inset:${matrixInset}px;--v2-target-width:${targetColumns*cellSize}px;--v2-wide-width:${matrixWidth}px;--v2-half-wide-width:${matrixWidth/2}px;--v2-narrow-width:${Math.min(targetColumns,copyColumns)*cellSize}px;--v2-width-gap:${widthGap}px;--v2-half-width-gap:${widthGap/2}px;--v2-target-top:${Math.min(targetTop,actualTop)}px;--v2-arrow-height:${Math.abs(actualTop-targetTop)}px;--v2-arrow-label-top:${Math.max(matrixInset,(targetTop+actualTop)/2-8)}px`;
-      const targetRanks=worldsizeV2RankCells(proposal??(validation.status==='valid'?state:null));
-      const actualRanks=worldsizeV2RankCells(state);
+      const chartStyle=`--v2-cell-size:${cellSize}px;--v2-chart-width:${chartWidth}px;--v2-chart-height:${matrixHeight+matrixInset*2}px;--v2-matrix-height:${matrixHeight}px;--v2-matrix-inset:${matrixInset}px;--v2-target-width:${targetColumns*cellSize}px;--v2-target-height:${targetRows*cellSize}px;--v2-actual-width:${copyColumns*cellSize}px;--v2-actual-height:${dataRows*cellSize}px;--v2-wide-width:${matrixWidth}px;--v2-half-wide-width:${matrixWidth/2}px;--v2-narrow-width:${Math.min(targetColumns,copyColumns)*cellSize}px;--v2-width-gap:${widthGap}px;--v2-half-width-gap:${widthGap/2}px;--v2-target-top:${Math.min(targetTop,actualTop)}px;--v2-arrow-height:${Math.abs(actualTop-targetTop)}px;--v2-arrow-label-top:${Math.max(matrixInset,(targetTop+actualTop)/2-8)}px`;
+      const targetRanks=abstract?[]:worldsizeV2RankCells(proposal??(validation.status==='valid'?state:null));
+      const actualRanks=abstract?[]:worldsizeV2RankCells(state);
       const coveredTargetRows=Math.min(targetRows,dataRows);
       const coveredTargetColumns=Math.min(targetColumns,copyColumns);
-      const targetCells=Array.from({length:target},(_,index)=>worldsizeV2Cell(targetRanks[index],index,'target',targetColumns,targetRows,Math.floor(index/targetColumns)>=targetRows-coveredTargetRows&&index%targetColumns<coveredTargetColumns)).join('');
-      const actualCells=Array.from({length:world},(_,index)=>worldsizeV2Cell(actualRanks[index],index,'actual',copyColumns,dataRows)).join('');
+      const targetCells=abstract?'':Array.from({length:target},(_,index)=>worldsizeV2Cell(targetRanks[index],index,'target',targetColumns,targetRows,Math.floor(index/targetColumns)>=targetRows-coveredTargetRows&&index%targetColumns<coveredTargetColumns)).join('');
+      const actualCells=abstract?'':Array.from({length:world},(_,index)=>worldsizeV2Cell(actualRanks[index],index,'actual',copyColumns,dataRows)).join('');
       const verticalArrow=targetRows===dataRows||!verticalNames.length?'':`<div class="v2-arrow v2-arrow--up${targetRows<dataRows?' v2-arrow--down':''}" aria-hidden="true"></div><span class="v2-arrow-label v2-arrow-label--up">${targetRows>dataRows?'提高':'缩小'} ${verticalNames.join('｜')}</span>`;
       const horizontalArrow=targetColumns===copyColumns||!horizontalNames.length?'':`<div class="v2-arrow v2-arrow--left${targetColumns>copyColumns?' v2-arrow--right':''}" aria-hidden="true"></div><span class="v2-arrow-label v2-arrow-label--left">${targetColumns<copyColumns?'缩小':'提高'} ${horizontalNames.join('｜')}</span>`;
-      const rankArrow=rankChange?`<div class="v2-arrow v2-arrow--rank${rankChange.to<rankChange.from?' v2-arrow--rank-decrease':''}" aria-hidden="true"></div><span class="v2-arrow-label v2-arrow-label--rank">总 Rank ${rankChange.from}→${rankChange.to}${selected.requiresCapacityConfirmation?' · 需确认资源':''}</span>`:'';
       const legend=validation.status==='valid'?'':`<div class="v2-legend"><span><i class="v2-legend-blue"></i>目标Rank = ${target}</span><span><i class="v2-legend-red"></i>计算Rank = ${world}</span></div>`;
       return `<div class="v2-restored">
-        <div class="v2-artboard${matched?' is-v2-overlap':''}${celebrate?' is-v2-success':''}${hasHorizontalArrow&&rankChange?' has-v2-double-bottom':''}" style="${chartStyle}" role="img" aria-label="${matched?'目标与计算 Rank 矩阵重合；':'蓝色所选方案与红色当前配置；'}目标 ${target} Rank，纵向 ${targetRows} 格，横向 ${targetColumns} 格；当前配置 ${world} Rank，纵向 DP 乘 CP 乘 TP 为 ${dataRows} 格，横向 PP 乘 EP 为 ${copyColumns} 格。">
+        <div class="v2-artboard${abstract?' is-v2-abstract':''}${matched?' is-v2-overlap':''}${celebrate?' is-v2-success':''}" style="${chartStyle}" role="img" aria-label="${matched?'目标与计算 Rank 矩阵重合；':'蓝色所选方案与红色当前配置；'}目标 ${target} Rank，纵向 ${targetRows} 格，横向 ${targetColumns} 格；当前配置 ${world} Rank，纵向 DP 乘 CP 乘 TP 为 ${dataRows} 格，横向 PP 乘 EP 为 ${copyColumns} 格。${abstract?'矩阵已按比例缩小并隐藏格线。':''}">
           <div class="v2-target-grid" style="--v2-target-rows:${targetRows};--v2-target-cols:${targetColumns}">${targetCells}</div>
           <div class="v2-actual-grid" style="--v2-data-rows:${dataRows};--v2-copy-columns:${copyColumns}">${actualCells}</div>
-          ${verticalArrow}${horizontalArrow}${rankArrow}
+          ${verticalArrow}${horizontalArrow}
         </div>
         <div class="v2-footer">${legend}${serviceState}${advice}</div>
       </div>`;
     }
+    function worldsizeV2RankSliderValue(value){
+      return Math.min(worldsizeV2MaxRanks,Math.max(2,Math.round(value/2)*2));
+    }
+    function worldsizeV2FactorSliderIndex(value){
+      let nearest=0;
+      for(let index=1;index<worldsizeV2FactorSliderValues.length;index++){
+        if(Math.abs(worldsizeV2FactorSliderValues[index]-value)<Math.abs(worldsizeV2FactorSliderValues[nearest]-value))nearest=index;
+      }
+      return nearest;
+    }
+    function worldsizeV2FactorSliderPosition(index){
+      if(index<=15)return Math.round(index/15*100);
+      if(index<=26)return Math.round(100+(index-15)/11*100);
+      return Math.round(200+(index-26)/4*100);
+    }
+    function worldsizeV2FactorSliderIndexAt(position){
+      if(position<=100)return Math.round(position/100*15);
+      if(position<=200)return 15+Math.round((position-100)/100*11);
+      return 26+Math.round((position-200)/100*4);
+    }
+    function worldsizeV2RangeProgress(field,value,maximum){
+      return field==='ranks'?`${(worldsizeV2RankSliderValue(value)-2)/(maximum-2)*100}%`:`${worldsizeV2FactorSliderPosition(worldsizeV2FactorSliderIndex(value))/3}%`;
+    }
+    function worldsizeV2SteppedValue(field,direction,value=worldsizeV2Selection[field]){
+      return field==='ranks'?(direction>0?Math.floor(value/2)*2+2:Math.ceil(value/2)*2-2):value+direction;
+    }
     function renderWorldsizeV2Controls(){
       const selection=worldsizeV2Selection;
       const controls=[['DP','dp','is-data'],['PP','pp','is-replica'],['TP','tp','is-data'],['CP','cp','is-data'],['EP','ep','is-replica'],['总 Rank','ranks','is-target']].map(([label,field,tone])=>{
-        const maximum=field==='ranks'?256:16;
+        const maximum=worldsizeV2FieldLimits[field];
         const locked=worldsizeV2Locks.has(field);
         const shackle=locked?'M7 10V7a5 5 0 0 1 10 0v3':'M7 10V7a5 5 0 0 1 9-3';
-        return `<div class="factor ${tone} "><div class="factor-top"><label for="v2-${field}"><small>${label}</small></label><div class="v2-input-row"><div class="factor-stepper"><button type="button" data-v2-step="${field}" data-step-direction="-1" aria-label="减少 ${label}" ${locked||selection[field]<=1?'disabled':''}>−</button><input id="v2-${field}" type="number" min="1" max="${maximum}" step="1" data-v2-number="${field}" value="${selection[field]}" inputmode="numeric" aria-label="填写 ${label}" ${locked?'disabled':''}><button type="button" data-v2-step="${field}" data-step-direction="1" aria-label="增加 ${label}" ${locked||selection[field]>=maximum?'disabled':''}>+</button></div><button type="button" class="lock-toggle ${locked?'locked':''}" data-v2-lock="${field}" aria-pressed="${locked}" aria-label="${locked?'解锁':'锁定'} ${label}" title="${locked?'解锁':'锁定'} ${label}"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${shackle}"/><rect x="5" y="10" width="14" height="11" rx="2"/></svg></button></div></div><input type="range" min="1" max="${maximum}" step="1" value="${selection[field]}" data-v2-range="${field}" style="--range-progress:${sliderProgress(selection[field],maximum)}" aria-label="滑动调整 ${label}" ${locked?'disabled':''}></div>`;
+        const rangeMin=field==='ranks'?2:0;
+        const rangeMax=field==='ranks'?maximum:300;
+        const rangeStep=field==='ranks'?2:1;
+        const factorIndex=field==='ranks'?null:worldsizeV2FactorSliderIndex(selection[field]);
+        const rangeValue=field==='ranks'?worldsizeV2RankSliderValue(selection[field]):worldsizeV2FactorSliderPosition(factorIndex);
+        const rangeProgress=worldsizeV2RangeProgress(field,selection[field],maximum);
+        const rangeInput=`<input type="range" min="${rangeMin}" max="${rangeMax}" step="${rangeStep}" value="${rangeValue}" data-v2-range="${field}" style="--range-progress:${rangeProgress}" aria-label="滑动调整 ${label}"${field==='ranks'?'':` aria-valuetext="${worldsizeV2FactorSliderValues[factorIndex]}"`} ${locked?'disabled':''}>`;
+        const rangeControl=field==='ranks'?rangeInput:`<div class="v2-progressive-slider" style="--range-progress:${rangeProgress}">${rangeInput}</div>`;
+        return `<div class="factor ${tone} "><div class="factor-top"><label for="v2-${field}"><small>${label}</small></label><div class="v2-input-row"><div class="factor-stepper"><button type="button" data-v2-step="${field}" data-step-direction="-1" aria-label="减少 ${label}" ${locked||selection[field]<=1?'disabled':''}>−</button><input id="v2-${field}" type="number" min="1" max="${maximum}" step="1" data-v2-number="${field}" value="${selection[field]}" inputmode="numeric" aria-label="填写 ${label}" ${locked?'disabled':''}><button type="button" data-v2-step="${field}" data-step-direction="1" aria-label="增加 ${label}" ${locked||selection[field]>=maximum?'disabled':''}>+</button></div><button type="button" class="lock-toggle ${locked?'locked':''}" data-v2-lock="${field}" aria-pressed="${locked}" aria-label="${locked?'解锁':'锁定'} ${label}" title="${locked?'解锁':'锁定'} ${label}"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${shackle}"/><rect x="5" y="10" width="14" height="11" rx="2"/></svg></button></div></div>${rangeControl}</div>`;
       }).join('');
       return `<div class="v2-controls"><div class="v2-mode" role="group" aria-label="EP 计数口径"><button type="button" data-v2-mode="orthogonal" aria-pressed="${selection.mode==='orthogonal'}">EP 正交</button><button type="button" data-v2-mode="split" aria-pressed="${selection.mode==='split'}">EP 切出</button></div>${controls}<div class="v2-feedback" id="v2-feedback" role="status" aria-live="polite"></div></div>`;
     }
@@ -586,15 +722,152 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       const text=comparisonText(snapshot,check,total);
       return `<div class="measure"><div class="measure-head"><span>并行乘积</span><strong>${snapshot.world} Rank</strong></div><div class="scale" role="img" aria-label="并行乘积 ${snapshot.world} Rank"><span class="scale-fill ${check.comparison==='equal'?'good-fill':''}" style="width:${check.worldPct}%"></span></div><div class="measure-head" style="margin-top:15px"><span>总 Rank</span><strong>${total} Rank</strong></div><div class="scale" role="img" aria-label="总 Rank ${total}"><span class="scale-target" style="width:${check.targetPct}%"></span></div><div class="annotation ${check.comparison==='equal'?'ok':''}">${text}</div></div>`;
     }
-    function renderDivision(scene,variant){const count=scene==='layers'?2:4;const unit=scene==='layers'?'层':'头';const groupName=scene==='layers'?'Stage':'TP';return `<div class="division-top"><strong>${variant.total}</strong> ${unit} <span aria-hidden="true">÷</span> <strong>${count}</strong> ${groupName}</div><div class="groups ${variant.tone==='good'?'valid':''}">${Array.from({length:count},(_,i)=>`<div class="group"><small>${groupName} ${i+1}</small><strong>${variant.each}</strong><span>${unit}</span></div>`).join('')}${variant.remainder?`<div class="leftover"><small>余下</small><strong>${variant.remainder}</strong><span>${unit}</span></div>`:''}</div><div class="annotation ${variant.tone==='good'?'ok':''}">${variant.remainder?'余数 '+variant.remainder+' · 当前均匀切分不成立':'没有余数 · 均匀切分成立'}</div>`}
+    function divisionValidation(scene,selection){
+      const input=structuredClone(baseFactorConfig);
+      if(scene==='layers'){
+        input.model.total_layers=selection.total;
+        input.parallel.pp=selection.count;
+        input.parallel.pipeline_layer_mode=selection.mode;
+      }else{
+        input.model.num_attention_heads=selection.total;
+        input.model.num_key_value_heads=selection.kv;
+        input.model.ffn_hidden_size=2240;
+        input.parallel.tp=selection.count;
+      }
+      input.cluster.total_ranks=selection.ranks;
+      return ConstraintLensCore.validateParallelConfig(input);
+    }
+    function divisionVariant(scene,selection){
+      const isLayers=scene==='layers',each=Math.floor(selection.total/selection.count),remainder=selection.total%selection.count;
+      const targetEach=isLayers?cases.layers.targetEach:each;
+      const stageCounts=Array.from({length:selection.count},(_,index)=>isLayers?Math.max(0,Math.min(targetEach,selection.total-index*targetEach)):each);
+      const shortfall=isLayers?stageCounts.reduce((sum,count)=>sum+targetEach-count,0):0;
+      const overflow=isLayers?Math.max(0,selection.total-targetEach*selection.count):remainder;
+      const missingStages=isLayers?stageCounts.filter(count=>count<targetEach).length:0;
+      const ranges=isLayers?stageCounts.map((count,index)=>count?`L${index*targetEach+1}–${index*targetEach+count}`:'暂无层'):[];
+      const validation=divisionValidation(scene,selection),valid=validation.status==='valid'&&!shortfall&&!overflow;
+      return {...selection,each,remainder,targetEach,stageCounts,shortfall,overflow,missingStages,ranges,validation,tone:valid?'good':'bad',badge:valid?'静态校验通过':'需要处理',title:isLayers?`均匀分层 · ${selection.total} 层 / PP ${selection.count}`:`注意力切分 · ${selection.total} 头 / TP ${selection.count}`};
+    }
+    function divisionSummary(scene,variant){
+      if(variant.shortfall)return variant.missingStages===1?`有一个 Stage 缺 ${variant.shortfall} 层`:`有 ${variant.missingStages} 个 Stage 共缺 ${variant.shortfall} 层`;
+      if(variant.overflow)return `有 ${variant.overflow} ${scene==='layers'?'层':'头'}未能分配`;
+      if(variant.validation.status!=='valid')return '数量已对齐，其他静态约束待处理';
+      return scene==='layers'?'每个 Stage 都已分到目标层数':'注意力头已均匀分配';
+    }
+    function divisionPlans(scene){
+      const selection=divisionSelection[scene];
+      if(divisionVariant(scene,selection).tone==='good')return [];
+      const plans=[];
+      if(scene==='layers'){
+        const total=cases.layers.targetEach*selection.count,candidate={...selection,total};
+        if(total>=1&&total<=1024&&total!==selection.total&&divisionVariant(scene,candidate).tone==='good')plans.push({id:'total',selection:candidate,label:`总层数 ${selection.total} → ${total}`,detail:'需核对模型结构'});
+      }else{
+        for(let total=selection.total+1;total<=Math.min(selection.total+256,1024);total++){
+          const candidate={...selection,total};
+          if(divisionVariant(scene,candidate).tone==='good'){
+            plans.push({id:'total',selection:candidate,label:`注意力头 ${selection.total} → ${total}`,detail:'需核对模型结构'});
+            break;
+          }
+        }
+      }
+      for(let count=selection.count-1;count>=1;count--){
+        if(selection.ranks*count%selection.count!==0)continue;
+        const candidate={...selection,count,ranks:selection.ranks*count/selection.count};
+        if(divisionVariant(scene,candidate).tone==='good'){
+          plans.push({id:'count',selection:candidate,label:`${scene==='layers'?'PP':'TP'} ${selection.count} → ${count} · Rank ${selection.ranks} → ${candidate.ranks}`,detail:'需核对资源与并行策略'});
+          break;
+        }
+      }
+      return plans;
+    }
+    function renderDivisionControls(scene){
+      const selection=divisionSelection[scene];
+      const fields=scene==='layers'?[['total','model.total_layers',1024],['count','parallel.pp',128],['ranks','cluster.total_ranks',65536]]:[['total','model.num_attention_heads',1024],['kv','model.num_key_value_heads',1024],['count','parallel.tp',128],['ranks','cluster.total_ranks',65536]];
+      const inputs=fields.map(([key,label,max])=>`<div class="factor"><div class="factor-top"><label for="division-${scene}-${key}"><small>${label}</small></label><span class="factor-stepper"><button type="button" data-division-step="${key}" data-step-direction="-1" aria-label="减小 ${label}" ${selection[key]<=1?'disabled':''}>−</button><input id="division-${scene}-${key}" type="number" data-division-number="${key}" aria-label="${label}" min="1" max="${max}" step="1" value="${selection[key]}"><button type="button" data-division-step="${key}" data-step-direction="1" aria-label="增大 ${label}" ${selection[key]>=max?'disabled':''}>+</button></span></div></div>`).join('');
+      const mode=scene==='layers'?`<div class="factor"><div class="factor-top"><label for="division-${scene}-mode"><small>parallel.pipeline_layer_mode</small></label><select id="division-${scene}-mode" data-division-mode aria-label="parallel.pipeline_layer_mode"><option value="uniform" ${selection.mode==='uniform'?'selected':''}>uniform</option></select></div></div>`:'';
+      return `<div class="division-controls" aria-label="当前配置">${inputs}${mode}<p class="division-control-note">选择方案仅预览；点击试用后更新这些配置值。</p></div>`;
+    }
+    function renderDivisionAdvice(scene,selection){
+      if(divisionVariant(scene,selection).tone==='good')return '';
+      const choices=divisionPlans(scene);
+      const selected=choices.find(item=>item.id===selectedAdvice[scene]);
+      if(!choices.length)return '<div class="v2-advice"><div class="v2-advice-header"><strong>修复建议</strong></div><p class="advice-empty">当前控件范围内没有通过全部静态规则的方案，请核对配置。</p></div>';
+      const buttons=choices.map((item,index)=>`<button type="button" class="v2-advice-button" data-division-option="${item.id}" aria-pressed="${item===selected}">${index+1}. ${escapeHtml(item.label)}<small>${escapeHtml(item.detail)}</small></button>`).join('');
+      return `<div class="v2-advice"><div class="v2-advice-header"><strong>修复建议</strong><button type="button" class="v2-advice-try" data-division-try ${selected?'':'disabled'}>试用</button></div><div class="v2-advice-options" role="group" aria-label="可试调方案">${buttons}</div></div>`;
+    }
+    function renderDivision(scene,variant){
+      const isLayers=scene==='layers';
+      const unit=isLayers?'层':'头';
+      const groupName=isLayers?'PP Stage':'TP 分片';
+      const pinnedIndex=isLayers&&variant.shortfall?variant.stageCounts.findIndex(count=>count<variant.targetEach):variant.tone==='good'?variant.count-1:-1;
+      const renderRow=index=>{
+        const label=isLayers?`Stage ${index+1}，${variant.ranges[index]}`:`${groupName} ${index}`;
+        const labelContent=isLayers?`Stage ${index+1}<small>${escapeHtml(variant.ranges[index])}</small>`:escapeHtml(label);
+        const count=variant.stageCounts[index],missing=isLayers?variant.targetEach-count:0;
+        const dots=Array.from({length:count},()=>'<i aria-hidden="true"></i>').join('')+Array.from({length:missing},()=>'<i class="is-missing" aria-hidden="true"></i>').join('');
+        const value=isLayers?`${count} / ${variant.targetEach}`:`${count} 头`;
+        return `<div class="split-row ${isLayers?'is-layer-row':''} ${missing?'split-row--shortage':''}" role="img" aria-label="${escapeHtml(label)}，已分配 ${count} ${unit}${missing?`，缺 ${missing} ${unit}`:''}"><span class="split-row-label">${labelContent}</span><span class="split-dots">${dots}</span><strong>${value}</strong></div>`;
+      };
+      const rows=Array.from({length:variant.count},(_,index)=>index===pinnedIndex?'':renderRow(index)).join('');
+      const pinned=pinnedIndex>=0?renderRow(pinnedIndex):variant.overflow?`<div class="split-row split-row--leftover" role="img" aria-label="未分配 ${variant.overflow} ${unit}"><span class="split-row-label">未分配</span><span class="split-dots">${Array.from({length:variant.overflow},()=>'<i aria-hidden="true"></i>').join('')}</span><strong>${variant.overflow} ${unit}</strong></div>`:'';
+      const advice=renderDivisionAdvice(scene,divisionSelection[scene]);
+      return `<div class="split-view ${selectedAdvice[scene]?'is-preview':''} ${advice?'':'is-resolved'}"><div class="split-canvas"><div class="split-summary ${variant.tone==='good'?'is-valid':''}" role="status"><strong>${divisionSummary(scene,variant)}</strong></div><div class="split-row-stack"><div class="split-rows" role="region" aria-label="${isLayers?'PP Stage':'TP 分片'}分组列表" tabindex="0">${rows}</div>${pinned}</div></div>${advice?`<div class="split-footer">${advice}</div>`:''}</div>`;
+    }
     function productNote(scene,state){
       const {selection,snapshot,check}=state;
       return scene.active==='orthogonal'?scene.modes.orthogonal.note:selection.ep===1?'切出式口径：EP 为 1，没有进一步切分 DP；EP 不再乘入 world_size。':check.status==='valid'?`切出式口径：DP ${selection.dp} 在图中分为 EDP ${snapshot.edp} × EP ${selection.ep}；EP 不再乘入 world_size。`:'切出式口径：EP 从 DP 内切出，不再乘入 world_size。';
     }
-    function renderCompatibilityPreview(){
-      return '<div class="compatibility-preview"><p>下一步在此展示配置选项之间的互斥关系和启用前提，并给出对应诊断码。</p><ul><li>MC2 与 CoC 互斥 · <code>MINDSPEED_MC2_COC_MUTUALLY_EXCLUSIVE</code></li><li>AMPipe 要求 FlashAttention · <code>MINDSPEED_AMPIPE_REQUIRES_FLASH_ATTENTION</code></li><li>自适应与静态重计算互斥 · <code>MINDSPEED_ADAPTIVE_RECOMPUTE_CONFLICTS_WITH_STATIC_RECOMPUTE</code></li></ul></div>';
+    function compatibilityInput(key,selection=compatibilitySelection){
+      const input=structuredClone(baseFactorConfig);
+      if(key==='mc2'){
+        input.model.routed_experts=0;input.model.top_k=0;input.model.shared_experts=0;input.parallel.ep=1;
+        input.features={use_ascend_mc2:selection.mc2,use_ascend_coc:selection.coc};
+      }else if(key==='ampipe'){
+        input.features={ampipe_degree:selection.ampipe?2:1,use_flash_attention:selection.flashAttention,moe_model_type:'deepspeed_moe'};
+      }else{
+        input.features={adaptive_recompute:selection.adaptiveRecompute};
+        input.memory.recompute_mode=selection.staticRecompute?'selective':'none';
+      }
+      return input;
     }
-    function agentReply(variant,factor){
+    function compatibilityState(key,selection=compatibilitySelection){
+      const input=compatibilityInput(key,selection);
+      return {input,validation:ConstraintLensCore.validateParallelConfig(input)};
+    }
+    function compatibilityStates(selection=compatibilitySelection){
+      return {mc2:compatibilityState('mc2',selection),ampipe:compatibilityState('ampipe',selection),recompute:compatibilityState('recompute',selection)};
+    }
+    function compatibilityPlans(states=compatibilityStates()){
+      const choices=[
+        states.mc2.validation.status==='valid'?[{}]:[{mc2:false},{coc:false}],
+        states.ampipe.validation.status==='valid'?[{}]:[{ampipe:false},{flashAttention:true}],
+        states.recompute.validation.status==='valid'?[{}]:[{adaptiveRecompute:false},{staticRecompute:false}],
+      ];
+      const candidates=choices.reduce((plans,group)=>plans.flatMap(plan=>group.map(change=>({...plan,...change}))),[{}])
+        .map((changes,index)=>({id:String(index),selection:{...compatibilitySelection,...changes},changes}))
+        .filter(plan=>Object.keys(plan.changes).length&&Object.values(compatibilityStates(plan.selection)).every(state=>state.validation.status==='valid'));
+      const fewestChanges=Math.min(...candidates.map(plan=>Object.keys(plan.changes).length));
+      const fewestCount=candidates.filter(plan=>Object.keys(plan.changes).length===fewestChanges).length;
+      return candidates.slice(0,5).map(plan=>({...plan,preferred:fewestCount===1&&Object.keys(plan.changes).length===fewestChanges}));
+    }
+    function renderCompatibilityAdvice(states){
+      const plans=compatibilityPlans(states);
+      if(!plans.length)return `<div class="v2-advice"><div class="v2-advice-header"><strong>解决方案</strong></div><p class="advice-empty">${Object.values(states).every(state=>state.validation.status==='valid')?'当前规则关系均已满足，无需调整。':'当前示例没有找到通过全部规则静态复验的开关组合。'}</p></div>`;
+      const selected=plans.find(plan=>plan.id===selectedAdvice.compatibility)??plans[0];
+      return `<div class="v2-advice compat-advice"><div class="v2-advice-header"><strong>解决方案</strong><button type="button" class="v2-advice-try" data-compatibility-try>试用</button></div><div class="v2-advice-options" role="group" aria-label="配置选项冲突解决方案">${plans.map((plan,index)=>`<button type="button" class="v2-advice-button" data-compatibility-option="${plan.id}" aria-pressed="${plan===selected}">${plan.preferred?'<span class="compat-advice-priority">优先</span>':''}${index+1}. ${Object.entries(plan.changes).map(([key,value])=>`${compatibilityOptionDisplay[key].label}=${compatibilityValue(key,value)}`).join(' · ')}</button>`).join('')}</div></div>`;
+    }
+    function renderCompatibilityControls(){
+      return `<div class="compat-controls" aria-label="各规则配置">${compatibilityScenarios.map(scenario=>`<div class="compat-control-group"><strong>${escapeHtml(scenario.label)}</strong>${[scenario.leftKey,scenario.rightKey].map(key=>{const option=compatibilityOptionDisplay[key];return `<div class="compat-control-row"><span title="${option.argument}">${option.label}</span><button type="button" class="compat-switch ${compatibilitySelection[key]?'is-on':''} ${key==='staticRecompute'?'is-wide':''}" data-compatibility-toggle="${key}" role="switch" aria-checked="${compatibilitySelection[key]}" aria-label="${option.label}（${option.argument}）">${compatibilityValue(key,compatibilitySelection[key])}</button></div>`}).join('')}</div>`).join('')}<p class="compat-control-note">“配入／不配”表示启动命令中是否写入该参数。</p></div>`;
+    }
+    function renderCompatibilityPreview(states){
+      return `<div class="compat-view"><div class="compat-list" aria-label="全部配置关系规则">${compatibilityScenarios.map((scenario,index)=>{
+        const key=['mc2','ampipe','recompute'][index];
+        const issue=states[key].validation.errors.find(error=>error.code===scenario.code);
+        const conflict=!!issue;
+        return `<div class="compat-rule ${conflict?'is-conflict':'is-valid'}" title="${escapeHtml(scenario.code)}"><span class="compat-rule-icon" aria-hidden="true">${conflict?'!':'✓'}</span><div class="compat-rule-title"><span class="compat-rule-token" title="${compatibilityOptionDisplay[scenario.leftKey].argument}">${compatibilityOptionDisplay[scenario.leftKey].label}=<b>${compatibilityValue(scenario.leftKey,compatibilitySelection[scenario.leftKey])}</b></span><span>与</span><span class="compat-rule-token" title="${compatibilityOptionDisplay[scenario.rightKey].argument}">${compatibilityOptionDisplay[scenario.rightKey].label}=<b>${compatibilityValue(scenario.rightKey,compatibilitySelection[scenario.rightKey])}</b></span><strong>${conflict?'冲突':'可用'}</strong></div><p>${escapeHtml(scenario.reason)}</p></div>`;
+      }).join('')}</div><div class="split-footer">${renderCompatibilityAdvice(states)}</div></div>`;
+    }
+    function agentReply(variant,factor,capacityView=null){
       if(current==='worldsize-v2'){
         const state=worldsizeV2State();
         if(state.validation.status==='valid')return `当前 ${state.world} Rank，与目标对齐；本地静态校验通过。`;
@@ -608,14 +881,21 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
         if(!snapshot.rankRows)return `并行乘积 ${snapshot.world} 与总 Rank 对齐，静态校验通过。Rank 数量较多，当前只展示乘积与校验判断。`;
         return `并行乘积 ${snapshot.world} 与总 Rank 对齐，静态校验通过。拓扑展开为 ${selection.pp} 个 PP Stage，可点选 Rank 查看它在图中的位置。`;
       }
-      if(current==='layers')return variant.remainder?`总层数 ${variant.total} 除以 PP 2 余 ${variant.remainder}，当前无法均匀分层。请核对模型层数或 PP。`:`总层数 ${variant.total} 可均匀分到 2 个 PP Stage，每个 Stage ${variant.each} 层。当前满足均匀分层约束。`;
-      if(current==='heads')return variant.remainder?`注意力头数 ${variant.total} 除以 TP 4 余 ${variant.remainder}，当前无法均匀切分。请核对头数或 TP。`:`注意力头数 ${variant.total} 可均匀切给 TP 4，每份 ${variant.each} 个头。当前满足注意力头切分约束。`;
-      if(current==='compatibility')return '第五个 gallery 选项已就位。这里将围绕 MC2／CoC 互斥、AMPipe 前置条件等规则构建可交互示例；当前尚未检查具体训练配置。';
+       if(current==='layers'||current==='heads'){
+         const prefix=selectedAdvice[current]?'方案预览，尚未试用。':'';
+         const context=current==='layers'?`按每个 Stage ${variant.targetEach} 层的目标分配 ${variant.total} 层、PP ${variant.count}`:`将 ${variant.total} 个头分给 TP ${variant.count}`;
+         return `${prefix}${context}：${divisionSummary(current,variant)}。${variant.validation.status==='valid'?'静态校验通过。':'均匀切分的静态约束尚未通过。'}`;
+       }
+      if(current==='compatibility'){
+        const count=Object.values(compatibilityStates()).filter(state=>state.validation.status!=='valid').length;
+        return count?`当前三个独立规则示例中有 ${count} 条冲突；下方每套方案都覆盖这些冲突，并已分别通过本地静态复验。`:'当前三个独立规则示例均满足已建模静态规则；仍需在目标 MindSpeed 版本和训练环境中核对。';
+      }
       if(current==='capacity'){
-        const result=capacityState();
+        const result=capacityView?.result??capacityState();
         if(result.status!=='estimated')return `当前参数未通过静态约束，容量暂不可估算：${result.errors.map(error=>error.message).join('；')}`;
         const peak=result.data.stages[result.data.bottleneck_stage];
-        return `本地理论试算：Stage ${peak.stage} 单卡约 ${peak.total_gib.toFixed(1)} / ${peak.capacity_gib} GiB（${Math.round(peak.ratio*100)}%），为最紧 Stage。结果标记为 theoretical，运行时峰值仍需实机验证。`;
+        const margin=peak.capacity_gib-peak.total_gib;
+        return `${capacityView?.selected?'方案预览（尚未试用）':'本地理论试算'}：PP Stage${peak.stage} 单卡约 ${peak.total_gib.toFixed(1)} / ${peak.capacity_gib} GiB（${(peak.ratio*100).toFixed(1)}%），${margin<0?`超出 ${(-margin).toFixed(1)}`:`剩余 ${margin.toFixed(1)}`} GiB。结果标记为 theoretical，运行时峰值仍需实机验证。`;
       }
       return '';
     }
@@ -649,30 +929,64 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       return header+viewToggle+`<div class="product-stages" style="--pp-count:${selection.pp}">${stages}</div>`;
     }
     const capacityTouchesWarning=(result,peak)=>peak.total_gib>=peak.capacity_gib*result.data.thresholds.tight;
-    function renderCapacity(result){
+    function capacityAdvice(result){
+      const currentPeak=Math.max(...result.data.stages.map(stage=>stage.total_gib));
+      const ppValues=capacityNumberFields.find(field=>field.key==='pp').values;
+      const nextPp=ppValues.find(value=>value>capacitySelection.pp);
+      const nextShard={none:'zero1',zero1:'fsdp2'}[capacitySelection.shard_mode];
+      const proposals=[
+        nextPp&&{key:'pp',value:nextPp,label:`PP ${capacitySelection.pp}→${nextPp}`,requiresResources:true},
+        capacitySelection.recompute_mode!=='full'&&{key:'recompute_mode',value:'full',label:'重计算 → 全开'},
+        nextShard&&{key:'shard_mode',value:nextShard,label:`状态分片 → ${nextShard==='zero1'?'ZeRO-1':'FSDP2'}`},
+        capacitySelection.micro_batch_size>1&&{key:'micro_batch_size',value:capacitySelection.micro_batch_size-1,label:`Micro Batch ${capacitySelection.micro_batch_size}→${capacitySelection.micro_batch_size-1}`},
+        capacitySelection.sequence_length>512&&{key:'sequence_length',value:capacitySelection.sequence_length-512,label:`序列长度 ${capacitySelection.sequence_length}→${capacitySelection.sequence_length-512}`}
+      ];
+      return proposals.filter(item=>item&&!capacityLocks.has(item.key)).flatMap(item=>{
+        const estimate=capacityState({[item.key]:item.value});
+        if(estimate.status!=='estimated')return [];
+        const peak=Math.max(...estimate.data.stages.map(stage=>stage.total_gib));
+        return peak<currentPeak-.05?[{...item,peak,estimate}]:[];
+      }).sort((a,b)=>a.peak-b.peak).slice(0,3);
+    }
+    function capacityViewState(result){
+      if(result.status!=='estimated')return {result,options:[],selected:null,showAdvice:false};
+      if(!capacityTouchesWarning(result,result.data.stages[result.data.bottleneck_stage])){
+        capacitySelectedAdvice=null;
+        return {result,options:[],selected:null,showAdvice:false};
+      }
+      const options=capacityAdvice(result);
+      const selected=options.find(item=>item.key===capacitySelectedAdvice)??null;
+      if(!selected)capacitySelectedAdvice=null;
+      return {result:selected?.estimate??result,options,selected,showAdvice:true};
+    }
+    function renderCapacityAdvice(options,selected){
+      const buttons=options.map((item,index)=>`<button type="button" class="v2-advice-button" data-capacity-advice="${item.key}" aria-pressed="${item.key===capacitySelectedAdvice}"${item.requiresResources?' title="增加 PP 需要确认可用 Rank"':''}>${index+1}. ${index===0?'<span class="v2-advice-priority">优先</span> ':''}${item.label} · ${item.peak.toFixed(1)} GiB${item.requiresResources?' · 需确认 Rank':''}</button>`).join('');
+      return `<div class="v2-advice"><div class="v2-advice-header"><strong>调整建议</strong><button type="button" class="v2-advice-try" data-capacity-try ${selected?'':'disabled'}>试用</button></div><div class="v2-advice-options" role="group" aria-label="理论容量调整建议">${buttons||'<span class="capacity-advice-empty">暂无可试用建议</span>'}</div></div>`;
+    }
+    function renderCapacity(view){
+      const result=view.result;
       if(result.status!=='estimated')return `<p class="capacity-note">当前配置未通过静态校验：${escapeHtml(result.errors.map(error=>error.message).join('；'))}</p>`;
       const stages=result.data.stages;
       const peak=stages.reduce((a,b)=>b.total_gib>a.total_gib?b:a);
       const low=stages.reduce((a,b)=>b.total_gib<a.total_gib?b:a);
       const cap=peak.capacity_gib;
       const overCapacity=peak.total_gib>cap;
-      const axis=overCapacity?peak.total_gib*1.04:cap;
-      const pct=value=>`${Math.min(100,value/axis*100).toFixed(2)}%`;
       const threshold=result.data.thresholds;
-      const stageBars=stages.map(entry=>`<div class="capacity-stage ${entry.stage===peak.stage?'active':''}" title="Stage ${entry.stage}：${entry.total_gib.toFixed(1)} GiB，${entry.layers} 层，同 Stage Rank 理论占用相同"><strong>${entry.total_gib.toFixed(1)}</strong><div class="capacity-stage-bars"><i style="--stage-pct:${Math.max(3,entry.total_gib/axis*100).toFixed(1)}%"></i></div><span>PP${entry.stage}</span></div>`).join('');
-      const chartStyle=`--min-pct:${pct(low.total_gib)};--max-pct:${pct(peak.total_gib)};--min-card-pct:${Math.min(100,low.total_gib/cap*100).toFixed(2)}%;--max-card-pct:${Math.min(100,peak.total_gib/cap*100).toFixed(2)}%;--tight-pct:${pct(cap*threshold.tight)};--cap-pct:${pct(cap)};--overflow-pct:${pct(Math.max(0,peak.total_gib-cap))}`;
-      const fitText=overCapacity?`装不下 · 超出 ${(peak.total_gib-cap).toFixed(1)} GiB`:`可装下 · 剩余 ${(cap-peak.total_gib).toFixed(1)} GiB`;
-      const touchesWarning=capacityTouchesWarning(result,peak);
-      const warningText=overCapacity?`最大理论需求 ${peak.total_gib.toFixed(1)} GiB，已超出单卡容量 ${(peak.total_gib-cap).toFixed(1)} GiB。`:`理论需求区间已触及 ${Math.round(threshold.tight*100)}% 关注线右侧，最大需求 ${peak.total_gib.toFixed(1)} GiB。`;
-      return `<div class="capacity-summary" data-level="${peak.level}"><strong>${fitText}</strong><span>最大理论需求 ${peak.total_gib.toFixed(1)} / 单卡 ${cap} GiB · ${Math.round(peak.ratio*100)}%</span></div>
-        ${touchesWarning?`<div class="capacity-warning" data-level="${peak.level}" role="status"><strong>容量告警</strong><span>${warningText}</span></div>`:''}
-        <div class="capacity-chart capacity-hbm" style="${chartStyle}" role="img" aria-label="单卡 HBM 容量 ${cap} GiB；最大理论需求 PP${peak.stage} ${peak.total_gib.toFixed(1)} GiB，${fitText}；最小理论需求 PP${low.stage} ${low.total_gib.toFixed(1)} GiB；${Math.round(threshold.tight*100)}% 关注线">
-          <div class="capacity-hbm__head"><span>最小 PP${low.stage} <strong>${low.total_gib.toFixed(1)} GiB</strong></span><span>最大 PP${peak.stage} <strong>${peak.total_gib.toFixed(1)} GiB</strong></span></div>
+      const axis=Math.max(cap,peak.total_gib);
+      const capacityWidth=(cap/axis*100).toFixed(2);
+      const rows=stages.map(entry=>`<div class="capacity-bar-row ${entry.stage===peak.stage?'is-peak':''} ${entry.total_gib>cap?'is-over':''}" role="img" aria-label="PP Stage${entry.stage}：单卡理论占用 ${entry.total_gib.toFixed(1)} GiB，容量上限 ${cap} GiB" style="--used-width:calc(${(entry.total_gib/axis*100).toFixed(2)}% - 3px)"><span class="capacity-bar-row__name">PP Stage${entry.stage}</span><div class="capacity-bar-row__plot"><div class="capacity-bar-row__capacity"></div><div class="capacity-bar-row__fill"></div></div><span class="capacity-bar-row__value">${entry.total_gib.toFixed(1)}</span></div>`).join('');
+      const hbmAxis=overCapacity?peak.total_gib*1.04:cap;
+      const pct=value=>`${Math.min(100,value/hbmAxis*100).toFixed(2)}%`;
+      const chartStyle=`--min-pct:${pct(low.total_gib)};--max-pct:${pct(peak.total_gib)};--mid-pct:${pct((low.total_gib+peak.total_gib)/2)};--min-card-pct:${Math.min(100,low.total_gib/cap*100).toFixed(2)}%;--max-card-pct:${Math.min(100,peak.total_gib/cap*100).toFixed(2)}%;--tight-pct:${pct(cap*threshold.tight)};--cap-pct:${pct(cap)};--overflow-pct:${pct(Math.max(0,peak.total_gib-cap))}`;
+      const margin=cap-peak.total_gib;
+      const marginText=margin<0?`超出 ${(-margin).toFixed(1)} GiB`:`剩余 ${margin.toFixed(1)} GiB`;
+      return `<div class="capacity-view" style="--capacity-width:${capacityWidth}%"><div class="capacity-summary ${capacityTouchesWarning(result,peak)?'is-warning':''}"><strong>最高占 ${(peak.ratio*100).toFixed(1)}% · ${marginText}</strong></div>
+        <div class="capacity-chart capacity-hbm" style="${chartStyle}" role="img" aria-label="单卡 HBM 容量 ${cap} GiB；最大理论需求 PP Stage${peak.stage} ${peak.total_gib.toFixed(1)} GiB，${marginText}；最小理论需求 PP Stage${low.stage} ${low.total_gib.toFixed(1)} GiB；${Math.round(threshold.tight*100)}% 关注线">
           <div class="capacity-hbm__track"><div class="capacity-hbm__capacity"><div class="capacity-hbm__used"></div><div class="capacity-hbm__interval"></div></div><div class="capacity-hbm__overflow"></div><i class="capacity-hbm__mark capacity-hbm__mark--min"></i><i class="capacity-hbm__mark capacity-hbm__mark--max"></i><i class="capacity-hbm__mark capacity-hbm__mark--tight"></i></div>
-          <div class="capacity-hbm__axis"><span>0 GiB</span><span class="capacity-hbm__cap-label">单卡容量 ${cap} GiB</span></div>
+          ${peak.total_gib>low.total_gib?'<div class="capacity-hbm__range" aria-hidden="true"><div class="capacity-hbm__range-line"></div></div>':''}
+          <div class="capacity-hbm__head"><div>最小 PP Stage${low.stage} <strong>${low.total_gib.toFixed(1)} GiB</strong></div><div>最大 PP Stage${peak.stage} <strong>${peak.total_gib.toFixed(1)} GiB</strong></div></div>
           <div class="capacity-hbm__keys"><span class="used"><i></i>理论需求区间 · 100%</span>${overCapacity?'<span class="overflow"><i></i>超出容量</span>':''}<span class="range"><i></i>白线：PP 最小 / 最大</span><span class="tight"><i></i>${Math.round(threshold.tight*100)}% 关注 ${(cap*threshold.tight).toFixed(1)} GiB</span></div>
-        </div><p class="capacity-hbm__scope">横柱边框表示单卡 HBM 容量，渐变覆盖整根容量柱；亮色区间表示各 PP Stage 的理论占用范围。</p>
-        <div class="capacity-stage-list" role="img" aria-label="各 PP Stage 单卡理论占用：${stages.map(entry=>`PP${entry.stage} ${entry.total_gib.toFixed(1)} GiB`).join('，')}">${stageBars}</div><div class="capacity-note">同一 PP Stage 的各 Rank 理论占用相同。估算标记为 theoretical；关注线属于未校准的启发式策略，运行时峰值需实机验证。</div>`;
+        </div><div class="capacity-view__heading"><div><strong>PP Stage · 单卡内存占用</strong></div></div><div class="capacity-bars">${rows}</div>${view.showAdvice?renderCapacityAdvice(view.options,view.selected):''}</div>`;
     }
     function updateProductDetail(){
       const cells=[...$('visual').querySelectorAll('[data-product-rank]')];
@@ -741,6 +1055,7 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
         return;
       }
       capacitySelection[key]=value;
+      capacitySelectedAdvice=null;
       syncCapacityControls();
       const feedback=$('capacity-feedback');if(feedback)feedback.textContent='';
       render(true);
@@ -769,19 +1084,28 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       showFeedback(outcome.changes.length?`已自动调整 ${outcome.changes.map(change=>`${change.field==='ranks'?'总 Rank':change.field.toUpperCase()} ${change.old_value}→${change.new_value}`).join('、')}`:'配置已保持平衡');
     }
     function applyWorldsizeV2Change(field,value,preserveControls=false){
-      const maximum=field==='ranks'?256:16;
+      const maximum=worldsizeV2FieldLimits[field];
       if(!Object.hasOwn(worldsizeV2Selection,field)||field==='mode'||worldsizeV2Locks.has(field)||!Number.isSafeInteger(value)||value<1||value>maximum){
         render();
-        const feedback=$('v2-feedback');if(feedback)feedback.textContent=`请输入 1～${maximum} 的整数。`;
+        const feedback=$('v2-feedback');if(feedback)feedback.textContent=value>maximum?`${field==='ranks'?'总 Rank':field.toUpperCase()} 控件上限为 ${maximum}，不能设置为 ${value}。`:`${field==='ranks'?'总 Rank':field.toUpperCase()} 请输入 1～${maximum} 的整数。`;
         return;
       }
       worldsizeV2Selection[field]=value;
+      worldsizeV2SelectedSuggestion=null;
       render(preserveControls);
       if(preserveControls){
         const number=$('context-control').querySelector(`[data-v2-number="${field}"]`);
         const range=$('context-control').querySelector(`[data-v2-range="${field}"]`);
         if(number)number.value=value;
-        if(range){range.value=value;range.style.setProperty('--range-progress',sliderProgress(value,maximum));}
+        if(range){
+          const factorIndex=field==='ranks'?null:worldsizeV2FactorSliderIndex(value);
+          const rangeValue=field==='ranks'?worldsizeV2RankSliderValue(value):worldsizeV2FactorSliderPosition(factorIndex);
+          range.value=rangeValue;
+          if(field!=='ranks')range.setAttribute('aria-valuetext',String(worldsizeV2FactorSliderValues[factorIndex]));
+          const progress=worldsizeV2RangeProgress(field,value,maximum);
+          range.style.setProperty('--range-progress',progress);
+          range.closest('.v2-progressive-slider')?.style.setProperty('--range-progress',progress);
+        }
         $('context-control').querySelectorAll(`[data-v2-step="${field}"]`).forEach(button=>button.disabled=Number(button.dataset.stepDirection)<0?value<=1:value>=maximum);
       }
     }
@@ -799,49 +1123,53 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       const spacing=['paddingTop','paddingBottom','borderTopWidth','borderBottomWidth'].reduce((sum,key)=>sum+parseFloat(style[key]||0),0);
       $('visual').style.setProperty('--control-height',`${Math.ceil($('context-control').getBoundingClientRect().height+spacing)}px`);
     }
-    function syncWorldsizeV2Layout(){
-      const restored=$('visual').querySelector('.v2-restored');
-      const artboard=restored?.querySelector('.v2-artboard');
-      if(!artboard)return;
-      const footerHeight=restored.querySelector('.v2-footer')?.getBoundingClientRect().height??0;
-      const requiredHeight=Math.ceil(artboard.getBoundingClientRect().height+2*(footerHeight+(footerHeight?12:0)));
-      const value=`${requiredHeight}px`;
-      if(restored.style.minHeight!==value)restored.style.minHeight=value;
+    function syncDivisionScrollFade(list=$('visual').querySelector('.split-rows')){
+      if(list)list.classList.toggle('has-more',list.scrollTop+list.clientHeight<list.scrollHeight-2);
     }
     function render(preserveControls=false){
       hideWorldsizeV2Tooltip();
       if(!preserveControls)clearTransientFeedback();
-      const scene=cases[current];const variant=scene.variants?.[scene.active]??scene.modes?.[scene.active]??scene;
+      const scene=cases[current];
+      const division=current==='layers'||current==='heads';
+      const divisionPlan=division?divisionPlans(current).find(item=>item.id===selectedAdvice[current]):null;
+      if(division&&selectedAdvice[current]&&!divisionPlan)selectedAdvice[current]=null;
+      const variant=division?divisionVariant(current,divisionPlan?.selection??divisionSelection[current]):scene.variants?.[scene.active]??scene.modes?.[scene.active]??scene;
       const factor=current==='product'?factorState(factorSelections[scene.active],scene.active):null;
       currentFactor=factor;
       $('case-panel').setAttribute('aria-labelledby',`tab-${current}`);
       const capacity=current==='capacity'?capacityState():null;
+      const capacityView=capacity?capacityViewState(capacity):null;
+      const shownCapacity=capacityView?.result??capacity;
       const v2=current==='worldsize-v2'?worldsizeV2State():null;
-      const peak=capacity?.status==='estimated'?capacity.data.stages[capacity.data.bottleneck_stage]:null;
-      const low=peak?capacity.data.stages.reduce((a,b)=>b.total_gib<a.total_gib?b:a):null;
-      const capacityLevel=peak?.level==='safe'&&capacityTouchesWarning(capacity,peak)?'tight':peak?.level;
+      const compatibility=current==='compatibility'?compatibilityStates():null;
+      const compatibilityConflictCount=compatibility?Object.values(compatibility).filter(state=>state.validation.status!=='valid').length:0;
+      const peak=shownCapacity?.status==='estimated'?shownCapacity.data.stages[shownCapacity.data.bottleneck_stage]:null;
+      const low=peak?shownCapacity.data.stages.reduce((a,b)=>b.total_gib<a.total_gib?b:a):null;
+      const capacityLevel=peak?.level==='safe'&&capacityTouchesWarning(shownCapacity,peak)?'tight':peak?.level;
       const v2McpCurrent=v2&&worldsizeV2Mcp.key===worldsizeV2RequestKey(v2)?worldsizeV2Mcp:null;
       $('case-source-text').textContent=v2?v2.validation.status==='valid'?'当前配置已对齐，无需修复建议。':worldsizeV2Source==='original'?'原始建议由页面内嵌 config-core 静态复验生成；未调用 MCP。':v2McpCurrent?.status==='ready'?v2McpCurrent.suggestions.length?'修复建议来自 V2 服务 suggest_config_fixes 的 structuredContent。':'V2 服务未返回可在当前画布试用的修复方案。':v2McpCurrent?.status==='error'?v2McpCurrent.error:globalThis.__MINDSPEED_WEB_SERVICE__?.apiBase?'正在请求 V2 服务的修复建议。':'请从 V2 服务工作台打开此页以获取修复建议。':factor?factor.snapshot.rankRows?'我已调用 MCP 工具 validate_parallel_config 和 compute_rank_topology，取得并行校验与 Rank 拓扑。':'我已调用 MCP 工具 validate_parallel_config，取得并行约束判断。':caseSources[current];
       $('case-question').textContent=v2?`目标 ${v2.selection.ranks} Rank，当前配置有多少？`:scene.question;
       const capacityRelation=peak?(peak.total_gib>peak.capacity_gib?'超过':peak.total_gib===peak.capacity_gib?'达到':'低于'):null;
-      $('case-title').textContent=v2?`目标 ${v2.selection.ranks} Rank，当前配置计算 ${v2.world} Rank`:factor?factor.check.status==='valid'?factor.snapshot.rankRows?`${factor.snapshot.world} 个 Rank 的五维拓扑`:`${factor.snapshot.world} 个 Rank 的静态校验通过`:comparisonText(factor.snapshot,factor.check,factor.selection.ranks):capacity?(peak?`理论估算 ${low.total_gib.toFixed(1)}～${peak.total_gib.toFixed(1)} GiB，${capacityRelation}单卡容量 ${peak.capacity_gib} GiB`:'当前配置暂不可估算'):variant.title;
-      const tone=v2?(v2.validation.status==='valid'?'good':'bad'):factor?(factor.check.status==='valid'?'good':'bad'):capacity?(capacityLevel==='safe'?'good':'estimate'):variant.tone;
+      $('case-title').textContent=v2?`目标 ${v2.selection.ranks} Rank，当前配置计算 ${v2.world} Rank`:factor?factor.check.status==='valid'?factor.snapshot.rankRows?`${factor.snapshot.world} 个 Rank 的五维拓扑`:`${factor.snapshot.world} 个 Rank 的静态校验通过`:comparisonText(factor.snapshot,factor.check,factor.selection.ranks):capacity?(peak?`${capacityView.selected?'方案预览 · ':''}理论估算 ${low.total_gib.toFixed(1)}～${peak.total_gib.toFixed(1)} GiB，${capacityRelation}单卡容量 ${peak.capacity_gib} GiB`:'当前配置暂不可估算'):compatibility?`配置选项关系 · ${compatibilityConflictCount} 条冲突`:variant.title;
+      const tone=v2?(v2.validation.status==='valid'?'good':'bad'):factor?(factor.check.status==='valid'?'good':'bad'):capacity?(capacityLevel==='safe'?'good':'estimate'):compatibility?(compatibilityConflictCount?'bad':'good'):variant.tone;
       $('restore-current').hidden=!currentConfigChanged();
-      $('case-badge').className=`badge ${tone}`;$('case-badge').textContent=v2?(v2.validation.status==='valid'?'静态校验通过':v2.world!==v2.selection.ranks?'总 Rank 冲突':'其他静态约束'):factor?(factor.check.status==='valid'?(factor.warnings.length?'静态校验通过 · 有提示':'静态校验通过'):'需要处理'):capacity?(peak?({safe:'理论安全',tight:'理论偏满',alert:'理论预警',over:'理论超出'}[capacityLevel]):'暂不可估算'):variant.badge;
-      $('visual').innerHTML=v2?renderWorldsizeV2(v2):current==='layers'||current==='heads'?renderDivision(current,variant):current==='product'?renderProduct(scene,factor):current==='compatibility'?renderCompatibilityPreview():renderCapacity(capacity);
+      $('case-badge').className=`badge ${tone}`;$('case-badge').textContent=v2?(v2.validation.status==='valid'?'静态校验通过':v2.world!==v2.selection.ranks?'总 Rank 冲突':'其他静态约束'):factor?(factor.check.status==='valid'?(factor.warnings.length?'静态校验通过 · 有提示':'静态校验通过'):'需要处理'):capacity?(peak?({safe:'理论安全',tight:'理论偏满',alert:'理论预警',over:'理论超出'}[capacityLevel]):'暂不可估算'):compatibility?(compatibilityConflictCount?'需要处理':'静态校验通过'):variant.badge;
+      $('visual').innerHTML=v2?renderWorldsizeV2(v2):current==='layers'||current==='heads'?renderDivision(current,variant):current==='product'?renderProduct(scene,factor):current==='compatibility'?renderCompatibilityPreview(compatibility):renderCapacity(capacityView);
       $('visual').classList.toggle('is-v2-visual',!!v2);
+      $('visual').classList.toggle('is-constraint-visual',current==='layers'||current==='heads'||current==='compatibility');
       const splitTitle=scene.active==='split'?productNote(scene,factor):'切出式口径：EP 从 DP 内切出，不再乘入 world_size。';
-      if(!preserveControls)$('context-control').innerHTML=v2?renderWorldsizeV2Controls():factor?`<div class="choice ep-mode-choice" aria-label="EP 口径示例"><button type="button" data-mode="orthogonal" class="${scene.active==='orthogonal'?'active':''}" aria-pressed="${scene.active==='orthogonal'}" title="${escapeHtml(scene.modes.orthogonal.note)}">EP 正交</button><button type="button" data-mode="split" class="${scene.active==='split'?'active':''}" aria-pressed="${scene.active==='split'}" title="${escapeHtml(splitTitle)}">EP 切出</button></div>${renderFactorControls(factor,scene.active)}`:capacity?renderCapacityControls():scene.variants?`<div class="choice" aria-label="预计算试调选项">${Object.keys(scene.variants).map(value=>`<button type="button" data-variant="${escapeHtml(value)}" class="${scene.active===value?'active':''}" aria-pressed="${scene.active===value}">${escapeHtml(value)}</button>`).join('')}</div>`:'';
+      if(!preserveControls)$('context-control').innerHTML=v2?renderWorldsizeV2Controls():factor?`<div class="choice ep-mode-choice" aria-label="EP 口径示例"><button type="button" data-mode="orthogonal" class="${scene.active==='orthogonal'?'active':''}" aria-pressed="${scene.active==='orthogonal'}" title="${escapeHtml(scene.modes.orthogonal.note)}">EP 正交</button><button type="button" data-mode="split" class="${scene.active==='split'?'active':''}" aria-pressed="${scene.active==='split'}" title="${escapeHtml(splitTitle)}">EP 切出</button></div>${renderFactorControls(factor,scene.active)}`:capacity?renderCapacityControls():compatibility?renderCompatibilityControls():division?renderDivisionControls(current):'';
       if(v2)syncWorldsizeV2ControlHighlights();
       if(preserveControls&&factor)$('context-control').querySelector('[data-mode="split"]').title=splitTitle;
-      $('workspace').classList.toggle('no-controls',!factor&&!capacity&&!v2&&!scene.variants);
-      $('interaction').hidden=!factor&&!capacity&&!v2&&!scene.variants;
-      $('agent-reply').textContent=agentReply(variant,factor);
+      $('workspace').classList.toggle('no-controls',!factor&&!capacity&&!v2&&!compatibility&&!division);
+      $('workspace').classList.toggle('is-capacity',!!capacity);
+      $('interaction').hidden=!factor&&!capacity&&!v2&&!compatibility&&!division;
+      $('agent-reply').textContent=agentReply(variant,factor,capacityView);
       if(!preserveControls)$('reply-feedback').textContent='';
       if(current==='product')updateProductDetail();
       document.querySelectorAll('[role=tab]').forEach(tab=>{const active=tab.dataset.case===current;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;});
       document.querySelectorAll('[data-v2-source]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.v2Source===worldsizeV2Source)));
-      requestAnimationFrame(()=>{syncVisualHeight();syncWorldsizeV2Layout();});
+      requestAnimationFrame(()=>{syncVisualHeight();syncDivisionScrollFade();});
       if(v2&&worldsizeV2Source==='mcp')scheduleWorldsizeV2Mcp(v2);
     }
     $('restore-current').addEventListener('click',()=>{
@@ -849,12 +1177,14 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       if(current==='product'){
         cases.product.active=initialActive.product;
         for(const mode of Object.keys(initialFactorSelections)){Object.assign(factorSelections[mode],initialFactorSelections[mode]);factorLocks[mode].clear();}
-      }else if(current==='capacity'){Object.assign(capacitySelection,initialCapacitySelection);capacityLocks.clear();}
+      }else if(current==='capacity'){Object.assign(capacitySelection,initialCapacitySelection);capacityLocks.clear();capacitySelectedAdvice=null;}
       else if(current==='worldsize-v2'){Object.assign(worldsizeV2Selection,initialWorldsizeV2Selection);worldsizeV2Locks.clear();worldsizeV2SelectedSuggestion=null;}
+      else if(current==='compatibility'){Object.assign(compatibilitySelection,initialCompatibilitySelection);selectedAdvice.compatibility=null;}
+      else if(current==='layers'||current==='heads'){Object.assign(divisionSelection[current],initialDivisionSelection[current]);selectedAdvice[current]=null;}
       else cases[current].active=initialActive[current];
       render();
     });
-    document.querySelector('.width-switch').addEventListener('click',event=>{const button=event.target.closest('[data-width-mode]');if(!button)return;const mode=button.dataset.widthMode;document.querySelector('.shell').dataset.shellWidth=mode;document.querySelectorAll('[data-width-mode]').forEach(option=>option.setAttribute('aria-pressed',String(option===button)));requestAnimationFrame(syncWorldsizeV2Layout);});
+    document.querySelector('.width-switch').addEventListener('click',event=>{const button=event.target.closest('[data-width-mode]');if(!button)return;const mode=button.dataset.widthMode;document.querySelector('.shell').dataset.shellWidth=mode;document.querySelectorAll('[data-width-mode]').forEach(option=>option.setAttribute('aria-pressed',String(option===button)));});
     document.querySelector('.source-switch').addEventListener('click',event=>{
       const button=event.target.closest('[data-v2-source]');
       if(!button||button.dataset.v2Source===worldsizeV2Source)return;
@@ -871,12 +1201,20 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
     document.querySelector('.gallery').addEventListener('click',event=>{const tab=event.target.closest('[data-case]');if(!tab)return;current=tab.dataset.case;render();});
     document.querySelector('.gallery').addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;const tabs=[...document.querySelectorAll('[role=tab]')];let index=tabs.findIndex(tab=>tab.dataset.case===current);index=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;current=tabs[index].dataset.case;render();tabs[index].focus();event.preventDefault();});
     $('context-control').addEventListener('click',event=>{
+      const divisionStep=event.target.closest('[data-division-step]');
+      if(divisionStep){
+        const key=divisionStep.dataset.divisionStep,selection=divisionSelection[current],limit=key==='ranks'?65536:key==='count'?128:1024;
+        selection[key]=Math.max(1,Math.min(limit,selection[key]+Number(divisionStep.dataset.stepDirection)));
+        selectedAdvice[current]=null;render();return;
+      }
+      const compatibilityToggle=event.target.closest('[data-compatibility-toggle]');
+      if(compatibilityToggle){const key=compatibilityToggle.dataset.compatibilityToggle;compatibilitySelection[key]=!compatibilitySelection[key];selectedAdvice.compatibility=null;render();return;}
       const v2Lock=event.target.closest('[data-v2-lock]');
-      if(v2Lock){const field=v2Lock.dataset.v2Lock;if(worldsizeV2Locks.has(field))worldsizeV2Locks.delete(field);else worldsizeV2Locks.add(field);render();return;}
+      if(v2Lock){const field=v2Lock.dataset.v2Lock;if(worldsizeV2Locks.has(field))worldsizeV2Locks.delete(field);else worldsizeV2Locks.add(field);worldsizeV2SelectedSuggestion=null;render();return;}
       const v2Mode=event.target.closest('[data-v2-mode]');
-      if(v2Mode){worldsizeV2Selection.mode=v2Mode.dataset.v2Mode;render();return;}
+      if(v2Mode){worldsizeV2Selection.mode=v2Mode.dataset.v2Mode;worldsizeV2SelectedSuggestion=null;render();return;}
       const v2Step=event.target.closest('[data-v2-step]');
-      if(v2Step){const field=v2Step.dataset.v2Step;applyWorldsizeV2Change(field,worldsizeV2Selection[field]+Number(v2Step.dataset.stepDirection));return;}
+      if(v2Step){const field=v2Step.dataset.v2Step;applyWorldsizeV2Change(field,worldsizeV2SteppedValue(field,Number(v2Step.dataset.stepDirection)));return;}
       const capacityStep=event.target.closest('[data-capacity-step]');
       if(capacityStep){
         const field=capacityNumberFields.find(item=>item.key===capacityStep.dataset.capacityStep);
@@ -913,9 +1251,17 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
         return;
       }
       const button=event.target.closest('[data-variant],[data-mode]');if(!button)return;
-      cases[current].active=button.dataset.variant??button.dataset.mode;render();
+      cases[current].active=button.dataset.variant??button.dataset.mode;
+      if(current==='layers'||current==='heads')selectedAdvice[current]=null;
+      render();
     });
     $('context-control').addEventListener('change',event=>{
+      const divisionNumber=event.target.closest('input[data-division-number]');
+      if(divisionNumber){
+        const key=divisionNumber.dataset.divisionNumber,value=Number(divisionNumber.value),limit=Number(divisionNumber.max);
+        if(Number.isSafeInteger(value)&&value>=1&&value<=limit)divisionSelection[current][key]=value;
+        selectedAdvice[current]=null;render();return;
+      }
       const v2Number=event.target.closest('input[data-v2-number]');
       if(v2Number){applyWorldsizeV2Change(v2Number.dataset.v2Number,Number(v2Number.value));return;}
       const capacityNumber=event.target.closest('input[data-capacity-number]');
@@ -925,7 +1271,7 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
     });
     $('context-control').addEventListener('input',event=>{
       const v2Range=event.target.closest('input[data-v2-range]');
-      if(v2Range){applyWorldsizeV2Change(v2Range.dataset.v2Range,Number(v2Range.value),true);return;}
+      if(v2Range){const field=v2Range.dataset.v2Range;applyWorldsizeV2Change(field,field==='ranks'?Number(v2Range.value):worldsizeV2FactorSliderValues[worldsizeV2FactorSliderIndexAt(Number(v2Range.value))],true);return;}
       const capacityRange=event.target.closest('input[data-capacity-range]');
       if(capacityRange){
         const field=capacityNumberFields.find(item=>item.key===capacityRange.dataset.capacityRange);
@@ -935,8 +1281,53 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       const range=event.target.closest('input[data-factor-range]');if(!range)return;
       applyFactorChange(range.dataset.factorRange,Number(range.value));
     });
-    $('context-control').addEventListener('keydown',event=>{if(event.key==='Enter'&&event.target.matches('input[data-factor],input[data-capacity-number],input[data-v2-number]'))event.target.blur();});
+    $('context-control').addEventListener('keydown',event=>{
+      if(event.target.matches('input[data-v2-range]:not([data-v2-range="ranks"])')&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)){
+        event.preventDefault();
+        const field=event.target.dataset.v2Range;
+        const index=worldsizeV2FactorSliderIndex(worldsizeV2Selection[field]);
+        const next=Math.max(0,Math.min(worldsizeV2FactorSliderValues.length-1,index+(['ArrowRight','ArrowUp'].includes(event.key)?1:-1)));
+        if(next!==index)applyWorldsizeV2Change(field,worldsizeV2FactorSliderValues[next],true);
+        return;
+      }
+      if(event.target.matches('input[data-v2-number="ranks"]')&&['ArrowUp','ArrowDown'].includes(event.key)){
+        event.preventDefault();
+        const typed=Number(event.target.value);
+        const current=Number.isSafeInteger(typed)&&typed>=1&&typed<=worldsizeV2MaxRanks?typed:worldsizeV2Selection.ranks;
+        const next=worldsizeV2SteppedValue('ranks',event.key==='ArrowUp'?1:-1,current);
+        if(next>=1&&next<=worldsizeV2MaxRanks){applyWorldsizeV2Change('ranks',next);$('context-control').querySelector('[data-v2-number="ranks"]')?.focus();}
+        return;
+      }
+      if(event.key==='Enter'&&event.target.matches('input[data-factor],input[data-capacity-number],input[data-v2-number],input[data-division-number]'))event.target.blur();
+    });
     $('visual').addEventListener('click',event=>{
+      const divisionOption=event.target.closest('[data-division-option]');
+      if(divisionOption){selectedAdvice[current]=selectedAdvice[current]===divisionOption.dataset.divisionOption?null:divisionOption.dataset.divisionOption;render();return;}
+      if(event.target.closest('[data-division-try]')){
+        const plan=divisionPlans(current).find(item=>item.id===selectedAdvice[current]);
+        if(!plan)return;
+        Object.assign(divisionSelection[current],plan.selection);selectedAdvice[current]=null;render();return;
+      }
+      const compatibilityOption=event.target.closest('[data-compatibility-option]');
+      if(compatibilityOption){selectedAdvice.compatibility=compatibilityOption.dataset.compatibilityOption;render();return;}
+      if(event.target.closest('[data-compatibility-try]')){
+        const plans=compatibilityPlans();
+        const plan=plans.find(item=>item.id===selectedAdvice.compatibility)??plans[0];
+        if(!plan)return;
+        Object.assign(compatibilitySelection,plan.selection);selectedAdvice.compatibility=null;render();return;
+      }
+      if(event.target.closest('[data-capacity-try]')){
+        const selected=capacityAdvice(capacityState()).find(item=>item.key===capacitySelectedAdvice);
+        if(!selected)return;
+        applyCapacityChange(selected.key,selected.value);
+        return;
+      }
+      const capacityOption=event.target.closest('[data-capacity-advice]');
+      if(capacityOption){
+        capacitySelectedAdvice=capacitySelectedAdvice===capacityOption.dataset.capacityAdvice?null:capacityOption.dataset.capacityAdvice;
+        render(true);
+        return;
+      }
       if(event.target.closest('[data-v2-retry]')){
         worldsizeV2Mcp={key:null,status:'idle',suggestions:[],error:''};
         render();
@@ -957,7 +1348,6 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
         worldsizeV2SelectedSuggestion=suggestion.dataset.v2SuggestionKey;
         $('visual').innerHTML=renderWorldsizeV2(worldsizeV2State());
         syncWorldsizeV2ControlHighlights();
-        syncWorldsizeV2Layout();
         return;
       }
       if(event.target.closest('[data-product-layer-toggle]')){productLayerVisible=!productLayerVisible;render(true);return;}
@@ -974,6 +1364,9 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       const cell=event.target.closest('[data-v2-tooltip]');
       if(cell&&!cell.contains(event.relatedTarget))hideWorldsizeV2Tooltip();
     });
+    $('visual').addEventListener('scroll',event=>{
+      if(event.target.classList?.contains('split-rows'))syncDivisionScrollFade(event.target);
+    },true);
     document.querySelector('.reply-actions').addEventListener('click',async event=>{
       const button=event.target.closest('[data-reply-action]');if(!button)return;
       const action=button.dataset.replyAction;
@@ -991,11 +1384,9 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
     });
     if('ResizeObserver' in window){
       new ResizeObserver(syncVisualHeight).observe($('context-control'));
-      let observedVisualWidth=0;
-      new ResizeObserver(()=>{const width=$('visual').clientWidth;if(width!==observedVisualWidth){observedVisualWidth=width;syncWorldsizeV2Layout();}}).observe($('visual'));
     }
-    window.addEventListener('resize',syncVisualHeight);
-    window.addEventListener('resize',()=>{hideWorldsizeV2Tooltip();if(current==='worldsize-v2'){$('visual').innerHTML=renderWorldsizeV2(worldsizeV2State());syncWorldsizeV2Layout();}});
+    window.addEventListener('resize',()=>{syncVisualHeight();syncDivisionScrollFade();});
+    window.addEventListener('resize',()=>{hideWorldsizeV2Tooltip();if(current==='worldsize-v2')$('visual').innerHTML=renderWorldsizeV2(worldsizeV2State());});
     window.addEventListener('scroll',hideWorldsizeV2Tooltip,true);
     render();
   </script>
