@@ -227,6 +227,26 @@ test("WorldSize V2 页面通过会话调用 suggest_config_fixes", async () => {
   }
 });
 
+test("WorldSize V2 页面使用独立 V2 服务前缀", async () => {
+  const server = await listen(createHttpApp({
+    token: TOKEN,
+    browserAccessToken: BROWSER_TOKEN,
+    browserPublicOrigin: PUBLIC_ORIGIN,
+    browserBasePath: "/mindspeed-config-v2",
+  }));
+  const { port } = server.address();
+  try {
+    const page = await fetch(`http://127.0.0.1:${port}/mindspeed-config-v2/prototypes/constraint-lens.html`);
+    assert.equal(page.status, 200);
+    const html = await page.text();
+    assert.match(html, /"apiBase":"\/mindspeed-config-v2\/api"/);
+    assert.match(html, /data-v2-source="mcp"/);
+    assert.match(html, /data-v2-source="original"/);
+  } finally {
+    await close(server);
+  }
+});
+
 test("独立 Web 用登录后一次性交接接收 Agent 已读取的配置", async () => {
   const server = await listen(createHttpApp({
     token: TOKEN,
