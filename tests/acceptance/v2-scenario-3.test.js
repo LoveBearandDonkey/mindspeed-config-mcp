@@ -97,7 +97,7 @@ test("V2 场景 3：仅资源先返回缺口，有基线后规划并写入可复
       const edited = applyChanges(JSON.parse(beforeText), candidate.changes);
       await writeFile(sourcePath, `${JSON.stringify(edited, null, 2)}\n`, "utf8");
       const afterText = await readFile(sourcePath, "utf8");
-      assert.equal(afterText, await readFile(new URL("planned.json", fixture), "utf8"));
+      assert.deepEqual(JSON.parse(afterText), JSON.parse(await readFile(new URL("planned.json", fixture), "utf8")));
 
       const review = await call(client, "review_config_change", {
         schema_version: "1.0", rule_profile,

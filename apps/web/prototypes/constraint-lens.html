@@ -32,7 +32,7 @@
     .mast-actions{display:flex;align-items:center;gap:8px;min-width:0}.source-switch{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:10px;background:#f1f1f1}.source-switch button{border:0;border-radius:8px;padding:7px 11px;background:transparent;color:#666;font-size:11px;white-space:nowrap;cursor:pointer}.source-switch button[aria-pressed=true]{background:#fff;color:#111;box-shadow:0 1px 4px #00000012;font-weight:650}@media(max-width:550px){.mast{flex-wrap:wrap}.mast-actions{width:100%;justify-content:flex-end}}
 
     .gallery{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(max-content,1fr);width:100%;gap:0;padding:3px;background:#f1f1f1;border-radius:20px;margin-bottom:0}.gallery button{color:#626262;border-radius:18px;padding:11px 12px;font-size:13px}.gallery button[aria-selected=true]{color:#111;background:#fff;box-shadow:0 1px 5px #00000012;font-weight:550}
-    .panel{border-color:#dedede;border-radius:22px;box-shadow:none}.panel-top{padding:30px 31px 0;border-bottom:0}.question{display:block;width:max-content;max-width:100%;margin:0 0 27px auto;background:#f4f4f4;color:#191919;border-radius:19px;padding:11px 15px;font-size:13px;line-height:1.35}.meta{color:#858585;border-bottom:1px solid #dedede;padding-bottom:15px;font-size:11px;flex-wrap:wrap;align-items:flex-start}.meta .source{font-weight:400;flex:1 1 380px;min-width:0;line-height:1.5}.lead-row{align-items:center;padding-top:19px}.lead-row h2{font-size:19px;letter-spacing:-.015em;line-height:1.4;font-weight:560;color:#111;margin:0 0 5px}.badge{border-radius:9px;padding:6px 9px;font-size:11px;font-weight:500}.badge.bad{color:#ae5c31;background:#fff1e8}.badge.good{color:#3178a5;background:#eaf5fd}.badge.estimate{color:#ae5c31;background:#fff1e8}
+    .panel{border-color:#dedede;border-radius:22px;box-shadow:none}.panel-top{padding:30px 31px 0;border-bottom:0}.question{display:block;width:max-content;max-width:100%;margin:0 0 27px auto;background:#111;color:#fff;border-radius:19px;padding:11px 15px;font-size:13px;line-height:1.35}.meta{color:#858585;border-bottom:1px solid #dedede;padding-bottom:15px;font-size:11px;flex-wrap:wrap;align-items:flex-start}.meta .source{font-weight:400;flex:1 1 380px;min-width:0;line-height:1.5}.lead-row{align-items:center;padding-top:19px}.lead-row h2{font-size:19px;letter-spacing:-.015em;line-height:1.4;font-weight:560;color:#111;margin:0 0 5px}.badge{border-radius:9px;padding:6px 9px;font-size:11px;font-weight:500}.badge.bad{color:#ae5c31;background:#fff1e8}.badge.good{color:#3178a5;background:#eaf5fd}.badge.estimate{color:#ae5c31;background:#fff1e8}
     .lead-actions{display:flex;align-items:center;gap:8px;flex:none}.lead-actions .badge{margin-top:0}.restore-button{border:1px solid #dedede;border-radius:8px;background:#fff;color:#555;padding:6px 9px;font-size:11px;cursor:pointer;white-space:nowrap}.restore-button:hover{background:#f7f7f7}.restore-button[hidden]{display:none}
     .panel-body{padding:23px 31px 28px;container-type:inline-size}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 235px;gap:18px;align-items:start}.workspace.no-controls{grid-template-columns:minmax(0,1fr)}.visual{grid-column:1;grid-row:1;min-width:0;min-height:330px;border:1px solid #dedede;background-color:#FAFAFA;border-radius:12px;padding:21px}.interaction{grid-column:2;grid-row:1;display:block;margin:0;padding:2px 0 0;min-width:0}.interaction[hidden]{display:none}.control{display:block}
     .factor-line{display:grid;grid-template-columns:1fr;gap:0}.factor{min-width:0;width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;background:transparent;border:0;border-radius:0;text-align:left}.factor small,.factor.tp-factor small{display:block;color:#555;font-size:12px;margin:0}.factor select{width:auto;min-width:56px;max-width:76px;padding:6px 19px 6px 8px;border:1px solid #e1e1e1;border-radius:8px;background-color:#fff;background-position:right 7px center;color:#161616;font-size:14px;font-weight:550;text-align:left}.factor.tp-factor,.factor.nested-factor,.factor.target-factor{border-color:#ededed;background:transparent;border-style:solid}.factor.tp-factor small{color:#1689ee}
@@ -108,7 +108,7 @@
     .v2-advice-priority{display:inline-block;margin:0 4px;padding:1px 5px;border:1px solid #b9e2c7;border-radius:4px;background:#eaf7ee;color:#237447;font-weight:650;white-space:nowrap}
     .v2-advice-try{margin-left:auto;padding:7px 12px;border:1px solid #111;border-radius:7px;background:#111;color:#fff;font-size:11px;white-space:nowrap;cursor:pointer}
     .v2-advice-try:hover{background:#292929}.v2-advice-try:focus-visible{outline:2px solid #1689ee;outline-offset:2px}
-    .v2-advice-try:disabled,.v2-advice-button:disabled{opacity:.58;cursor:not-allowed}.v2-advice-try:disabled:hover{background:#111}.v2-advice-button:disabled:hover{border-color:#d7d7d7;color:#222}
+    .v2-advice-try:disabled{border-color:#dedede;background:#f3f3f3;color:#999;cursor:not-allowed}.v2-advice-try:disabled:hover{background:#f3f3f3}.v2-advice-button:disabled{opacity:.58;cursor:not-allowed}.v2-advice-button:disabled:hover{border-color:#d7d7d7;color:#222}
     .v2-service-state{padding-top:10px;color:#777;font-size:11px;text-align:center}.v2-service-state a{color:#126ab1;text-decoration:none}.v2-service-state a:hover{text-decoration:underline}
     .v2-service-state button{margin-left:8px;padding:0;border:0;background:none;color:#126ab1;font:inherit;cursor:pointer}.v2-service-state button:hover{text-decoration:underline}
     .v2-target-cell,.v2-actual-cell{--v2-right-line:transparent;--v2-bottom-line:transparent;border:0;background-image:linear-gradient(to right,rgba(0,0,0,.4) 0 1.5px,transparent 1.5px),linear-gradient(to bottom,rgba(0,0,0,.4) 0 1.5px,transparent 1.5px),linear-gradient(to left,var(--v2-right-line) 0 1.5px,transparent 1.5px),linear-gradient(to top,var(--v2-bottom-line) 0 1.5px,transparent 1.5px);background-repeat:no-repeat;box-shadow:none}
@@ -146,7 +146,7 @@
     .capacity-hbm__range-line::before{left:-1px;border-right:7px solid #222}
     .capacity-hbm__range-line::after{right:-1px;border-left:7px solid #222}
     .capacity-hbm__head{position:relative;left:clamp(68px,var(--mid-pct),calc(100% - 68px));transform:translateX(-50%);display:grid;justify-items:center;gap:3px;width:max-content;max-width:100%;margin:0;color:#555;font-size:11px}
-    .visual.is-constraint-visual{display:flex;flex-direction:column}.split-view,.compat-view{display:flex;flex:1;flex-direction:column;min-width:0}.split-canvas,.compat-canvas{display:flex;flex:1;flex-direction:column;justify-content:center;gap:20px;min-width:0;padding:10px 0 24px}.split-summary{display:block;text-align:left}.split-summary strong{color:#b4544a;font-size:clamp(16px,3.5vw,22px);font-weight:650;line-height:1.35;font-variant-numeric:tabular-nums}.split-summary.is-valid strong{color:#111}.split-view.is-preview .split-summary::after{content:'方案预览';display:inline-block;margin-left:9px;color:#1689ee;font-size:11px;vertical-align:middle}.compat-eyebrow{color:#808080;font-size:11px;letter-spacing:.02em}
+    .visual.is-constraint-visual{display:flex;flex-direction:column}.split-view,.compat-view{display:flex;flex:1;flex-direction:column;min-width:0}.split-canvas,.compat-canvas{display:flex;flex:1;flex-direction:column;justify-content:center;gap:20px;min-width:0;padding:10px 0 24px}.split-canvas{padding-top:0}.split-summary{display:block;text-align:left}.split-summary strong{color:#b4544a;font-size:clamp(16px,3.5vw,22px);font-weight:650;line-height:1.35;font-variant-numeric:tabular-nums}.split-summary.is-valid strong{color:#111}.split-view.is-preview .split-summary::after{content:'方案预览';display:inline-block;margin-left:9px;color:#1689ee;font-size:11px;vertical-align:middle}.compat-eyebrow{color:#808080;font-size:11px;letter-spacing:.02em}
     .split-rows{display:grid;gap:7px;width:min(100%,490px);margin:0 auto}.split-row{display:grid;grid-template-columns:84px minmax(0,1fr) 52px;align-items:center;gap:10px;min-height:35px;padding:6px 10px;border:1px solid #e5e5e5;border-radius:8px;background:#fff}.split-row-label{color:#555;font-size:11px;font-weight:600;white-space:nowrap}.split-row strong{color:#343434;font-size:11px;font-weight:650;text-align:right;white-space:nowrap}.split-dots{display:flex;flex-wrap:wrap;gap:3px;align-items:center}.split-dots i{display:block;width:11px;height:11px;flex:none;border-radius:3px;background:#62a9df}.split-row--leftover{border-color:#f2cfb9;background:#fff8f2}.split-row--leftover .split-row-label,.split-row--leftover strong{color:#a95728}.split-row--leftover .split-dots i{background:#ec9b64}.split-status,.compat-conclusion{display:flex;align-items:center;justify-content:center;gap:8px;margin:0;color:#287b58;font-size:12px;font-weight:600;text-align:center}.split-status span,.compat-conclusion span{display:grid;place-items:center;width:19px;height:19px;flex:none;border-radius:50%;background:#e6f6ed;color:#2b8a61;font-size:12px}.split-status.is-warning,.compat-conclusion:not(.is-valid){color:#a95728}.split-status.is-warning span,.compat-conclusion:not(.is-valid) span{background:#fff0e5;color:#b56232}.split-footer{width:100%;margin-top:auto}.split-footer .v2-advice{margin:0}.split-footer .v2-advice-button{line-height:1.4}.split-footer .v2-advice-button small{display:block;margin-top:3px;color:#858585;font-size:10px}.advice-empty{margin:0;color:#777;font-size:11px;line-height:1.5}
     .case-select{display:grid;gap:7px}.case-select>span{margin-bottom:3px;color:#777;font-size:11px}.case-select button{width:100%;padding:10px 11px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;color:#444;font-size:11px;text-align:left;cursor:pointer}.case-select button:hover{border-color:#a7cce8}.case-select button[aria-pressed=true]{border-color:#9cccf0;background:#eaf6ff;color:#166ba7;font-weight:650}
     .compat-eyebrow{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}.compat-eyebrow>span{padding:4px 7px;border:1px solid #dedede;border-radius:5px;background:#fff;color:#666}.compat-eyebrow code{overflow-wrap:anywhere;color:#888;font-size:10px}.compat-relation{display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);align-items:center;gap:10px;width:min(100%,530px);margin:0 auto}.compat-node{display:flex;min-width:0;min-height:110px;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:12px 8px;border:1px solid #dce7ee;border-radius:12px;background:#fff;text-align:center}.compat-node small{color:#929292;font-size:10px}.compat-node strong{color:#292929;font-size:14px;font-weight:630;overflow-wrap:anywhere}.compat-node span{padding:3px 7px;border-radius:5px;background:#eaf5fd;color:#1c78b3;font-size:10px}.compat-node.is-off{border-color:#e5e5e5;background:#f7f7f7}.compat-node.is-off strong{color:#777}.compat-node.is-off span{background:#ebebeb;color:#777}.compat-link{display:grid;place-items:center;width:36px;height:36px;margin:auto;border-radius:50%;font-size:19px;font-weight:600}.compat-link.is-conflict{background:#fff0e5;color:#b75d2a}.compat-link.is-valid{background:#e6f6ed;color:#2b8a61}
@@ -154,15 +154,16 @@
     .compat-rule-token{background:rgba(0,0,0,.06);border-color:rgba(0,0,0,.12)}.compat-rule-token b,.compat-switch{font-weight:400}.compat-switch.is-wide{min-width:82px}.compat-control-note{margin:0;color:#858585;font-size:10px;line-height:1.5}
     @container (max-width:500px){.split-row{grid-template-columns:62px minmax(0,1fr) 42px;gap:5px;padding:6px}.split-dots i{width:9px;height:9px}.compat-relation{grid-template-columns:minmax(0,1fr) 30px minmax(0,1fr);gap:4px}.compat-node{min-height:95px}.compat-node strong{font-size:12px}.compat-link{width:27px;height:27px;font-size:16px}.split-footer .v2-advice-header strong small{display:block;margin:2px 0 0}}
     .division-controls{display:grid;gap:3px}.division-controls .factor{padding:7px 0}.division-controls .factor-top{align-items:center;gap:10px;margin:0}.division-controls .factor-top label{flex:1;min-width:0;overflow-wrap:anywhere;white-space:normal}.division-controls .factor-stepper,.division-controls .factor select{flex:none;margin-left:auto}.division-controls .factor-stepper input[type=number]{width:62px}.division-controls .factor select{max-width:none;min-width:87px}.division-control-note{margin:8px 0 0;color:#858585;font-size:11px;line-height:1.5}.split-row-stack{width:min(100%,490px);margin:0 auto}.split-row-stack .split-rows{max-height:145px;overflow-y:auto;overscroll-behavior:contain;padding:2px 3px 5px;scrollbar-width:none;-ms-overflow-style:none}.split-view.is-resolved .split-rows{max-height:230px}.split-row-stack .split-rows::-webkit-scrollbar{display:none}.split-row-stack .split-rows.has-more{mask-image:linear-gradient(to bottom,#000 0%,#000 calc(100% - 34px),transparent 100%)}.split-row-stack .split-rows:focus-visible{outline:2px solid #1689ee;outline-offset:2px}.split-row.is-layer-row{padding-top:4px;padding-bottom:4px}.split-row-label small{display:block;margin-top:2px;color:#888;font-size:10px;font-weight:400;line-height:1.1}.split-row--shortage .split-row-label small{color:#b17456}.split-row-stack .split-row--leftover,.split-row-stack .split-row--shortage{margin:7px 3px 0;box-shadow:0 -6px 14px #fafafa}.split-row-stack .split-dots{max-height:32px;overflow:hidden}.split-row--shortage{border-color:#f2cfb9;background:#fff8f2}.split-row--shortage strong{color:#a95728}.split-row--shortage .split-dots i.is-missing{border:1px dashed #dc875b;background:#fff3ea}
+    .insert-plan{display:block;width:100%;margin-top:20px;padding:10px 12px;border:1px solid #111;border-radius:9px;background:#111;color:#fff;font-size:12px;font-weight:600;cursor:pointer}.insert-plan:hover:not(:disabled){background:#292929}.insert-plan:disabled{border-color:#dedede;background:#f3f3f3;color:#999;cursor:not-allowed}.insert-plan:focus-visible,.agent-send:focus-visible{outline:2px solid #111;outline-offset:2px}
+    .agent-composer{position:relative;margin-top:48px;border:1px solid #dedede;border-radius:16px;background:#fff}.agent-composer:focus-within{border-color:#111;box-shadow:0 0 0 2px #11111118}.agent-composer textarea{display:block;width:100%;min-height:calc(3 * 1.6em + 63px);resize:vertical;padding:14px 16px 49px;border:0;border-radius:16px;background:transparent;color:#222;font:13px/1.6 Inter,"Segoe UI","Microsoft YaHei",sans-serif;scrollbar-width:thin;scrollbar-color:#b7bec5 transparent}.agent-composer textarea:focus{outline:0}.agent-composer textarea::placeholder{color:#999}.agent-composer textarea::-webkit-scrollbar{width:9px}.agent-composer textarea::-webkit-scrollbar-track{background:transparent}.agent-composer textarea::-webkit-scrollbar-thumb{border:2px solid transparent;border-radius:99px;background:#bec5cb;background-clip:padding-box}.agent-composer textarea::-webkit-scrollbar-thumb:hover{background:#969fa7;background-clip:padding-box}.agent-send{position:absolute;right:10px;bottom:10px;display:grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:50%;background:#111;color:#fff;cursor:pointer}.agent-send:hover:not(:disabled){background:#292929}.agent-send:disabled{background:#e6e6e6;color:#aaa;cursor:not-allowed}.agent-send svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.composer-status{margin:8px 2px 0;color:#777;font-size:11px}.composer-status:empty{display:none}
   </style>
 </head>
 <body>
   <main class="shell" data-shell-width="wide">
     <div class="sticky-nav">
-      <div class="mast"><div class="brand"><span class="mark" aria-hidden="true">◎</span><span class="brand-full">MindSpeed Config · V2</span><span class="brand-short">V2</span></div><div class="mast-actions"><div class="source-switch" role="group" aria-label="WorldSize V2 建议来源"><button type="button" data-v2-source="mcp" aria-pressed="false">MCP</button><button type="button" data-v2-source="original" aria-pressed="true">原始</button></div><div class="width-switch" role="group" aria-label="页面宽度"><button type="button" data-width-mode="wide" aria-pressed="true">宽屏 960</button><button type="button" data-width-mode="narrow" aria-pressed="false">窄屏 480</button></div></div></div>
+      <div class="mast"><div class="brand"><span class="mark" aria-hidden="true">◎</span><span class="brand-full">MindSpeed Config · V2</span><span class="brand-short">V2</span></div><div class="mast-actions"><div class="source-switch" role="group" aria-label="WorldSize 建议来源"><button type="button" data-v2-source="mcp" aria-pressed="false">MCP</button><button type="button" data-v2-source="original" aria-pressed="true">原始</button></div><div class="width-switch" role="group" aria-label="页面宽度"><button type="button" data-width-mode="wide" aria-pressed="true">宽屏 960</button><button type="button" data-width-mode="narrow" aria-pressed="false">窄屏 480</button></div></div></div>
       <div class="gallery" role="tablist" aria-label="约束视图案例">
-        <button role="tab" id="tab-worldsize-v2" aria-controls="case-panel" aria-selected="true" data-case="worldsize-v2">World Size V2</button>
-        <button role="tab" id="tab-product" aria-controls="case-panel" aria-selected="false" data-case="product">World Size</button>
+        <button role="tab" id="tab-worldsize-v2" aria-controls="case-panel" aria-selected="true" data-case="worldsize-v2">WorldSize</button>
         <button role="tab" id="tab-heads" aria-controls="case-panel" aria-selected="false" data-case="heads">注意力切分</button>
         <button role="tab" id="tab-layers" aria-controls="case-panel" aria-selected="false" data-case="layers">均匀分层</button>
         <button role="tab" id="tab-compatibility" aria-controls="case-panel" aria-selected="false" data-case="compatibility">配置选项冲突</button>
@@ -171,7 +172,7 @@
     </div>
     <section class="panel" id="case-panel" role="tabpanel" aria-labelledby="tab-worldsize-v2">
       <div class="panel-top"><div class="question" id="case-question"></div><div class="meta"><span class="source" id="case-source"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="8"/><path d="m6.4 10 2.4 2.4 4.8-5"/></svg><span id="case-source-text"></span></span></div><div class="lead-row"><div><div class="title-line"><h2 id="case-title" aria-live="polite"></h2><span class="badge" id="case-badge"></span></div></div><div class="lead-actions"><button type="button" class="restore-button" id="restore-current" title="复原当前页签配置" hidden>复原</button></div></div></div>
-      <div class="panel-body"><div class="workspace" id="workspace"><div class="interaction" id="interaction"><div class="control" id="context-control"></div></div><div class="visual" id="visual"></div></div><div class="agent-response"><p id="agent-reply"></p><div class="reply-actions" role="group" aria-label="答复操作"><button type="button" data-reply-action="like" aria-label="点赞" title="点赞" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v11H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3Zm0 0 5-8a2 2 0 0 1 2 2v5h5a3 3 0 0 1 2.9 3.7l-1.6 7A2 2 0 0 1 18.4 21H7"/></svg></button><button type="button" data-reply-action="dislike" aria-label="点踩" title="点踩" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14V3H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3Zm0 0 5 8a2 2 0 0 0 2-2v-5h5a3 3 0 0 0 2.9-3.7l-1.6-7A2 2 0 0 0 18.4 3H7"/></svg></button><button type="button" data-reply-action="share" aria-label="分享" title="分享"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m0 0L7 8m5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg></button><button type="button" data-reply-action="copy" aria-label="复制" title="复制"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button><span class="reply-feedback" id="reply-feedback" role="status" aria-live="polite"></span></div></div></div>
+      <div class="panel-body"><div class="workspace" id="workspace"><div class="interaction" id="interaction"><div class="control" id="context-control"></div><button type="button" class="insert-plan" id="insert-plan" disabled>方案置入对话</button></div><div class="visual" id="visual"></div></div><div class="agent-response"><p id="agent-reply"></p><div class="reply-actions" role="group" aria-label="答复操作"><button type="button" data-reply-action="like" aria-label="点赞" title="点赞" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v11H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3Zm0 0 5-8a2 2 0 0 1 2 2v5h5a3 3 0 0 1 2.9 3.7l-1.6 7A2 2 0 0 1 18.4 21H7"/></svg></button><button type="button" data-reply-action="dislike" aria-label="点踩" title="点踩" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14V3H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3Zm0 0 5 8a2 2 0 0 0 2-2v-5h5a3 3 0 0 0 2.9-3.7l-1.6-7A2 2 0 0 0 18.4 3H7"/></svg></button><button type="button" data-reply-action="share" aria-label="分享" title="分享"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V3m0 0L7 8m5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg></button><button type="button" data-reply-action="copy" aria-label="复制" title="复制"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></button><span class="reply-feedback" id="reply-feedback" role="status" aria-live="polite"></span></div></div><div class="agent-composer"><textarea id="agent-input" rows="3" aria-label="Agent 对话输入" placeholder="继续询问 Agent，或将已校验方案置入这里"></textarea><button type="button" class="agent-send" id="agent-send" aria-label="发送" title="发送（界面演示）" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m0 0-6 6m6-6 6 6"/></svg></button></div><p class="composer-status" id="composer-status" role="status" aria-live="polite"></p></div>
     </section>
     <section class="issue-summary" aria-labelledby="issue-summary-title">
       <h2 id="issue-summary-title">开训前可检查的五类常见问题</h2>
@@ -203,23 +204,15 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
     const cases = {
       layers:{fixture:'A03',question:'模型当前有 100 层，计划分给 7 个 PP Stage，目标是每个 Stage 16 层。现在还差多少层？',targetEach:16,rule:'total_layers % pp === 0',source:'Megatron-LM:megatron/training/arguments.py@core_v0.12.1'},
       heads:{fixture:'A04',question:'我们准备把 TP 设为 7，模型目前有 30 个注意力头。帮我看看这样切分会不会有问题，怎么调整合适？',rule:'num_attention_heads % tp === 0',source:'compute-graph-viewer-wzh:config-relation-observer.js:1519@1e6bb6e'},
-      product:{fixture:'双口径示例',question:'请检查本项目当前的并行切分配置。我想把总 Rank 调到 32，先给我一套调整方案，我看看需要改哪些参数。',active:'split',modes:{orthogonal:{title:'每个 Rank 都有五维坐标',note:'正交口径：EP 独占 Rank，进入 world_size 乘积。',rule:'dp * pp * tp * cp * ep === total_ranks'},split:{title:'EP 从 DP 切出',rule:'dp * pp * tp * cp === total_ranks'}},source:'config-core:page-rules.js / compute-rank-topology.js'},
-      'worldsize-v2':{question:'目标 32 Rank，当前配置有多少？',title:'目标 32 Rank，当前配置计算 48 Rank',badge:'总 Rank 冲突',tone:'bad'},
+      'worldsize-v2':{question:'我改过一些切分配置，再帮我检查下对 Rank 配置是否有影响',title:'目标 32 Rank，当前配置计算 48 Rank',badge:'总 Rank 冲突',tone:'bad'},
       compatibility:{fixture:'规则示例',question:'配置选项之间有哪些互斥关系或启用前提？',title:'配置选项关系',badge:'需要处理',tone:'bad'},
       capacity:{fixture:'A01',question:'项目准备使用单卡 64 GiB 的昇腾 NPU。帮我估一下这套训练配置的显存风险，哪个 Stage 最紧？'}
-    };
-    const caseSources={
-      layers:'页面内嵌 config-core 静态复验示例；未调用 MCP。',
-      heads:'页面内嵌 config-core 静态复验示例；未调用 MCP。',
-      'worldsize-v2':'修复建议来自 V2 服务 suggest_config_fixes 的结构化结果。',
-      compatibility:'页面内嵌 config-core 静态复验规则示例；未调用 MCP。',
-      capacity:'本页调用内嵌 config-core 的 estimateTrainingCapacity 进行本地试算；没有发起 MCP 调用。'
     };
     const baseFactorConfig=/* FACTOR_BASE_START */{"schema_version":"1.0","rule_profile":{"framework":"mindspeed-core","version":"0.12.1","source_commit":"65634689bed75ee9b6df666d526f7f16051a3db5"},"model":{"id":"test-moe","total_layers":32,"hidden_size":4096,"num_attention_heads":32,"num_key_value_heads":8,"ffn_hidden_size":11008,"expert_ffn_hidden_size":14336,"vocab_size":32000,"routed_experts":8,"top_k":2,"shared_experts":1},"parallel":{"dp":4,"pp":2,"tp":2,"cp":1,"ep":2,"vpp":1,"pipeline_layer_mode":"uniform","ep_mode":"split","cp_mode":"ulysses","sequence_parallel":true,"vocab_embedding_data_parallel":true,"expert_tensor_parallel":false},"cluster":{"total_ranks":16,"ranks_per_node":8,"card_model":"Ascend test card","card_memory_gib":64},"batch":{"micro_batch_size":1,"sequence_length":4096,"micro_batch_count":4,"global_batch_size":16},"memory":{"compute_dtype":"bf16","parameter_dtype":"fp32","recompute_mode":"selective","shard_mode":"zero1","lora_enabled":false},"policy":{"locked_fields":[],"objective":"minimal-change"}}/* FACTOR_BASE_END */;
     const capacitySelection={card_memory_gib:64,micro_batch_size:8,sequence_length:12288,micro_batch_count:4,pp:2,recompute_mode:'selective',shard_mode:'zero1'};
     const initialCapacitySelection=structuredClone(capacitySelection);
     const capacityLocks=new Set();
-    function capacityState(overrides={}){
+    function capacityInput(overrides={}){
       const selection={...capacitySelection,...overrides};
       const input=structuredClone(baseFactorConfig);
       input.model.total_layers=8;
@@ -232,7 +225,10 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       input.batch.global_batch_size=input.batch.micro_batch_size*input.batch.micro_batch_count*input.parallel.dp;
       input.memory.recompute_mode=selection.recompute_mode;
       input.memory.shard_mode=selection.shard_mode;
-      return ConstraintLensCore.estimateTrainingCapacity(input);
+      return input;
+    }
+    function capacityState(overrides={}){
+      return ConstraintLensCore.estimateTrainingCapacity(capacityInput(overrides));
     }
     let capacitySelectedAdvice=null;
     const capacityNumberFields=[
@@ -273,6 +269,7 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
     const worldsizeV2MaxSuggestions=7;
     const worldsizeV2FieldLimits={dp:248,pp:248,tp:248,cp:248,ep:248,ranks:worldsizeV2MaxRanks};
     const worldsizeV2FactorSliderValues=[...Array.from({length:16},(_,index)=>2+index*2),...Array.from({length:11},(_,index)=>40+index*8),...Array.from({length:4},(_,index)=>152+index*32)];
+    const worldsizeV2RankSliderValues=[...Array.from({length:32},(_,index)=>2+index*2),...Array.from({length:28},(_,index)=>80+index*16),...Array.from({length:24},(_,index)=>576+index*64)];
     const worldsizeV2Selection={dp:6,pp:2,tp:2,cp:1,ep:2,ranks:32,mode:'orthogonal'};
     const initialWorldsizeV2Selection=structuredClone(worldsizeV2Selection);
     let worldsizeV2SelectedSuggestion=null;
@@ -290,6 +287,8 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
     const flashTimers=new Map();let feedbackTimer=0;
     const initialCase=new URLSearchParams(location.search).get('case');
     let current=Object.hasOwn(cases,initialCase)?initialCase:'worldsize-v2';let selectedProductRank=0;let productLayerVisible=false;let currentFactor=null;
+    const composerDrafts=new Map();
+    let currentPlan=null;
     const initialMode=new URLSearchParams(location.search).get('mode');
     if(current==='product'&&Object.hasOwn(cases.product.modes,initialMode))cases.product.active=initialMode;
     if(current==='product'){
@@ -301,7 +300,7 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       }
     }
     const initialFactorSelections=structuredClone(factorSelections);
-    const initialActive={product:cases.product.active,layers:cases.layers.active,heads:cases.heads.active};
+    const initialActive={layers:cases.layers.active,heads:cases.heads.active};
     const selectedAdvice={layers:null,heads:null,compatibility:null};
     const divisionSelection={layers:{total:100,count:7,ranks:56,mode:'uniform'},heads:{total:30,kv:5,count:7,ranks:56}};
     const initialDivisionSelection=structuredClone(divisionSelection);
@@ -661,8 +660,22 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
         <div class="v2-footer">${legend}${serviceState}${advice}</div>
       </div>`;
     }
-    function worldsizeV2RankSliderValue(value){
-      return Math.min(worldsizeV2MaxRanks,Math.max(2,Math.round(value/2)*2));
+    function worldsizeV2RankSliderIndex(value){
+      let nearest=0;
+      for(let index=1;index<worldsizeV2RankSliderValues.length;index++){
+        if(Math.abs(worldsizeV2RankSliderValues[index]-value)<Math.abs(worldsizeV2RankSliderValues[nearest]-value))nearest=index;
+      }
+      return nearest;
+    }
+    function worldsizeV2RankSliderPosition(index){
+      if(index<=31)return Math.round(index/31*100);
+      if(index<=59)return Math.round(100+(index-31)/28*100);
+      return Math.round(200+(index-59)/24*100);
+    }
+    function worldsizeV2RankSliderIndexAt(position){
+      if(position<=100)return Math.round(position/100*31);
+      if(position<=200)return 31+Math.round((position-100)/100*28);
+      return 59+Math.round((position-200)/100*24);
     }
     function worldsizeV2FactorSliderIndex(value){
       let nearest=0;
@@ -681,11 +694,13 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       if(position<=200)return 15+Math.round((position-100)/100*11);
       return 26+Math.round((position-200)/100*4);
     }
-    function worldsizeV2RangeProgress(field,value,maximum){
-      return field==='ranks'?`${(worldsizeV2RankSliderValue(value)-2)/(maximum-2)*100}%`:`${worldsizeV2FactorSliderPosition(worldsizeV2FactorSliderIndex(value))/3}%`;
+    function worldsizeV2RangeProgress(field,value){
+      const position=field==='ranks'?worldsizeV2RankSliderPosition(worldsizeV2RankSliderIndex(value)):worldsizeV2FactorSliderPosition(worldsizeV2FactorSliderIndex(value));
+      return `${position/3}%`;
     }
     function worldsizeV2SteppedValue(field,direction,value=worldsizeV2Selection[field]){
-      return field==='ranks'?(direction>0?Math.floor(value/2)*2+2:Math.ceil(value/2)*2-2):value+direction;
+      if(field!=='ranks')return value+direction;
+      return direction>0?worldsizeV2RankSliderValues.find(candidate=>candidate>value)??value:[...worldsizeV2RankSliderValues].reverse().find(candidate=>candidate<value)??value;
     }
     function renderWorldsizeV2Controls(){
       const selection=worldsizeV2Selection;
@@ -693,15 +708,17 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
         const maximum=worldsizeV2FieldLimits[field];
         const locked=worldsizeV2Locks.has(field);
         const shackle=locked?'M7 10V7a5 5 0 0 1 10 0v3':'M7 10V7a5 5 0 0 1 9-3';
-        const rangeMin=field==='ranks'?2:0;
-        const rangeMax=field==='ranks'?maximum:300;
-        const rangeStep=field==='ranks'?2:1;
+        const rangeMin=0;
+        const rangeMax=300;
+        const rangeStep=1;
         const factorIndex=field==='ranks'?null:worldsizeV2FactorSliderIndex(selection[field]);
-        const rangeValue=field==='ranks'?worldsizeV2RankSliderValue(selection[field]):worldsizeV2FactorSliderPosition(factorIndex);
-        const rangeProgress=worldsizeV2RangeProgress(field,selection[field],maximum);
-        const rangeInput=`<input type="range" min="${rangeMin}" max="${rangeMax}" step="${rangeStep}" value="${rangeValue}" data-v2-range="${field}" style="--range-progress:${rangeProgress}" aria-label="滑动调整 ${label}"${field==='ranks'?'':` aria-valuetext="${worldsizeV2FactorSliderValues[factorIndex]}"`} ${locked?'disabled':''}>`;
-        const rangeControl=field==='ranks'?rangeInput:`<div class="v2-progressive-slider" style="--range-progress:${rangeProgress}">${rangeInput}</div>`;
-        return `<div class="factor ${tone} "><div class="factor-top"><label for="v2-${field}"><small>${label}</small></label><div class="v2-input-row"><div class="factor-stepper"><button type="button" data-v2-step="${field}" data-step-direction="-1" aria-label="减少 ${label}" ${locked||selection[field]<=1?'disabled':''}>−</button><input id="v2-${field}" type="number" min="1" max="${maximum}" step="1" data-v2-number="${field}" value="${selection[field]}" inputmode="numeric" aria-label="填写 ${label}" ${locked?'disabled':''}><button type="button" data-v2-step="${field}" data-step-direction="1" aria-label="增加 ${label}" ${locked||selection[field]>=maximum?'disabled':''}>+</button></div><button type="button" class="lock-toggle ${locked?'locked':''}" data-v2-lock="${field}" aria-pressed="${locked}" aria-label="${locked?'解锁':'锁定'} ${label}" title="${locked?'解锁':'锁定'} ${label}"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${shackle}"/><rect x="5" y="10" width="14" height="11" rx="2"/></svg></button></div></div>${rangeControl}</div>`;
+        const rankIndex=field==='ranks'?worldsizeV2RankSliderIndex(selection[field]):null;
+        const rangeValue=field==='ranks'?worldsizeV2RankSliderPosition(rankIndex):worldsizeV2FactorSliderPosition(factorIndex);
+        const rangeProgress=worldsizeV2RangeProgress(field,selection[field]);
+        const sliderValue=field==='ranks'?worldsizeV2RankSliderValues[rankIndex]:worldsizeV2FactorSliderValues[factorIndex];
+        const rangeInput=`<input type="range" min="${rangeMin}" max="${rangeMax}" step="${rangeStep}" value="${rangeValue}" data-v2-range="${field}" style="--range-progress:${rangeProgress}" aria-label="滑动调整 ${label}" aria-valuetext="${sliderValue}" ${locked?'disabled':''}>`;
+        const rangeControl=`<div class="v2-progressive-slider" style="--range-progress:${rangeProgress}">${rangeInput}</div>`;
+        return `<div class="factor ${tone} "><div class="factor-top"><label for="v2-${field}"><small>${label}</small></label><div class="v2-input-row"><div class="factor-stepper"><button type="button" data-v2-step="${field}" data-step-direction="-1" aria-label="减少 ${label}" ${locked||selection[field]<=(field==='ranks'?2:1)?'disabled':''}>−</button><input id="v2-${field}" type="number" min="1" max="${maximum}" step="1" data-v2-number="${field}" value="${selection[field]}" inputmode="numeric" aria-label="填写 ${label}" ${locked?'disabled':''}><button type="button" data-v2-step="${field}" data-step-direction="1" aria-label="增加 ${label}" ${locked||selection[field]>=maximum?'disabled':''}>+</button></div><button type="button" class="lock-toggle ${locked?'locked':''}" data-v2-lock="${field}" aria-pressed="${locked}" aria-label="${locked?'解锁':'锁定'} ${label}" title="${locked?'解锁':'锁定'} ${label}"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${shackle}"/><rect x="5" y="10" width="14" height="11" rx="2"/></svg></button></div></div>${rangeControl}</div>`;
       }).join('');
       return `<div class="v2-controls"><div class="v2-mode" role="group" aria-label="EP 计数口径"><button type="button" data-v2-mode="orthogonal" aria-pressed="${selection.mode==='orthogonal'}">EP 正交</button><button type="button" data-v2-mode="split" aria-pressed="${selection.mode==='split'}">EP 切出</button></div>${controls}<div class="v2-feedback" id="v2-feedback" role="status" aria-live="polite"></div></div>`;
     }
@@ -722,7 +739,7 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       const text=comparisonText(snapshot,check,total);
       return `<div class="measure"><div class="measure-head"><span>并行乘积</span><strong>${snapshot.world} Rank</strong></div><div class="scale" role="img" aria-label="并行乘积 ${snapshot.world} Rank"><span class="scale-fill ${check.comparison==='equal'?'good-fill':''}" style="width:${check.worldPct}%"></span></div><div class="measure-head" style="margin-top:15px"><span>总 Rank</span><strong>${total} Rank</strong></div><div class="scale" role="img" aria-label="总 Rank ${total}"><span class="scale-target" style="width:${check.targetPct}%"></span></div><div class="annotation ${check.comparison==='equal'?'ok':''}">${text}</div></div>`;
     }
-    function divisionValidation(scene,selection){
+    function divisionInput(scene,selection){
       const input=structuredClone(baseFactorConfig);
       if(scene==='layers'){
         input.model.total_layers=selection.total;
@@ -735,7 +752,10 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
         input.parallel.tp=selection.count;
       }
       input.cluster.total_ranks=selection.ranks;
-      return ConstraintLensCore.validateParallelConfig(input);
+      return input;
+    }
+    function divisionValidation(scene,selection){
+      return ConstraintLensCore.validateParallelConfig(divisionInput(scene,selection));
     }
     function divisionVariant(scene,selection){
       const isLayers=scene==='layers',each=Math.floor(selection.total/selection.count),remainder=selection.total%selection.count;
@@ -1098,15 +1118,15 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
         const range=$('context-control').querySelector(`[data-v2-range="${field}"]`);
         if(number)number.value=value;
         if(range){
-          const factorIndex=field==='ranks'?null:worldsizeV2FactorSliderIndex(value);
-          const rangeValue=field==='ranks'?worldsizeV2RankSliderValue(value):worldsizeV2FactorSliderPosition(factorIndex);
+          const sliderIndex=field==='ranks'?worldsizeV2RankSliderIndex(value):worldsizeV2FactorSliderIndex(value);
+          const rangeValue=field==='ranks'?worldsizeV2RankSliderPosition(sliderIndex):worldsizeV2FactorSliderPosition(sliderIndex);
           range.value=rangeValue;
-          if(field!=='ranks')range.setAttribute('aria-valuetext',String(worldsizeV2FactorSliderValues[factorIndex]));
-          const progress=worldsizeV2RangeProgress(field,value,maximum);
+          range.setAttribute('aria-valuetext',String((field==='ranks'?worldsizeV2RankSliderValues:worldsizeV2FactorSliderValues)[sliderIndex]));
+          const progress=worldsizeV2RangeProgress(field,value);
           range.style.setProperty('--range-progress',progress);
           range.closest('.v2-progressive-slider')?.style.setProperty('--range-progress',progress);
         }
-        $('context-control').querySelectorAll(`[data-v2-step="${field}"]`).forEach(button=>button.disabled=Number(button.dataset.stepDirection)<0?value<=1:value>=maximum);
+        $('context-control').querySelectorAll(`[data-v2-step="${field}"]`).forEach(button=>button.disabled=Number(button.dataset.stepDirection)<0?value<=(field==='ranks'?2:1):value>=maximum);
       }
     }
     function steppedFactorValue(field,direction){
@@ -1123,8 +1143,51 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       const spacing=['paddingTop','paddingBottom','borderTopWidth','borderBottomWidth'].reduce((sum,key)=>sum+parseFloat(style[key]||0),0);
       $('visual').style.setProperty('--control-height',`${Math.ceil($('context-control').getBoundingClientRect().height+spacing)}px`);
     }
+    const isClearValidation=result=>result?.status==='valid'&&!result.errors?.length&&!result.warnings?.length;
+    function planForCurrentCase(v2,capacity,compatibility){
+      if(v2)return isClearValidation(v2.validation)?{label:'World Size V2',config:v2.input}:null;
+      if(current==='layers'||current==='heads'){
+        const selection=divisionSelection[current];
+        const applied=divisionVariant(current,selection);
+        return applied.tone==='good'&&isClearValidation(applied.validation)?{label:current==='layers'?'均匀分层':'注意力切分',config:divisionInput(current,selection)}:null;
+      }
+      if(compatibility)return Object.values(compatibility).every(state=>isClearValidation(state.validation))?{label:'配置选项冲突',config:Object.fromEntries(Object.entries(compatibility).map(([key,state])=>[key,state.input])),independent:true}:null;
+      if(capacity){
+        const peak=capacity.status==='estimated'?capacity.data.stages[capacity.data.bottleneck_stage]:null;
+        return peak?.level==='safe'&&!capacityTouchesWarning(capacity,peak)&&!capacity.errors?.length&&!capacity.warnings?.length?{label:'理论容量',config:capacityInput(),theoretical:true}:null;
+      }
+      return null;
+    }
     function syncDivisionScrollFade(list=$('visual').querySelector('.split-rows')){
       if(list)list.classList.toggle('has-more',list.scrollTop+list.clientHeight<list.scrollHeight-2);
+    }
+    function worldsizeV2SourceText(state,mcp){
+      const check=`我算出并行乘积为 ${state.world} Rank，目标是 ${state.selection.ranks} Rank，${state.world===state.selection.ranks?'两者已对齐':'两者不一致'}。`;
+      const rule='对应的 MCP 校验工具是 validate_parallel_config（PAGE_WORLD_SIZE_MATCHES_TOTAL_RANKS）';
+      if(state.validation.status==='valid')return `${check}${rule}，当前无需调整。`;
+      if(worldsizeV2Source==='original')return `${check}${rule}；可用 suggest_config_fixes 筛选调整方案。`;
+      if(mcp?.status==='ready')return `${check}${rule}；${mcp.suggestions.length?'suggest_config_fixes 已返回可试用方案':'suggest_config_fixes 暂无可试用方案'}。`;
+      if(mcp?.status==='error')return `${check}${rule}；${mcp.error}`;
+      return `${check}${rule}；${globalThis.__MINDSPEED_WEB_SERVICE__?.apiBase?'正在请求 suggest_config_fixes':'连接 V2 服务后可调用 suggest_config_fixes 获取方案'}。`;
+    }
+    function divisionSourceText(scene,variant){
+      const preview=selectedAdvice[scene]?'方案预览：':'';
+      const result=divisionSummary(scene,variant);
+      return scene==='heads'
+        ?`${preview}我检查了 ${variant.total} 个注意力头按 TP ${variant.count} 切分：${result}。对应 MCP 工具 validate_parallel_config 的 PAGE_HEADS_DIVISIBLE_BY_TP 规则。`
+        :`${preview}我检查了 ${variant.total} 层按 PP ${variant.count}、每 Stage ${variant.targetEach} 层分配：${result}。对应 MCP 工具 validate_parallel_config 的 MINDSPEED_LAYERS_DIVISIBLE_BY_PP 规则。`;
+    }
+    function compatibilitySourceText(states){
+      const conflicted=Object.entries(states).filter(([,state])=>state.validation.status!=='valid').map(([key])=>compatibilityScenarios[['mc2','ampipe','recompute'].indexOf(key)]);
+      const summary=conflicted.length?`发现 ${conflicted.length} 组冲突：${conflicted.map(item=>item.label).join('、')}`:'三组关系均满足已建模约束';
+      return `我核对了三组配置选项，${summary}。对应 MCP 工具 validate_parallel_config；涉及 ${compatibilityScenarios.map(item=>item.code).join('、')} 规则。`;
+    }
+    function capacitySourceText(view){
+      const result=view.result;
+      if(result.status!=='estimated')return `当前有 ${result.errors.length} 条静态约束未通过，理论容量暂不可估算；可用 MCP 工具 validate_parallel_config 核对后，再用 estimate_training_capacity 估算。`;
+      const peak=result.data.stages[result.data.bottleneck_stage];
+      const prefix=view.selected?'方案预览：':'';
+      return `${prefix}我估算 PP Stage ${peak.stage} 单卡占用约 ${peak.total_gib.toFixed(1)} / ${peak.capacity_gib} GiB。对应 MCP 工具 estimate_training_capacity，结果为 theoretical，仍需在目标昇腾 NPU 上验证。`;
     }
     function render(preserveControls=false){
       hideWorldsizeV2Tooltip();
@@ -1146,9 +1209,12 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       const peak=shownCapacity?.status==='estimated'?shownCapacity.data.stages[shownCapacity.data.bottleneck_stage]:null;
       const low=peak?shownCapacity.data.stages.reduce((a,b)=>b.total_gib<a.total_gib?b:a):null;
       const capacityLevel=peak?.level==='safe'&&capacityTouchesWarning(shownCapacity,peak)?'tight':peak?.level;
+      currentPlan=planForCurrentCase(v2,capacity,compatibility);
+      $('insert-plan').disabled=!currentPlan;
+      $('insert-plan').title=currentPlan?'将当前已应用的配置置入下方输入框':'当前配置未通过静态校验，或仍有风险提示';
       const v2McpCurrent=v2&&worldsizeV2Mcp.key===worldsizeV2RequestKey(v2)?worldsizeV2Mcp:null;
-      $('case-source-text').textContent=v2?v2.validation.status==='valid'?'当前配置已对齐，无需修复建议。':worldsizeV2Source==='original'?'原始建议由页面内嵌 config-core 静态复验生成；未调用 MCP。':v2McpCurrent?.status==='ready'?v2McpCurrent.suggestions.length?'修复建议来自 V2 服务 suggest_config_fixes 的 structuredContent。':'V2 服务未返回可在当前画布试用的修复方案。':v2McpCurrent?.status==='error'?v2McpCurrent.error:globalThis.__MINDSPEED_WEB_SERVICE__?.apiBase?'正在请求 V2 服务的修复建议。':'请从 V2 服务工作台打开此页以获取修复建议。':factor?factor.snapshot.rankRows?'我已调用 MCP 工具 validate_parallel_config 和 compute_rank_topology，取得并行校验与 Rank 拓扑。':'我已调用 MCP 工具 validate_parallel_config，取得并行约束判断。':caseSources[current];
-      $('case-question').textContent=v2?`目标 ${v2.selection.ranks} Rank，当前配置有多少？`:scene.question;
+      $('case-source-text').textContent=v2?worldsizeV2SourceText(v2,v2McpCurrent):factor?factor.snapshot.rankRows?'我已调用 MCP 工具 validate_parallel_config 和 compute_rank_topology，取得并行校验与 Rank 拓扑。':'我已调用 MCP 工具 validate_parallel_config，取得并行约束判断。':division?divisionSourceText(current,variant):compatibility?compatibilitySourceText(compatibility):capacity?capacitySourceText(capacityView):'';
+      $('case-question').textContent=scene.question;
       const capacityRelation=peak?(peak.total_gib>peak.capacity_gib?'超过':peak.total_gib===peak.capacity_gib?'达到':'低于'):null;
       $('case-title').textContent=v2?`目标 ${v2.selection.ranks} Rank，当前配置计算 ${v2.world} Rank`:factor?factor.check.status==='valid'?factor.snapshot.rankRows?`${factor.snapshot.world} 个 Rank 的五维拓扑`:`${factor.snapshot.world} 个 Rank 的静态校验通过`:comparisonText(factor.snapshot,factor.check,factor.selection.ranks):capacity?(peak?`${capacityView.selected?'方案预览 · ':''}理论估算 ${low.total_gib.toFixed(1)}～${peak.total_gib.toFixed(1)} GiB，${capacityRelation}单卡容量 ${peak.capacity_gib} GiB`:'当前配置暂不可估算'):compatibility?`配置选项关系 · ${compatibilityConflictCount} 条冲突`:variant.title;
       const tone=v2?(v2.validation.status==='valid'?'good':'bad'):factor?(factor.check.status==='valid'?'good':'bad'):capacity?(capacityLevel==='safe'?'good':'estimate'):compatibility?(compatibilityConflictCount?'bad':'good'):variant.tone;
@@ -1165,6 +1231,9 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       $('workspace').classList.toggle('is-capacity',!!capacity);
       $('interaction').hidden=!factor&&!capacity&&!v2&&!compatibility&&!division;
       $('agent-reply').textContent=agentReply(variant,factor,capacityView);
+      $('agent-input').value=composerDrafts.get(current)??'';
+      $('agent-send').disabled=!$('agent-input').value.trim();
+      $('composer-status').textContent='';
       if(!preserveControls)$('reply-feedback').textContent='';
       if(current==='product')updateProductDetail();
       document.querySelectorAll('[role=tab]').forEach(tab=>{const active=tab.dataset.case===current;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;});
@@ -1200,6 +1269,27 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
     });
     document.querySelector('.gallery').addEventListener('click',event=>{const tab=event.target.closest('[data-case]');if(!tab)return;current=tab.dataset.case;render();});
     document.querySelector('.gallery').addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;const tabs=[...document.querySelectorAll('[role=tab]')];let index=tabs.findIndex(tab=>tab.dataset.case===current);index=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;current=tabs[index].dataset.case;render();tabs[index].focus();event.preventDefault();});
+    $('insert-plan').addEventListener('click',()=>{
+      if(!currentPlan)return;
+      const message=`${JSON.stringify(currentPlan.config,null,2)}\n\n请基于以上配置内容更新配置文件`;
+      const input=$('agent-input');
+      input.value=message;
+      composerDrafts.set(current,message);
+      $('agent-send').disabled=false;
+      $('composer-status').textContent='配置已置入输入框，可继续编辑。';
+      input.focus();
+      input.setSelectionRange(message.length,message.length);
+      input.scrollTop=input.scrollHeight;
+    });
+    $('agent-input').addEventListener('input',event=>{
+      composerDrafts.set(current,event.target.value);
+      $('agent-send').disabled=!event.target.value.trim();
+      $('composer-status').textContent='';
+    });
+    $('agent-send').addEventListener('click',()=>{
+      if(!$('agent-input').value.trim())return;
+      $('composer-status').textContent='界面演示：未连接对话服务，内容没有发出。';
+    });
     $('context-control').addEventListener('click',event=>{
       const divisionStep=event.target.closest('[data-division-step]');
       if(divisionStep){
@@ -1271,7 +1361,7 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
     });
     $('context-control').addEventListener('input',event=>{
       const v2Range=event.target.closest('input[data-v2-range]');
-      if(v2Range){const field=v2Range.dataset.v2Range;applyWorldsizeV2Change(field,field==='ranks'?Number(v2Range.value):worldsizeV2FactorSliderValues[worldsizeV2FactorSliderIndexAt(Number(v2Range.value))],true);return;}
+      if(v2Range){const field=v2Range.dataset.v2Range;applyWorldsizeV2Change(field,field==='ranks'?worldsizeV2RankSliderValues[worldsizeV2RankSliderIndexAt(Number(v2Range.value))]:worldsizeV2FactorSliderValues[worldsizeV2FactorSliderIndexAt(Number(v2Range.value))],true);return;}
       const capacityRange=event.target.closest('input[data-capacity-range]');
       if(capacityRange){
         const field=capacityNumberFields.find(item=>item.key===capacityRange.dataset.capacityRange);
@@ -1282,12 +1372,13 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       applyFactorChange(range.dataset.factorRange,Number(range.value));
     });
     $('context-control').addEventListener('keydown',event=>{
-      if(event.target.matches('input[data-v2-range]:not([data-v2-range="ranks"])')&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)){
+      if(event.target.matches('input[data-v2-range]')&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)){
         event.preventDefault();
         const field=event.target.dataset.v2Range;
-        const index=worldsizeV2FactorSliderIndex(worldsizeV2Selection[field]);
-        const next=Math.max(0,Math.min(worldsizeV2FactorSliderValues.length-1,index+(['ArrowRight','ArrowUp'].includes(event.key)?1:-1)));
-        if(next!==index)applyWorldsizeV2Change(field,worldsizeV2FactorSliderValues[next],true);
+        const values=field==='ranks'?worldsizeV2RankSliderValues:worldsizeV2FactorSliderValues;
+        const index=field==='ranks'?worldsizeV2RankSliderIndex(worldsizeV2Selection[field]):worldsizeV2FactorSliderIndex(worldsizeV2Selection[field]);
+        const next=Math.max(0,Math.min(values.length-1,index+(['ArrowRight','ArrowUp'].includes(event.key)?1:-1)));
+        if(next!==index)applyWorldsizeV2Change(field,values[next],true);
         return;
       }
       if(event.target.matches('input[data-v2-number="ranks"]')&&['ArrowUp','ArrowDown'].includes(event.key)){

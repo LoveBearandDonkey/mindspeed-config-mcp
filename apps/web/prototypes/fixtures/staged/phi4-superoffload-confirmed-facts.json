@@ -1,0 +1,28 @@
+{
+  "purpose": "conversation-review-only",
+  "source_files": [
+    "deepspeed_phi4_superoffload_finetune.sh",
+    "phi4_model_config.json",
+    "phi4-superoffload-default.json"
+  ],
+  "selected_branch": "superoffload",
+  "confirmed_from_source": {
+    "launcher_num_gpus": 1,
+    "script_default_batch_size": 4,
+    "max_length": 4096,
+    "gradient_accumulation_steps": 1,
+    "bf16_enabled": true,
+    "zero_stage": 3,
+    "offload_optimizer_device": "cpu",
+    "super_offload": true,
+    "model_name": "microsoft/phi-4",
+    "model_type": "phi3"
+  },
+  "still_requires_confirmation": [
+    "actual MODE and batch arguments",
+    "target training framework and NPU support",
+    "NPU card model and available memory",
+    "effective micro batch and global batch",
+    "parameter dtype at runtime"
+  ]
+}

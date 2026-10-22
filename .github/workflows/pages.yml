@@ -1,0 +1,61 @@
+name: Publish preview pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out V2
+        uses: actions/checkout@v4
+
+      - name: Check out V1
+        uses: actions/checkout@v4
+        with:
+          ref: V1
+          path: .pages-v1
+
+      - name: Assemble static site
+        shell: bash
+        run: |
+          set -euo pipefail
+          site="$RUNNER_TEMP/mindspeed-pages"
+          mkdir -p "$site/v1" "$site/apps/web/prototypes" "$site/apps/web" "$site/docs"
+          cp -a deploy/github-pages/. "$site/"
+          cp -a .pages-v1/deploy/github-pages/. "$site/v1/"
+          cp -a apps/web/config-relation-plane-baseline "$site/apps/web/"
+          cp apps/web/prototypes/constraint-lens.html "$site/apps/web/prototypes/"
+          cp apps/web/prototypes/v2-dual-sample-acceptance.html "$site/apps/web/prototypes/"
+          mkdir -p "$site/apps/web/prototypes/fixtures"
+          cp -a apps/web/prototypes/fixtures/staged "$site/apps/web/prototypes/fixtures/"
+          cp docs/V2双样本逐项验收记录.md "$site/docs/"
+          test -f "$site/.nojekyll"
+          test -f "$site/v1/index.html"
+          test -f "$site/apps/web/config-relation-plane-baseline/training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html"
+          test -f "$site/apps/web/prototypes/constraint-lens.html"
+          test -f "$site/apps/web/prototypes/v2-dual-sample-acceptance.html"
+          test -f "$site/apps/web/prototypes/fixtures/staged/README.md"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/mindspeed-pages
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

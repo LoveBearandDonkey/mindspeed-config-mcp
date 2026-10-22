@@ -4,6 +4,15 @@
 
 ## 当前状态
 
+GitHub Pages 预览（启用仓库的 Pages 并完成首次部署后可访问）：
+
+- [V1 静态体验（`V1` 分支）](https://lovebearanddonkey.github.io/mindspeed-config-mcp/v1/)
+- [V2 配置关系基线页](https://lovebearanddonkey.github.io/mindspeed-config-mcp/apps/web/config-relation-plane-baseline/training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html)
+- [V2 约束视图原型](https://lovebearanddonkey.github.io/mindspeed-config-mcp/apps/web/prototypes/constraint-lens.html)
+- [V2 双样本验收展示](https://lovebearanddonkey.github.io/mindspeed-config-mcp/apps/web/prototypes/v2-dual-sample-acceptance.html)
+
+发布由 [GitHub Pages 工作流](.github/workflows/pages.yml) 组装 `main` 与 `V1` 分支的静态文件。将工作流推送到 `main` 后，在仓库 Settings → Pages 中把 Source 设为 **GitHub Actions**，等待首次部署成功。Pages 仅提供浏览器预览，不提供 MCP 协议服务；约束视图在 Pages 上使用本地演示能力，在线 MCP 建议仍需打开 V2 服务。
+
 V1 基线已归档为 `v1.0.8`；V2 正在 `main` 开发。`集成分析.md` 表中第 1、2、3、4、6 项已形成 V1 并通过
 单元测试。stdio MCP Server 当前已注册九个只读计算 Tool，并提供七个无需填写宿主 JSON 的
 自定义中文界面入口；远程 Streamable HTTP、健康检查和静态 Bearer
