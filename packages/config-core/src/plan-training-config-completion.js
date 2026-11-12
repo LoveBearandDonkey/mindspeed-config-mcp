@@ -3,7 +3,7 @@ import { estimateTrainingCapacity } from "./estimate-training-capacity.js";
 import { validateParallelConfig } from "./validate-parallel-config.js";
 import { parallelWorld } from "./page-rules.js";
 
-const COMPLETION_SOURCE = "mindspeed-config-mcp:plan-training-config-completion@0.3.2";
+const COMPLETION_SOURCE = "mindspeed-config-mcp:plan-training-config-completion@0.3.3";
 const DEEPSEEK_SOURCE = "compute-graph-viewer-wzh:config-test/hf_deepseekv3_config.json";
 const EDITABLE_STRUCTURE_PRESET_SOURCE = "mindspeed-config-mcp:editable-model-structure-preset@0.3.1";
 const EDITABLE_MODEL_STRUCTURE_PRESET = Object.freeze({
@@ -275,7 +275,7 @@ function runtimeDefault(path, config, context) {
     "model.ffn_hidden_size": hidden * 4,
     "model.expert_ffn_hidden_size": Number(config.model?.ffn_hidden_size) || hidden * 4,
     "model.vocab_size": 32000,
-    "model.first_k_dense_layers": 0,
+    "model.first_k_dense_layers": EDITABLE_MODEL_STRUCTURE_PRESET["model.first_k_dense_layers"],
     "cluster.ranks_per_node": 8,
     "batch.micro_batch_size": 1,
     "batch.sequence_length": 4096,
@@ -329,6 +329,9 @@ function gcd(left, right) {
 }
 
 function completionReason(path, config, context) {
+  if (path === "model.first_k_dense_layers") {
+    return "源文件未提供可直接采用的前置 Dense 层数；预填可编辑候选 2，并非源模型事实，应用前需确认。";
+  }
   if (path === "cluster.total_ranks") {
     return "由本次候选的 DP、PP、TP、CP、EP 口径即时计算 world size。";
   }
@@ -555,6 +558,33 @@ export function planTrainingConfigCompletion(normalizedConfig, missingRequiredFi
 
   const errorCodes = new Set(sourcePlan.validation.errors.map((item) => item.code));
   if (!plans.length && errorCodes.has("PAGE_EP_DOMAIN_DIVISIBLE_BY_EP")) {
+    // Prefer a validated repair within the declared resource budget. Expansion remains
+    // available when the fixed-resource candidates cannot meet the capacity gate.
+    if (normalizedConfig.cluster?.total_ranks !== undefined) {
+      const repairs = suggestConfigFixes({
+        ...base,
+        policy: {
+          ...base.policy,
+          objective: "keep-current-resources",
+          locked_fields: [...new Set([...(base.policy?.locked_fields ?? []),
+            "cluster.total_ranks", "model.num_attention_heads", "model.num_key_value_heads", "model.top_k",
+          ])],
+        },
+      });
+      for (const suggestion of (repairs.data?.suggestions ?? []).slice(0, 2)) {
+        const candidate = structuredClone(suggestion.proposed_config);
+        if (base.policy) candidate.policy = structuredClone(base.policy);
+        else delete candidate.policy;
+        plans.push(plan(
+          `preserve-current-resources-${suggestion.rank}`,
+          `保持现有 ${base.cluster.total_ranks} Rank · 修复方案 ${suggestion.rank}`,
+          suggestion.changes.map(change => `${change.path}: ${change.old_value} → ${change.new_value}`).join("；"),
+          candidate,
+          completionValuesForCandidate(values, base, candidate, sourcePlan.validation.errors),
+          true,
+        ));
+      }
+    }
     const expanded = structuredClone(base);
     const mode = expanded.parallel.ep_mode;
     const domainFactor = mode === "mf" ? expanded.parallel.tp : 1;
@@ -567,7 +597,7 @@ export function planTrainingConfigCompletion(normalizedConfig, missingRequiredFi
       `保留 EP=${expanded.parallel.ep} 等源配置切分，把 DP 调整为 ${expanded.parallel.dp}，总 Rank 调整为 ${expanded.cluster.total_ranks}。`,
       expanded,
       completionValuesForCandidate(values, base, expanded, sourcePlan.validation.errors),
-      true,
+      !plans.some(candidate => candidate.capacity_assessment.recommendation_eligible),
     );
     if (expandedPlan.validation.status === "valid") plans.push(expandedPlan);
   }

@@ -38,7 +38,7 @@ import { mountWorkbenchOverview } from "@mcp-bridge/mcp-workbench-overview.js";
 import { installPlanAdapter } from "@mcp-bridge/mcp-plan-adapter.js";
 import { installAnalysisNotebook } from "@mcp-bridge/mcp-analysis-notebook.js";
 import { installPagesBridge } from "@mcp-bridge/mcp-pages-bridge.js";
-import { conflictFieldsFor, conflictInputValue } from "@mcp-bridge/mcp-conflict-fields.js";
+import { conflictFieldsFor, conflictInputValue, sourceParsedValue } from "@mcp-bridge/mcp-conflict-fields.js";
 
 const staticDemoMode = __MCP_STATIC_DEMO__;
 const remoteServiceConfig = globalThis.__MINDSPEED_WEB_SERVICE__ ?? null;
@@ -86,7 +86,7 @@ mountWorkbenchOverview();
 function parseInput(source) {
   const input = {
     schema_version: "1.0",
-    rule_profile: { framework: "generic", version: "v1-workbench" },
+    rule_profile: source.ruleProfile ?? { framework: "generic", version: "v1-workbench" },
     source: {
       format: inferSourceFormat(source.name),
       name: source.name,
@@ -297,6 +297,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
   const imported = { token: 0, current: null, lastSource: null };
   const sample = { token: 0, current: null, lastFile: null, lastCard: null };
   const appliedImport = { current: null, signature: null, adjusted: [], source: null };
+  let syncImportSourceDisclosure = () => {};
   let lastParseKind = null;
   let liveParseTimer = 0;
   let presetPreviewToken = 0;
@@ -346,6 +347,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     "model.routed_experts": 256,
     "model.top_k": 8,
     "model.shared_experts": 1,
+    "model.first_k_dense_layers": 2,
     "parallel.dp": 1,
     "parallel.pp": 1,
     "parallel.tp": 1,
@@ -393,6 +395,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     if (ui.resultPane) ui.resultPane.hidden = !started;
     const banner = ui.workspace?.querySelector(":scope > .mcp-parse-banner");
     if (banner) banner.hidden = !started;
+    syncImportSourceDisclosure();
   }
 
   function createParseBanner(score) {
@@ -704,6 +707,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     workspace.id = "mcpImportWorkspace";
     workspace.className = "mcp-import__workspace";
     const codePane = document.createElement("section");
+    codePane.id = "mcpImportCodePane";
     codePane.className = "mcp-import__pane mcp-import__code-pane";
     codePane.setAttribute("aria-label", "配置输入");
     const trainingSource = document.createElement("section");
@@ -784,6 +788,47 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     workspace.append(codePane, resultBanner, resultPane, createMissingPane("mcpImportMissingPane"));
     body.append(workspace);
 
+    const sourceToggle = document.createElement("button");
+    sourceToggle.id = "mcpImportSourceToggle";
+    sourceToggle.type = "button";
+    sourceToggle.className = "btn btn-sm btn-ghost mcp-import__source-toggle";
+    sourceToggle.setAttribute("aria-controls", codePane.id);
+    close.before(sourceToggle);
+    let compact = null;
+    let manuallyCollapsed = null;
+    syncImportSourceDisclosure = (reset = false) => {
+      if (reset) manuallyCollapsed = null;
+      const width = box.clientWidth;
+      if (!width) return;
+      const nextCompact = width < 1040;
+      if (nextCompact !== compact) {
+        compact = nextCompact;
+        manuallyCollapsed = null;
+      }
+      const hasSource = Boolean(text.value.trim() || modelText.value.trim());
+      const collapsed = manuallyCollapsed ?? (compact && hasSource);
+      workspace.classList.toggle("is-compact", compact);
+      workspace.classList.toggle("is-narrow", width < 680);
+      workspace.classList.toggle("is-source-collapsed", collapsed);
+      if (collapsed && codePane.contains(document.activeElement)) sourceToggle.focus({ preventScroll: true });
+      codePane.hidden = collapsed;
+      sourceToggle.setAttribute("aria-expanded", String(!collapsed));
+      sourceToggle.textContent = collapsed ? "展开配置源码" : "收起配置源码";
+    };
+    sourceToggle.addEventListener("click", () => {
+      manuallyCollapsed = !codePane.hidden;
+      syncImportSourceDisclosure();
+    });
+    codePane.addEventListener("beforeinput", (event) => {
+      if (event.isTrusted) manuallyCollapsed = false;
+    });
+    codePane.addEventListener("pointerdown", (event) => {
+      if (event.isTrusted) manuallyCollapsed = false;
+    });
+    if (typeof ResizeObserver === "function") {
+      new ResizeObserver(() => syncImportSourceDisclosure()).observe(box);
+    } else window.addEventListener("resize", () => syncImportSourceDisclosure());
+
     const footer = document.createElement("footer");
     footer.className = "mcp-import__footer";
     apply.classList.add("btn-solid");
@@ -831,6 +876,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     return {
       name,
       content: ui.text.value ?? "",
+      ...(imported.lastSource?.ruleProfile ? { ruleProfile: imported.lastSource.ruleProfile } : {}),
       ...(modelContent.trim() ? { modelSource: { name: modelName, content: modelContent } } : {}),
     };
   }
@@ -855,6 +901,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     setImportValidationStarted(false);
     renderMissingInputs(null, imported, document.getElementById("mcpImportMissingPane"), ui.apply);
     syncClearButton();
+    syncImportSourceDisclosure(true);
     if (focus) ui.text.focus();
   }
 
@@ -1088,6 +1135,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     const plan = selectedCompletionPlan(current);
     const capacity = currentCapacityAssessment(current);
     return plan?.confidence === "requires-confirmation"
+      || (current?.adjustedCandidatePaths?.length ?? 0) > 0
       || (current?.conflictEditedPaths?.size ?? 0) > 0
       || (!plan && (current?.supplements?.size ?? 0) > 0)
       || capacity?.recommendation_eligible !== true;
@@ -1477,6 +1525,38 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     syncPresentation();
   }
 
+  function syncSourceChangeWarnings(current, pane) {
+    const adjusted = [];
+    const config = materializedConfig(current);
+    for (const control of pane.querySelectorAll("[data-missing-path]")) {
+      const path = control.dataset.missingPath;
+      const original = sourceParsedValue(current.result, path);
+      const changed = original !== undefined && !sameValue(original, getPath(config, path));
+      const row = control.closest(".mcp-missing-field");
+      if (!row) continue;
+      row.classList.toggle("is-adjusted-candidate", changed);
+      row.dataset.missingKind = changed ? "candidate-change" : "config";
+      const label = row.querySelector(".cro-stepper__label-text");
+      let source = label.querySelector(".mcp-missing-field__source-value");
+      if (!source) {
+        source = document.createElement("small");
+        source.className = "mcp-missing-field__source-value";
+        label.append(source);
+      }
+      source.hidden = !changed;
+      source.textContent = changed ? `源配置解析值：${inlineValue(original)}` : "";
+      let kind = label.querySelector(".mcp-missing-field__kind");
+      if (!kind) {
+        kind = document.createElement("small");
+        kind.className = "mcp-missing-field__kind";
+        label.append(kind);
+      }
+      kind.textContent = changed ? "修改输入配置 · 需确认" : (original === undefined ? "补充缺口" : "保留源配置值");
+      if (changed) adjusted.push(path);
+    }
+    current.adjustedCandidatePaths = adjusted;
+  }
+
   function syncConflictInputs(state, pane, applyButton, config, result) {
     const current = state.current;
     const descriptors = conflictFieldsFor(result, config);
@@ -1518,7 +1598,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
         const code = document.createElement("code");
         code.textContent = path;
         const original = document.createElement("small");
-        original.className = "mcp-missing-field__reason";
+        original.className = "mcp-missing-field__source-value";
         const sourceValue = getPath(current.result?.data?.normalized_config, path);
         original.textContent = `源配置解析值：${sourceValue === undefined ? "未提供" : inlineValue(sourceValue)}`;
         text.append(name, code, original);
@@ -1605,10 +1685,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
       note.title = issues.map(issue => `${issue.code} · ${issue.source_ref ?? ""}`).join("\n");
     }
     current.supplementsValid = !pane.querySelector('[aria-invalid="true"]');
-    const changed = [...current.conflictFields.keys()].filter(path => !sameValue(
-      getPath(current.result?.data?.normalized_config, path), getPath(config, path),
-    ));
-    current.adjustedCandidatePaths = [...new Set([...(current.adjustedCandidatePaths ?? []).filter(path => !current.conflictFields.has(path)), ...changed])];
+    syncSourceChangeWarnings(current, pane);
     pane.hidden = false;
     pane.parentElement?.classList.add("has-missing-inputs");
     setParseBannerMode(pane, true);
@@ -1617,6 +1694,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
   async function validateCompletion(state, pane, applyButton) {
     if (!state.current) return;
     const current = state.current;
+    syncSourceChangeWarnings(current, pane);
     const token = (current.completionToken ?? 0) + 1;
     current.completionToken = token;
     current.completionValidation = "pending";
@@ -1842,10 +1920,11 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
       name.className = "cro-stepper__label mcp-missing-field__label";
       const evidence = preferred?.values?.find((item) => item.path === path);
       const reasonParts = [];
-      if (adjustedCandidate) {
-        reasonParts.push(`原值：${inlineValue(sourceValueByPath.get(path))}`);
-      }
       if (evidence) reasonParts.push(`${evidence.reason} · ${evidence.confidence}`);
+      if (path === "model.first_k_dense_layers"
+        && getPath(preferred?.proposed_config, path) === undefined) {
+        reasonParts.push("未从文件确认；预填候选 2，可修改，应用前请按实际模型结构确认。");
+      }
       const unresolved = result.warnings?.find(item => item.code === "PARSE_DENSE_LAYER_COUNT_UNRESOLVED"
         && item.fields?.includes(path));
       if (unresolved) reasonParts.push(unresolved.message);
@@ -1969,6 +2048,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     if (preserveRenderedState && state.current.completionResult) {
       syncConflictInputs(state, pane, applyButton, materializedConfig(state.current), state.current.completionResult);
     }
+    syncSourceChangeWarnings(state.current, pane);
     syncCompletionStatus(state.current, pane);
     syncCompletionConfirmation(state.current, pane);
     syncApplyState(state, applyButton);
@@ -2445,6 +2525,10 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     parseSample(file, event.detail?.card ?? null);
   });
 
+  document.addEventListener("change", (event) => {
+    if (event.target?.id === "croImportFile" && imported.lastSource) delete imported.lastSource.ruleProfile;
+  }, true);
+
   document.addEventListener("input", (event) => {
     if (!new Set(["croImportText", "mcpImportModelText"]).has(event.target?.id)) return;
     clearTimeout(liveParseTimer);
@@ -2599,6 +2683,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     parseImported({
       name: source.name,
       content: source.content,
+      ruleProfile: event.detail?.rule_profile ?? event.detail?.demo_config?.rule_profile,
       ...(source.model_source ? { modelSource: {
         name: source.model_source.name,
         content: source.model_source.content,

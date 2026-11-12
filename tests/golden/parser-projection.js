@@ -206,7 +206,25 @@ model:
     "torchrun train.py --model deepseek_v3 --num-experts 256 --first-k-dense-replace -1",
     "shell", "negative-dense-layer-count.sh",
   );
+  const resourceConfig = createTrainingConfig({ parallel: { dp: 64, pp: 2, tp: 2, ep: 128 },
+    cluster: { total_ranks: 256 }, model: { routed_experts: 256, expert_ffn_hidden_size: 1024 } });
+  delete resourceConfig.model.first_k_dense_layers;
+  delete resourceConfig.cluster.card_model;
+  delete resourceConfig.cluster.card_memory_gib;
+  const resourceResult = parseTrainingConfig({ schema_version: "1.0", rule_profile: resourceConfig.rule_profile,
+    source: { format: "json", name: "fixed-resources.json", content: JSON.stringify(resourceConfig) } });
+  const resourcePlan = resourceResult.data.completion.plans.find(plan => plan.recommended);
   return {
+    resource_preserving_completion: {
+      source_ep: resourceResult.data.normalized_config.parallel.ep,
+      source_ranks: resourceResult.data.normalized_config.cluster.total_ranks,
+      candidate_ep: resourcePlan.proposed_config.parallel.ep,
+      candidate_ranks: resourcePlan.proposed_config.cluster.total_ranks,
+      dense_candidate: resourcePlan.proposed_config.model.first_k_dense_layers,
+      validation: resourcePlan.validation.status,
+      capacity_confidence: resourcePlan.capacity_assessment.confidence,
+      changes: resourcePlan.values.filter(item => item.path === "parallel.ep" || item.path === "model.first_k_dense_layers"),
+    },
     unresolved_dense_layer_count: {
       value: unresolvedDense.data.normalized_config.model.first_k_dense_layers ?? null,
       missing: unresolvedDense.data.missing_required_fields.includes("model.first_k_dense_layers"),

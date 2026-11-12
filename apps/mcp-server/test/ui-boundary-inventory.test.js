@@ -942,8 +942,8 @@ test("配置下拉与导入弹窗在仍缺输入时提供可编辑的第三栏",
   );
   assert.match(
     shellSource,
-    /if \(adjustedCandidate\) \{[\s\S]*?reasonParts\.push\(`原值：\$\{inlineValue\(sourceValueByPath\.get\(path\)\)\}`\)[\s\S]*?mcp-missing-field__reason/,
-    "候选值已调整时，字段原因没有先展示源文件的原值",
+    /function syncSourceChangeWarnings[\s\S]*?sourceParsedValue\(current\.result, path\)[\s\S]*?classList\.toggle\("is-adjusted-candidate", changed\)[\s\S]*?源配置解析值：\$\{inlineValue\(original\)\}/,
+    "候选修复和用户修改没有统一比较源值、展示原值并设置黄色警示",
   );
   assert.match(
     shellSource,

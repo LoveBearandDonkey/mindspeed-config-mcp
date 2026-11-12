@@ -2,7 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { validateParallelConfig } from "@mindspeed-config/config-core";
 import { createTrainingConfig } from "../../../tests/fixtures/training-config.js";
-import { conflictFieldsFor, conflictInputValue } from "../ui/src/mcp-conflict-fields.js";
+import { conflictFieldsFor, conflictInputValue, sourceParsedValue } from "../ui/src/mcp-conflict-fields.js";
+
+test("源配置比较保留零值、真实缺口和被契约拒绝的原始值", () => {
+  const result = { data: { normalized_config: { parallel: { dp: 64 }, model: { shared_experts: 0 } },
+    unmapped_fields: [{ source_key: "first-k-dense-replace", value: "-1" }] },
+    warnings: [{ fields: ["first-k-dense-replace", "model.first_k_dense_layers"] }] };
+  assert.equal(sourceParsedValue(result, "parallel.dp"), 64);
+  assert.equal(sourceParsedValue(result, "model.shared_experts"), 0);
+  assert.equal(sourceParsedValue(result, "cluster.card_model"), undefined);
+  assert.equal(sourceParsedValue(result, "model.first_k_dense_layers"), "-1");
+});
 
 test("校验错误的实际 fields 决定可编辑项，DP/EP 不从文案中猜测", () => {
   const config = createTrainingConfig({ parallel: { dp: 64, ep: 128 }, cluster: { total_ranks: 256 } });

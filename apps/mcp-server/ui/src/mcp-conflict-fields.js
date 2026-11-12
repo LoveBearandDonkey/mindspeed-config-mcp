@@ -6,6 +6,15 @@ function fieldSchema(path) {
     ? current.properties[key] : undefined, schema) ?? null;
 }
 
+// Compare against the parsed source, including raw values rejected by the contract.
+export function sourceParsedValue(result, path) {
+  const normalized = path.split(".").reduce((value, key) => value?.[key], result?.data?.normalized_config);
+  if (normalized !== undefined) return normalized;
+  const issue = result?.warnings?.find(item => item.fields?.includes(path)
+    && result?.data?.unmapped_fields?.some(field => item.fields.includes(field.source_key)));
+  return result?.data?.unmapped_fields?.find(field => issue?.fields?.includes(field.source_key))?.value;
+}
+
 export function conflictFieldsFor(result, config) {
   const fields = new Map();
   for (const issue of result?.errors ?? []) {

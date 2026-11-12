@@ -346,7 +346,14 @@ html:has(.mcp-overview) .mcp-config-import-row {
   gap: var(--space-4);
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
 }
+
+.mcp-import__source-toggle { margin-left: auto; }
+
+.mcp-import__source-toggle + #croImportClose { margin-left: 0; }
+
+.mcp-import__workspace > .mcp-import__code-pane[hidden] { display: none; }
 
 .mcp-import__workspace.is-awaiting-validation {
   grid-template-columns: minmax(0, 1fr);
@@ -907,9 +914,9 @@ html:has(.mcp-overview) .mcp-config-import-row {
   width: max-content;
   max-width: 100%;
   padding: 1px 5px;
-  border: 1px solid color-mix(in srgb, var(--warning) 32%, transparent);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
-  color: var(--warning);
+  color: var(--foreground-secondary);
   font-size: 10px;
   font-weight: var(--font-weight-semibold);
   line-height: 1.35;
@@ -930,6 +937,25 @@ html:has(.mcp-overview) .mcp-config-import-row {
   width: 100%;
   min-width: 0;
 }
+
+.mcp-missing-field__source-value,
+.mcp-missing-field.is-adjusted-candidate .mcp-missing-field__kind {
+  border-color: color-mix(in srgb, var(--warning) 32%, transparent);
+  color: var(--warning);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.mcp-missing-field__source-value[hidden] { display: none; }
+
+.mcp-missing-field.is-adjusted-candidate .cro-stepper__control,
+.mcp-missing-field.is-adjusted-candidate .cro-select {
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, var(--surface-1));
+  box-shadow: inset 0 0 0 1px var(--warning);
+}
+
+.mcp-missing-field.is-adjusted-candidate .cro-stepper__input { color: var(--warning); }
 
 .mcp-conflict-fields { display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--border-default); }
 .mcp-conflict-fields__title { font-size: 12px; color: var(--foreground); }
@@ -1236,6 +1262,7 @@ html:has(.mcp-overview) .mcp-config-import-row {
 
 .mcp-import__footer {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
   align-items: center;
   justify-content: flex-start;
@@ -1539,6 +1566,78 @@ html:has(.mcp-overview) .mcp-config-import-row {
   .mcp-import__model-source .cro-import__text {
     min-height: 140px;
   }
+}
+
+/* Import layout follows the dialog width, including nested Webviews and split panes. */
+.mcp-import__workspace.is-compact:not(.is-awaiting-validation):not(.is-source-collapsed) {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(280px, 0.7fr) auto minmax(240px, 1fr);
+}
+
+.mcp-import__workspace.is-compact.has-missing-inputs:not(.is-source-collapsed) {
+  grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr);
+}
+
+.mcp-import__workspace.is-compact:not(.is-source-collapsed) > .mcp-import__code-pane {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.mcp-import__workspace.is-compact:not(.is-source-collapsed) > .mcp-parse-banner {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.mcp-import__workspace.is-compact:not(.is-source-collapsed) > .mcp-import__result-pane {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+.mcp-import__workspace.is-compact:not(.is-source-collapsed) > .mcp-missing-pane {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.mcp-import__workspace.is-source-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.mcp-import__workspace.is-source-collapsed.has-missing-inputs {
+  grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr);
+}
+
+.mcp-import__workspace.is-source-collapsed > .mcp-parse-banner {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.mcp-import__workspace.is-source-collapsed > .mcp-import__result-pane {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.mcp-import__workspace.is-source-collapsed > .mcp-missing-pane {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.mcp-import__box .cro-import__body:has(.is-compact:not(.is-source-collapsed)),
+.mcp-import__box .cro-import__body:has(.is-narrow) { overflow: auto; }
+
+.mcp-import__workspace.is-narrow.is-source-collapsed {
+  grid-template-rows: auto minmax(260px, 1fr);
+}
+
+.mcp-import__workspace.is-narrow:not(.is-source-collapsed):not(.is-awaiting-validation) {
+  grid-template-rows: minmax(440px, 0.7fr) auto minmax(260px, 1fr);
+}
+
+.mcp-import__workspace.is-narrow > .mcp-missing-pane {
+  min-height: 260px;
+  padding: 0 0 0 var(--space-4);
+  border-top: 0;
+  border-left: 1px solid var(--border-subtle);
 }
 
 @media (max-width: 900px) {

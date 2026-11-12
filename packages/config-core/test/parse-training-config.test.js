@@ -538,6 +538,30 @@ torchrun train.py \\
   )));
 });
 
+test("明确资源预算下优先补齐缺口并修复 EP 冲突，源配置保持原值", () => {
+  const config = createTrainingConfig({ parallel: { dp: 64, pp: 2, tp: 2, ep: 128 },
+    cluster: { total_ranks: 256 }, model: { routed_experts: 256, expert_ffn_hidden_size: 1024 } });
+  delete config.model.first_k_dense_layers;
+  delete config.cluster.card_model;
+  delete config.cluster.card_memory_gib;
+  const result = parseTrainingConfig({ ...input(JSON.stringify(config), "json"), rule_profile: config.rule_profile });
+  const completion = result.data.completion;
+  const best = completion.plans.find(plan => plan.id === completion.recommended_plan_id);
+  assert.match(best.id, /^preserve-current-resources-/);
+  assert.equal(best.validation.status, "valid");
+  assert.equal(best.capacity_assessment.recommendation_eligible, true);
+  assert.equal(best.proposed_config.cluster.total_ranks, 256);
+  assert.equal(best.proposed_config.parallel.dp, 64);
+  assert.equal(best.proposed_config.parallel.ep, 64);
+  assert.equal(best.proposed_config.model.first_k_dense_layers, 2);
+  assert.equal(best.proposed_config.policy, undefined);
+  assert.ok(best.values.some(item => item.path === "parallel.ep" && item.confidence === "requires-confirmation"));
+  assert.equal(result.data.normalized_config.parallel.ep, 128);
+  assert.equal(result.data.normalized_config.model.first_k_dense_layers, undefined);
+  assert.equal(config.parallel.ep, 128);
+  assert.ok(completion.plans.some(plan => plan.id === "preserve-parallel-expansion"));
+});
+
 test("常规搜索无解时生成经过复验的兜底方案并逐项暴露冲突字段", () => {
   const result = parseTrainingConfig(input(`
 parallel_config:

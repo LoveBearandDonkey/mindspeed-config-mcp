@@ -58,7 +58,9 @@ export function installPagesBridge(core) {
     try {
       const result = checkPageFiles(payload ?? {}, core);
       document.getElementById("croImportConfig")?.click();
-      document.dispatchEvent(new CustomEvent("mcp:workbench-handoff", { detail: { source: result.source } }));
+      document.dispatchEvent(new CustomEvent("mcp:workbench-handoff", { detail: {
+        source: result.source, rule_profile: result.parse.data.normalized_config.rule_profile,
+      } }));
       if (result.validation) {
         // The handoff first records the editable sources; restore the exact checked values next.
         setTimeout(() => {

@@ -1,4 +1,29 @@
 {
+  "resource_preserving_completion": {
+    "source_ep": 128,
+    "source_ranks": 256,
+    "candidate_ep": 64,
+    "candidate_ranks": 256,
+    "dense_candidate": 2,
+    "validation": "valid",
+    "capacity_confidence": "theoretical",
+    "changes": [
+      {
+        "path": "model.first_k_dense_layers",
+        "value": 2,
+        "reason": "源文件未提供可直接采用的前置 Dense 层数；预填可编辑候选 2，并非源模型事实，应用前需确认。",
+        "confidence": "requires-confirmation",
+        "source_ref": "mindspeed-config-mcp:plan-training-config-completion@0.3.3"
+      },
+      {
+        "path": "parallel.ep",
+        "value": 64,
+        "reason": "为消除静态约束冲突：切出口径下，DP 64 不能被 EP 128 整除。",
+        "confidence": "requires-confirmation",
+        "source_ref": "compute-graph-viewer-wzh:shared/plane-rules.js@1e6bb6e"
+      }
+    ]
+  },
   "unresolved_dense_layer_count": {
     "value": null,
     "missing": true,
