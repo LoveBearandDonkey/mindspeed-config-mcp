@@ -1257,6 +1257,17 @@
      所以主脚本挂在 #croEpMode 上的那条 click 委托与 onChange 同步原样有效。 */
   let epField = null;
 
+  /* Shared hint trigger; keep it outside the optional assessment view. */
+  function gradeHint(text) {
+    const btn = el("button", "cro-hint");
+    btn.type = "button";
+    btn.dataset.hint = String(text);
+    btn.setAttribute("aria-expanded", "false");
+    btn.setAttribute("aria-label", "说明");
+    btn.textContent = "?";
+    return btn;
+  }
+
   function mountEpModeField() {
     const epMode = doc.getElementById("croEpMode");
     const host = doc.getElementById("croMoeSteppers");
@@ -4202,18 +4213,6 @@
     /* 标题里那个百分比要跟着当前最紧的卡走，不能写死 */
     syncCapCard();
     return capWrap;
-  }
-
-  /* 与 observer 的 buildHint 同款触发点（.cro-hint + data-hint）。不直接调那一个，
-     是因为它没挂到 global 上；样式与气泡逻辑仍旧完全共用，这里不另起一套。 */
-  function gradeHint(text) {
-    const btn = el("button", "cro-hint");
-    btn.type = "button";
-    btn.dataset.hint = String(text);
-    btn.setAttribute("aria-expanded", "false");
-    btn.setAttribute("aria-label", "说明");
-    btn.textContent = "?";
-    return btn;
   }
 
   const pctText = (x) => `${Math.round(x * 100)}%`;

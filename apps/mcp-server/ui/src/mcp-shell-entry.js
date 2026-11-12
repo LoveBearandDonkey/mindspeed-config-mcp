@@ -37,6 +37,8 @@ import { createRemoteWebClient } from "@mcp-bridge/remote-web-client.js";
 import { mountWorkbenchOverview } from "@mcp-bridge/mcp-workbench-overview.js";
 import { installPlanAdapter } from "@mcp-bridge/mcp-plan-adapter.js";
 import { installAnalysisNotebook } from "@mcp-bridge/mcp-analysis-notebook.js";
+import { installPagesBridge } from "@mcp-bridge/mcp-pages-bridge.js";
+import { conflictFieldsFor, conflictInputValue } from "@mcp-bridge/mcp-conflict-fields.js";
 
 const staticDemoMode = __MCP_STATIC_DEMO__;
 const remoteServiceConfig = globalThis.__MINDSPEED_WEB_SERVICE__ ?? null;
@@ -167,6 +169,7 @@ if (remoteServiceMode) {
     console.error("MindSpeed Config Web Service:", error);
   });
 } else if (previewMode) {
+  installPagesBridge({ parseTrainingConfig, validateParallelConfig });
   document.documentElement.dataset.mcpPreview = "local-core";
   installParseAdapter(
     async (source) => parseTrainingConfig(parseInput(source)),
@@ -1085,6 +1088,8 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     const plan = selectedCompletionPlan(current);
     const capacity = currentCapacityAssessment(current);
     return plan?.confidence === "requires-confirmation"
+      || (current?.conflictEditedPaths?.size ?? 0) > 0
+      || (!plan && (current?.supplements?.size ?? 0) > 0)
       || capacity?.recommendation_eligible !== true;
   }
 
@@ -1472,6 +1477,143 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     syncPresentation();
   }
 
+  function syncConflictInputs(state, pane, applyButton, config, result) {
+    const current = state.current;
+    const descriptors = conflictFieldsFor(result, config);
+    current.conflictFields ??= new Map();
+    for (const descriptor of descriptors) current.conflictFields.set(descriptor.path, descriptor);
+    if (!current.conflictFields.size) return;
+    const fields = pane.querySelector(".mcp-missing-pane__fields");
+    let section = fields.querySelector(".mcp-conflict-fields");
+    if (!section) {
+      section = document.createElement("section");
+      section.className = "mcp-conflict-fields";
+      section.setAttribute("aria-label", "校验冲突处理");
+      const heading = document.createElement("strong");
+      heading.className = "mcp-conflict-fields__title";
+      const hint = document.createElement("p");
+      hint.className = "mcp-conflict-fields__hint";
+      hint.textContent = "以下字段来自校验结果。可修改当前值后继续复验；修改只作用于工作台候选，应用前仍需通过完整检查。";
+      section.append(heading, hint);
+      fields.append(section);
+    }
+    section.querySelector(".mcp-conflict-fields__title").textContent = descriptors.length
+      ? `校验冲突 · ${descriptors.length} 个关联字段可调整`
+      : (result.errors?.length ? "已发现的冲突字段 · 请继续处理本轮校验问题" : "已发现的冲突字段 · 本轮复验无冲突");
+    const title = pane.querySelector("[data-mcp-completion-title]");
+    if (title) title.textContent = `MCP 补齐与冲突处理（原始缺口 ${current.result?.data?.missing_required_fields?.length ?? 0} 项 · 当前冲突 ${descriptors.length} 个字段）`;
+    const activeIssues = new Map(descriptors.map(item => [item.path, item.issues]));
+    for (const [path, descriptor] of current.conflictFields) {
+      let control = [...fields.querySelectorAll("[data-missing-path]")].find(item => item.dataset.missingPath === path);
+      let row = control?.closest(".mcp-missing-field");
+      if (!control) {
+        row = document.createElement("div");
+        row.className = "cro-stepper mcp-missing-field";
+        const label = document.createElement("label");
+        label.className = "cro-stepper__label mcp-missing-field__label";
+        const text = document.createElement("span");
+        text.className = "cro-stepper__label-text";
+        const name = document.createElement("b");
+        name.textContent = labelForPath(path);
+        const code = document.createElement("code");
+        code.textContent = path;
+        const original = document.createElement("small");
+        original.className = "mcp-missing-field__reason";
+        const sourceValue = getPath(current.result?.data?.normalized_config, path);
+        original.textContent = `源配置解析值：${sourceValue === undefined ? "未提供" : inlineValue(sourceValue)}`;
+        text.append(name, code, original);
+        label.append(text);
+        const definition = descriptor.schema;
+        const choices = definition.enum ?? (definition.type === "boolean" ? [false, true] : null);
+        control = document.createElement(choices ? "select" : "input");
+        control.className = choices ? "cro-select mcp-missing-field__control" : "zoom-control-readout cro-stepper__input mcp-missing-field__input";
+        if (choices) {
+          const labels = new Map(optionsFor(path, descriptor.value) ?? []);
+          for (const choice of choices) {
+            const option = document.createElement("option");
+            option.value = String(choice);
+            option.textContent = String(labels.get(choice) ?? choice);
+            control.append(option);
+          }
+        } else {
+          control.type = ["integer", "number"].includes(definition.type) ? "number" : "text";
+          if (definition.minimum !== undefined) control.min = String(definition.minimum);
+          control.step = definition.type === "integer" ? "1" : "any";
+          if (definition.type === "array") control.placeholder = "输入 JSON 数组";
+        }
+        const value = current.supplements.get(path) ?? descriptor.value;
+        control.value = value === undefined ? "" : typeof value === "object" ? JSON.stringify(value) : String(value);
+        control.required = true;
+        control.id = `${pane.id}-conflict-${path.replaceAll(".", "-")}`;
+        control.dataset.missingPath = path;
+        control.dataset.conflictPath = path;
+        control.setAttribute("aria-label", labelForPath(path));
+        label.htmlFor = control.id;
+        const initial = conflictInputValue(definition, control.value);
+        control.setAttribute("aria-invalid", String(!initial.valid));
+        if (initial.valid) current.supplements.set(path, initial.value);
+        const invalidHint = document.createElement("small");
+        invalidHint.className = "mcp-conflict-fields__input-hint";
+        invalidHint.textContent = definition.type === "array" ? "请填写符合结构要求的 JSON 数组。" : "请填写符合字段类型和取值范围的值。";
+        invalidHint.hidden = initial.valid;
+        control.addEventListener("input", () => {
+          const next = conflictInputValue(definition, control.value);
+          control.setAttribute("aria-invalid", String(!next.valid));
+          invalidHint.hidden = next.valid;
+          if (next.valid) current.supplements.set(path, next.value);
+          else current.supplements.delete(path);
+          current.userEditedPaths ??= new Set();
+          current.userEditedPaths.add(path);
+          current.conflictEditedPaths ??= new Set();
+          current.conflictEditedPaths.add(path);
+          current.planConfirmed = false;
+          current.confirmedPlanId = null;
+          current.supplementsValid = !pane.querySelector('[aria-invalid="true"]');
+          validateCompletion(state, pane, applyButton);
+        });
+        let controlHost = control;
+        if (control.type === "number") {
+          controlHost = document.createElement("div");
+          controlHost.className = "zoom-control-group cro-stepper__control mcp-missing-field__control";
+          const stepButton = (direction, icon, action) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "btn btn-ghost btn-icon btn-sm";
+            button.innerHTML = icon;
+            button.setAttribute("aria-label", `${action} ${labelForPath(path)}`);
+            button.addEventListener("click", () => {
+              if (direction > 0) control.stepUp(); else control.stepDown();
+              control.dispatchEvent(new Event("input"));
+              control.focus();
+            });
+            return button;
+          };
+          controlHost.append(stepButton(-1, MINUS_ICON, "减少"), control, stepButton(1, PLUS_ICON, "增加"));
+        }
+        row.append(label, controlHost, invalidHint);
+        section.append(row);
+      }
+      let note = row.querySelector(".mcp-conflict-fields__issue");
+      if (!note) {
+        note = document.createElement("small");
+        note.className = "mcp-conflict-fields__issue";
+        row.append(note);
+      }
+      const issues = activeIssues.get(path) ?? [];
+      row.classList.toggle("has-validation-conflict", issues.length > 0);
+      note.textContent = issues.length ? issues.map(issue => issue.message).join("；") : "本轮复验未报告此项冲突。";
+      note.title = issues.map(issue => `${issue.code} · ${issue.source_ref ?? ""}`).join("\n");
+    }
+    current.supplementsValid = !pane.querySelector('[aria-invalid="true"]');
+    const changed = [...current.conflictFields.keys()].filter(path => !sameValue(
+      getPath(current.result?.data?.normalized_config, path), getPath(config, path),
+    ));
+    current.adjustedCandidatePaths = [...new Set([...(current.adjustedCandidatePaths ?? []).filter(path => !current.conflictFields.has(path)), ...changed])];
+    pane.hidden = false;
+    pane.parentElement?.classList.add("has-missing-inputs");
+    setParseBannerMode(pane, true);
+  }
+
   async function validateCompletion(state, pane, applyButton) {
     if (!state.current) return;
     const current = state.current;
@@ -1484,6 +1626,17 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     setParseBannerLine(status, "pending", "正在检查完整配置…");
     setParseBannerLine(capacityStatus, "pending", "正在估算理论显存…");
     syncApplyState(state, applyButton);
+    if (current.supplementsValid === false) {
+      current.completionValidation = "invalid";
+      current.completionResult = null;
+      current.capacityAssessment = null;
+      pane.removeAttribute("aria-busy");
+      setParseBannerLine(status, "review", "请先填写标记的缺口项并确认原始值的实际含义，再复验完整配置。");
+      setParseBannerLine(capacityStatus, "pending", "仍有缺口项未确认，暂不估算理论显存。");
+      syncCompletionConfirmation(current, pane);
+      syncApplyState(state, applyButton);
+      return;
+    }
     try {
       const config = materializedConfig(current);
       const [result, capacityResult] = await Promise.all([
@@ -1494,6 +1647,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
       const valid = result.status === "valid" && !(result.errors ?? []).length;
       current.completionValidation = valid ? "valid" : "invalid";
       current.completionResult = result;
+      syncConflictInputs(state, pane, applyButton, config, result);
       const previousCapacity = currentCapacityAssessment(current);
       current.capacityAssessment = capacityAssessmentFromResult(capacityResult);
       if (current.capacityAssessment.recommendation_eligible !== true
@@ -1545,8 +1699,8 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
         ?? plans.find((plan) => plan.recommended)
         ?? plans[0])
       : null;
-    const preserveRenderedState = state.current?.renderedPlanId != null
-      && state.current.renderedPlanId === preferred?.id;
+    const preserveRenderedState = state.current?.completionRendered === true
+      && state.current.renderedPlanId === (preferred?.id ?? null);
     const preservedSupplements = preserveRenderedState && state.current?.supplements instanceof Map
       ? new Map(state.current.supplements)
       : null;
@@ -1585,12 +1739,15 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     }
     state.current.selectedPlanId = preferred?.id ?? null;
     state.current.renderedPlanId = preferred?.id ?? null;
+    state.current.completionRendered = true;
     state.current.userEditedPaths ??= new Set();
     state.current.modelStructureMode ??= "prefill";
     state.current.modelStructurePaths = [...missingModelPaths];
     state.current.adjustedCandidatePaths = [...adjustedCandidatePaths];
     if (!preserveRenderedState) {
       state.current.capacityAssessment = preferred?.capacity_assessment ?? null;
+      state.current.conflictFields = new Map();
+      state.current.conflictEditedPaths = new Set();
     }
     const requiresConfirmation = requiresExplicitConfirmation(state.current);
     if (state.current.confirmedPlanId !== preferred?.id) {
@@ -1657,21 +1814,21 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
     });
     checkbox.addEventListener("change", () => {
       state.current.planConfirmed = checkbox.checked;
-      state.current.confirmedPlanId = checkbox.checked ? preferred.id : null;
+      state.current.confirmedPlanId = checkbox.checked ? (preferred?.id ?? null) : null;
       syncApplyState(state, applyButton);
     });
     confirmation.append(checkbox, text);
     /* 方案卡与补齐字段共用第三栏滚动区；确认条单独作为 pane 的直接子项，
        到达滚动区顶部后才能在后续全部字段滚动期间持续吸附。 */
     plansHost.insertAdjacentElement("afterend", confirmation);
-    state.current.supplements = new Map();
+    state.current.supplements = preservedSupplements ?? new Map();
     state.current.supplementsValid = true;
     const prefillModelValues = new Map();
     for (const path of paths) {
       const value = preservedSupplements?.has(path)
         ? preservedSupplements.get(path)
         : (getPath(preferred?.proposed_config, path) ?? defaultValueFor(path));
-      state.current.supplements.set(path, value);
+      if (value !== undefined && value !== "") state.current.supplements.set(path, value);
       if (missingModelPathSet.has(path)) prefillModelValues.set(path, value);
       const row = document.createElement("div");
       const missingModelStructure = missingModelPathSet.has(path);
@@ -1689,6 +1846,9 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
         reasonParts.push(`原值：${inlineValue(sourceValueByPath.get(path))}`);
       }
       if (evidence) reasonParts.push(`${evidence.reason} · ${evidence.confidence}`);
+      const unresolved = result.warnings?.find(item => item.code === "PARSE_DENSE_LAYER_COUNT_UNRESOLVED"
+        && item.fields?.includes(path));
+      if (unresolved) reasonParts.push(unresolved.message);
       name.innerHTML = `<span class="cro-stepper__label-text"><b>${escapeHtml(labelForPath(path))}</b>`
         + `<code>${escapeHtml(path)}</code>`
         + (adjustedCandidate
@@ -1712,19 +1872,26 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
       } else {
         control = document.createElement("input");
         control.className = "zoom-control-readout cro-stepper__input mcp-missing-field__input";
-        control.type = typeof value === "number" ? "number" : "text";
+        control.type = typeof value === "number" || path === "model.first_k_dense_layers" ? "number" : "text";
         if (control.type === "number") { control.min = "0"; control.step = "1"; }
         control.value = value ?? "";
       }
       control.id = `${pane.id}-${path.replaceAll(".", "-")}`;
       name.htmlFor = control.id;
       control.dataset.missingPath = path;
+      control.required = true;
+      if (controlValue(control) === undefined || !control.checkValidity()) {
+        control.setAttribute("aria-invalid", "true");
+        state.current.supplementsValid = false;
+      }
       control.setAttribute("aria-label", labelForPath(path));
       control.addEventListener("input", () => {
         state.current.planConfirmed = false;
         state.current.confirmedPlanId = null;
+        if (state.current.conflictFields?.has(path)) state.current.conflictEditedPaths.add(path);
         const next = controlValue(control);
-        const invalid = next === undefined || (control.type === "number" && !Number.isFinite(next));
+        const invalid = next === undefined || !control.checkValidity()
+          || (control.type === "number" && !Number.isFinite(next));
         control.setAttribute("aria-invalid", String(invalid));
         if (invalid) state.current.supplements.delete(path);
         else {
@@ -1799,9 +1966,15 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
       state.current.completionValidation = preferred?.validation?.status === "valid" ? "valid" : "invalid";
       state.current.completionResult = preferred?.validation ?? null;
     }
+    if (preserveRenderedState && state.current.completionResult) {
+      syncConflictInputs(state, pane, applyButton, materializedConfig(state.current), state.current.completionResult);
+    }
     syncCompletionStatus(state.current, pane);
     syncCompletionConfirmation(state.current, pane);
     syncApplyState(state, applyButton);
+    // Editable fallback values are candidates, not a prevalidated MCP plan.
+    // Revalidate the materialized input even when the parser returned no plan.
+    if (!preserveRenderedState && !preferred) validateCompletion(state, pane, applyButton);
   }
 
   function setPath(target, path, value) {
@@ -2317,7 +2490,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
       const applyButton = document.getElementById(confirmApply.dataset.applyTarget);
       const state = applyButton?.id === "croImportApply" ? imported : sample;
       const plan = selectedCompletionPlan(state.current);
-      if (!state.current || !applyButton || !plan || !requiresExplicitConfirmation(state.current)) return;
+      if (!state.current || !applyButton || !requiresExplicitConfirmation(state.current)) return;
       const pane = document.getElementById(
         applyButton.id === "croImportApply" ? "mcpImportMissingPane" : "mcpPreviewMissingPane",
       );
@@ -2325,7 +2498,7 @@ function installParseAdapter(callParseTool, callValidateTool, callCapacityTool) 
       if (checkbox && !checkbox.checked) checkbox.click();
       else {
         state.current.planConfirmed = true;
-        state.current.confirmedPlanId = plan.id;
+        state.current.confirmedPlanId = plan?.id ?? null;
         syncApplyState(state, applyButton);
       }
       if (state.current?.planConfirmed !== true) return;

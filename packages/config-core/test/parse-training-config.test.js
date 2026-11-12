@@ -15,6 +15,38 @@ function input(content, format = "auto", name) {
   };
 }
 
+test("负的前置 Dense 层数保留原始证据并作为待确认缺口，不进入统一契约", () => {
+  for (const alias of ["first-k-dense-replace", "first-k-dense-layers"]) {
+    const result = parseTrainingConfig(input(
+      `torchrun train.py --model deepseek_v3 --num-experts 256 --${alias} -1`, "shell", "train.sh",
+    ));
+    assert.equal(result.data.normalized_config.model.first_k_dense_layers, undefined);
+    assert.ok(result.data.missing_required_fields.includes("model.first_k_dense_layers"));
+    assert.equal(result.data.unmapped_fields.find(field => field.source_key === alias).value, "-1");
+    const warning = result.warnings.find(item => item.code === "PARSE_DENSE_LAYER_COUNT_UNRESOLVED");
+    assert.equal(warning.source_ref,
+      "mindspeed-config-mcp:training-config-v1.schema.json#/properties/model/properties/first_k_dense_layers");
+    assert.equal(warning.source, "compatibility-gap");
+    assert.equal(result.data.tool_readiness.compute_rank_topology.ready, false);
+    assert.equal(result.data.tool_readiness.estimate_training_capacity.ready, false);
+  }
+});
+
+test("合法的零层与正层数保留，配套模型可显式补齐原始负值留下的缺口", () => {
+  for (const value of [0, 3]) {
+    const result = parseTrainingConfig(input(JSON.stringify(createTrainingConfig({ model: { first_k_dense_layers: value } })), "json"));
+    assert.equal(result.data.normalized_config.model.first_k_dense_layers, value);
+    assert.ok(!result.warnings.some(item => item.code === "PARSE_DENSE_LAYER_COUNT_UNRESOLVED"));
+  }
+  const result = parseTrainingConfig({
+    ...input("torchrun train.py --num-experts 256 --first-k-dense-replace -1", "shell", "train.sh"),
+    model_source: { format: "json", name: "model_config.json", content: JSON.stringify({ model: { first_k_dense_layers: 0 } }) },
+  });
+  assert.equal(result.data.normalized_config.model.first_k_dense_layers, 0);
+  assert.ok(!result.data.missing_required_fields.includes("model.first_k_dense_layers"));
+  assert.ok(result.data.unmapped_fields.some(item => item.source_role === "training" && item.value === "-1"));
+});
+
 test("完整 MindFormers JSON 保留模型标识和 PP offset，已有效配置不生成修复候选", () => {
   const config = createTrainingConfig({
     rule_profile: { framework: "mindformers", version: "unknown" },

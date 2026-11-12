@@ -19,6 +19,12 @@ Tool 的计算与界面能力，但不是 MCP 协议服务器：GitHub Pages 不
 `tools/call`、鉴权或 MCP Host/App 通信。需要验证这些协议能力时，仍应使用 stdio、
 Streamable HTTP 或 MCP Inspector。
 
+支持 InsightChat demo 的浏览器本地校验回退：以 `?embed=1` 嵌入时隐藏独立页顶栏，
+通过 `mindspeed-config-demo/v1` 消息接收当前文件与配套模型内容，返回纯计算核心的解析和
+静态校验结果。只接受父窗口消息，以及同源、维护者 GitHub Pages 或本机开发 origin；
+不会启动 MCP 服务或训练。宿主应明确标注“页面本地校验”。Pages 工作流还会将同一静态包
+发布为 `/config-relation-plane-mindspeed-config-mcp.html`。
+
 ## 发布
 
 最简单的方式是把这个目录里的全部文件推送到 GitHub 仓库的发布分支根目录，再在仓库

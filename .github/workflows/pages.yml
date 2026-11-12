@@ -37,6 +37,7 @@ jobs:
           site="$RUNNER_TEMP/mindspeed-pages"
           mkdir -p "$site/v1" "$site/apps/web/prototypes" "$site/apps/web" "$site/docs"
           cp -a deploy/github-pages/. "$site/"
+          cp "$site/index.html" "$site/config-relation-plane-mindspeed-config-mcp.html"
           cp -a .pages-v1/deploy/github-pages/. "$site/v1/"
           cp -a apps/web/config-relation-plane-baseline "$site/apps/web/"
           cp apps/web/prototypes/constraint-lens.html "$site/apps/web/prototypes/"

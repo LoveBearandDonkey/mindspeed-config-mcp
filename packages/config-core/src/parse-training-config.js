@@ -11,6 +11,7 @@ const FORMAT_LABELS = Object.freeze({
   shell: "Shell 命令行",
 });
 const PAGE_IMPORT_SOURCE = "compute-graph-viewer-wzh:config-relation-import.js:162-503@ef39d30";
+const DENSE_LAYER_COUNT_SOURCE = "mindspeed-config-mcp:training-config-v1.schema.json#/properties/model/properties/first_k_dense_layers";
 const GPT_OSS_ARCHITECTURE_SOURCE =
   "https://docs.nvidia.com/nemo/megatron-bridge/latest/models/gpt_oss/gpt-oss.html";
 
@@ -68,6 +69,14 @@ const integer = (value) => {
 const number = (value) => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) throw new TypeError(`期望数字，实际为 ${JSON.stringify(value)}`);
+  return parsed;
+};
+
+const denseLayerCount = (value) => {
+  const parsed = integer(value);
+  if (parsed < 0) throw new RangeError(
+    `原始值 ${JSON.stringify(value)} 不能直接作为前置 Dense 层数；统一契约要求非负整数，需确认实际 MoE 层布局，不自动改写为 0。`,
+  );
   return parsed;
 };
 
@@ -149,7 +158,7 @@ define(["num-query-groups", "num-key-value-heads", "num-kv-heads"], "model.num_k
 define(["ffn-hidden-size", "intermediate-size"], "model.ffn_hidden_size", integer);
 define(["moe-ffn-hidden-size", "expert-ffn-hidden-size", "moe-intermediate-size"], "model.expert_ffn_hidden_size", integer);
 define(["padded-vocab-size", "vocab-size"], "model.vocab_size", integer);
-define(["first-k-dense-replace", "first-k-dense-layers"], "model.first_k_dense_layers", integer);
+define(["first-k-dense-replace", "first-k-dense-layers"], "model.first_k_dense_layers", denseLayerCount);
 define(["num-experts", "routed-experts", "num-routed-experts", "n-routed-experts", "num-local-experts", "expert-num"], "model.routed_experts", integer);
 define(["moe-router-topk", "moe-router-top-k", "num-experts-per-tok", "num-experts-per-token", "num-experts-chosen", "top-k"], "model.top_k", integer);
 define(["num-shared-experts", "n-shared-experts", "shared-experts", "shared-expert-num"], "model.shared_experts", integer);
@@ -341,6 +350,16 @@ function parseSingleTrainingConfig(input) {
       mappedFields.push({ source_key: entry.key, target_path: mapping.target, value, mapping_kind: "explicit" });
     } catch (error) {
       unmappedFields.push({ source_key: entry.key, value: entry.value, reason: error.message });
+      if (mapping.target === "model.first_k_dense_layers") {
+        warnings.push(diagnostic(
+          "PARSE_DENSE_LAYER_COUNT_UNRESOLVED",
+          `${entry.key}：${error.message}`,
+          [entry.key, mapping.target],
+          "compatibility-gap",
+          DENSE_LAYER_COUNT_SOURCE,
+          "first_k_dense_layers must be an integer >= 0; source semantics require confirmation",
+        ));
+      }
     }
   }
 
@@ -755,6 +774,7 @@ function applySourceDerivations({
      架构：Mixtral 的 intermediate_size 就是每个专家的 FFN 宽度，且全部层为
      MoE；DeepSeek-V3 前 3 层为 Dense；当前登记的 Qwen3-MoE 配置全部层为 MoE。 */
   const modelId = String(getPath(normalized, "model.id") ?? "").toLowerCase();
+  const declaresDenseLayerCount = hasAnyLeaf(sourcePaths, ["first-k-dense-replace", "first-k-dense-layers"]);
   if (/mixtral/.test(modelId) && Number(getPath(normalized, "model.routed_experts")) > 0) {
     const intermediate = getPath(normalized, "model.ffn_hidden_size");
     if (Number.isInteger(intermediate) && intermediate > 0) {
@@ -765,7 +785,7 @@ function applySourceDerivations({
         "derived",
       );
     }
-    add(
+    if (!declaresDenseLayerCount) add(
       "model.first_k_dense_layers",
       0,
       "Mixtral 架构全部 Transformer 层使用 MoE（hf_mixtral_config.json）",
@@ -773,7 +793,7 @@ function applySourceDerivations({
     );
   }
   if (/deepseek[\s_/-]*v?3/.test(modelId)) {
-    add(
+    if (!declaresDenseLayerCount) add(
       "model.first_k_dense_layers",
       3,
       "DeepSeek-V3 已登记结构（hf_deepseekv3_config.json）",
@@ -781,7 +801,7 @@ function applySourceDerivations({
     );
   }
   if (/qwen3[\s_/-]*moe/.test(modelId)) {
-    add(
+    if (!declaresDenseLayerCount) add(
       "model.first_k_dense_layers",
       0,
       "Qwen3-MoE 已登记结构（mf_pretrain_qwen3_30b_a3b.yaml）",

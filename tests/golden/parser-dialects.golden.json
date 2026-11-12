@@ -1,4 +1,26 @@
 {
+  "unresolved_dense_layer_count": {
+    "value": null,
+    "missing": true,
+    "original": {
+      "source_key": "first-k-dense-replace",
+      "value": "-1",
+      "reason": "原始值 \"-1\" 不能直接作为前置 Dense 层数；统一契约要求非负整数，需确认实际 MoE 层布局，不自动改写为 0。"
+    },
+    "diagnostic": {
+      "code": "PARSE_DENSE_LAYER_COUNT_UNRESOLVED",
+      "message": "first-k-dense-replace：原始值 \"-1\" 不能直接作为前置 Dense 层数；统一契约要求非负整数，需确认实际 MoE 层布局，不自动改写为 0。",
+      "fields": [
+        "first-k-dense-replace",
+        "model.first_k_dense_layers"
+      ],
+      "source": "compatibility-gap",
+      "source_ref": "mindspeed-config-mcp:training-config-v1.schema.json#/properties/model/properties/first_k_dense_layers",
+      "formula": "first_k_dense_layers must be an integer >= 0; source semantics require confirmation"
+    },
+    "topology_ready": false,
+    "capacity_ready": false
+  },
   "canonical_mindformers": {
     "model_id": "test-moe",
     "pipeline_layer_mode": "mindformers-offset",

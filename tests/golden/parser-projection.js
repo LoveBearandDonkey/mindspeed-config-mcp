@@ -202,7 +202,19 @@ model:
     },
   });
 
+  const unresolvedDense = parse(
+    "torchrun train.py --model deepseek_v3 --num-experts 256 --first-k-dense-replace -1",
+    "shell", "negative-dense-layer-count.sh",
+  );
   return {
+    unresolved_dense_layer_count: {
+      value: unresolvedDense.data.normalized_config.model.first_k_dense_layers ?? null,
+      missing: unresolvedDense.data.missing_required_fields.includes("model.first_k_dense_layers"),
+      original: unresolvedDense.data.unmapped_fields.find(item => item.source_key === "first-k-dense-replace"),
+      diagnostic: unresolvedDense.warnings.find(item => item.code === "PARSE_DENSE_LAYER_COUNT_UNRESOLVED"),
+      topology_ready: unresolvedDense.data.tool_readiness.compute_rank_topology.ready,
+      capacity_ready: unresolvedDense.data.tool_readiness.estimate_training_capacity.ready,
+    },
     canonical_mindformers: {
       model_id: canonicalMindFormers.data.normalized_config.model.id,
       pipeline_layer_mode: canonicalMindFormers.data.normalized_config.parallel.pipeline_layer_mode,

@@ -183,7 +183,12 @@
 | 导入源选择与文本 | `parse_training_config.source` | 保留 |
 | `policy.locked_fields` | 已接入第 13 项修复建议区 | 仅允许用户显式锁定；单候选时隐藏，多候选时默认折叠 |
 | `policy.objective` | 已接入第 13 项修复建议区 | 多候选时提供四种 MindSpeed 规则派生排序；旧值只在核心层兼容，不再作为 UI 选项 |
-| `schema_version`、`rule_profile.*` | 适配层按方言与框架生成 | 不做用户表单；保留来源和框架差异说明 |
+| `schema_version`、`rule_profile.*` | 适配层按方言与框架生成 | `schema_version` 不做用户表单；规则口径在 Tool 返回对应冲突路径时允许显式调整，并保留来源和框架差异说明 |
+
+导入和配置选择的第三栏还承接复验冲突：以 `validate_parallel_config.errors[].fields` 的契约路径生成编辑项，
+按 `training-config-v1.schema.json` 提供类型与输入范围，不从中文提示推断字段或在页面重算约束。
+已有缺口项复用原控件；新增冲突项展示源解析值和工具返回的原因。编辑后整体复验，新出现的关联字段继续加入，
+已填写内容和焦点保留；已解决项保留当前值供审核，全部静态规则通过后才能确认应用。
 
 ## 文件与资源责任
 

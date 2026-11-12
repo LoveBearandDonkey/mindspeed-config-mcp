@@ -284,11 +284,11 @@ export function installAnalysisNotebook(callReportTool, getCurrentConfig) {
   });
   document.addEventListener("mcp:snapshot-restore-result", (event) => {
     if (event.detail?.error) {
-      feedback.textContent = `恢复失败：${event.detail.error}`;
+      if (feedback) feedback.textContent = `恢复失败：${event.detail.error}`;
       return;
     }
     const adjusted = event.detail?.adjusted ?? [];
-    feedback.textContent = adjusted.length
+    if (feedback) feedback.textContent = adjusted.length
       ? `已恢复页面可映射字段；${adjusted.length} 个字段被页面控件调整，请核对后重新校验。源文件未修改。`
       : "已恢复页面方案；请等待重新校验。源文件未修改。";
     source = event.detail?.snapshot?.source ?? source;
