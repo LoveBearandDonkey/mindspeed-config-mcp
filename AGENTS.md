@@ -26,6 +26,8 @@
 
 ## 本地页面预览
 
+- 跨仓 Demo 同步：`apps/web/prototypes/constraint-lens.html` 或工作台页面、UI 适配器、计算核心及构建输入发生变化后，若同级 `InsightChat` 可用，在其目录执行 `npm run sync:demo-assets` 与 `npm run verify:demo-assets`，同时更新两份 vendor 快照；不得只改源页并声称 Demo 已更新。无上游或同步失败须明确报告。
+
 - 每次完成页面或页面样式相关修改后，在最终答复前自动使用 `mindspeed-config-mcp-local` skill 执行 `Preview`，重新构建并刷新 `http://127.0.0.1:4174/training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html?preview=1`；用户明确要求不刷新时除外。只有用户明确要求完整 MCP 服务或 Inspector 时才改用 `Refresh`。
 
 ## 场景 1：对话中快速检查配置

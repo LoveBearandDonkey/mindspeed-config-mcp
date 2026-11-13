@@ -47,7 +47,7 @@ export function quickAssessment({ tool, status, errors, warnings, suggestions, d
       warnings[0] ? [diagnosticEvidence(warnings[0])] : [],
       "从工程补齐模型结构、训练框架与批量目标后重新规划。",
       "仅凭卡数和显存不能确定完整训练配置。");
-    if (!data.candidates?.length) return assessment("blocked", "当前约束下没有找到静态合法的候选。",
+    if (!data.candidates?.length) return assessment("blocked", `当前约束下未找到可用候选：${data.diagnostics?.[0]?.message ?? errors[0]?.message ?? "请核对资源、批量与锁定项。"}`,
       errors[0] ? [diagnosticEvidence(errors[0])] : [],
       "核对锁定字段、模型参数和资源条件，再重新规划。",
       "有限范围搜索不能证明不存在其他方案。");

@@ -4,7 +4,7 @@ export { composeAnalysisReport } from "./compose-analysis-report.js";
 export { estimateTrainingCapacity } from "./estimate-training-capacity.js";
 export { parseTrainingConfig } from "./parse-training-config.js";
 export { planTrainingConfigCompletion } from "./plan-training-config-completion.js";
-export { planTrainingConfig } from "./plan-training-config.js";
+export { planTrainingConfig, preparePlanningBaseConfig } from "./plan-training-config.js";
 export {
   EP_MF,
   EP_ORTHOGONAL,

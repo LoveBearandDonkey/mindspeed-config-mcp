@@ -24,3 +24,13 @@ WordSize 的因子与总 Rank 提供滑动条和可填写数字；单行吸顶�
 可调页签默认各字段未锁定。用户拖动一个字段时，它始终作为主动值；[原型平衡计算](./constraint-lens-balance.js) 只在未锁字段中寻找通过现有 `validateParallelConfig` 的组合，先比较被动改动字段数，再比较数值改动距离。若有可行解，改动后的被动数字框以橙色高亮 3 秒；锁定字段不会被动变化，但用户仍可手动修改它。若当前模型约束或锁定组合使新值无解，页面保留上一个有效值并以轻量文字说明，不展示临时失配图。当前页签的配置偏离页面载入时的初始值后，结论标签左侧显示“复原”；点击只恢复该页签，WordSize 同时恢复 EP 口径与锁定状态。平衡计算只读复用现有 `parallelWorld`，来源为 `compute-graph-viewer-wzh:shared/plane-rules.js@1e6bb6e`；[原型基线](./constraint-lens-balance.golden.json) 固定了自动调整、锁定跳过和无解回退。为控制页面尺寸，有效拓扑最多展开 128 个 Rank，超过时仍显示计算和校验结果。运行 `node apps/web/prototypes/build-constraint-lens.mjs` 可从[原型入口](./constraint-lens-entry.js) 重新构建独立 HTML 中的计算代码。
 
 均匀分层和注意力切分页签可在右侧编辑本页示例配置；方案默认不选，选择后只更新左侧预览，点击“试用”才写入右侧控件。两个示例各有 7 个分组，有配置问题时列表露出约 3 行半并可滚动，问题行固定在列表下方；问题解决后不显示建议区，列表露出约 5 行半，最后一个分组仍固定在下方。均匀分层用每 Stage 16 层的视图目标展示一个 Stage 缺 12 层；注意力切分展示 2 头未分配。方案同时满足视图目标并通过内嵌 `config-core` 静态复验，试调不会写源配置。Rank 拓扑和理论容量页签仍展示仓库验收夹具与 `config-core` 的测试快照；WordSize 使用内嵌的现有校验能力及本目录实验交互逻辑实时计算。WorldSize V2 顶部可在“原始”和“MCP”间切换。直接打开磁盘 HTML 时默认“原始”，用内嵌 `config-core` 快照生成本地静态试调建议；从 `/mindspeed-config/prototypes/constraint-lens.html` 或 `/mindspeed-config-v2/prototypes/constraint-lens.html` 进入时默认“MCP”，浏览器通过已登录的 HttpOnly 会话调用同源 `/api/tools/suggest_config_fixes`，只把返回的 `structuredContent.data.suggestions` 映射到建议、画布标注和“试用”。原始模式的建议不能冒充线上 MCP 调用；磁盘直开时 MCP 模式没有服务结果。该独立原型通过服务的浏览器工具 API 调用 V2 工具能力，不宣称发起 MCP 协议调用。原型验证单独运行：`node --test apps/web/prototypes/constraint-lens-balance.verify.mjs`，不加入仓库默认测试入口。
+
+## 跨项目 inline 嵌入与主题
+
+`constraint-lens.html?embed=inline&case=<页签 ID>` 复用原渲染器与交互，只隐藏导航、重复问句、输入区和能力说明。通过 `mindspeed-constraint-lens/v1` 向宿主发送 ready、resize、draft、theme；宿主核对 source、origin、case 和载荷。
+
+InsightChat 的 `tools/sync-constraint-lens.cjs` 同步完整源 HTML、五轮映射和 SHA-256；在 InsightChat 执行 `npm run sync:constraint-lens` 和 `npm run verify:constraint-lens`。非同级目录使用 `MINDSPEED_CONFIG_MCP_ROOT` 指定构建时来源。
+
+右上角太阳／月亮图标切换主题，保留无障碍名称和悬浮提示。选择保存到 `mindspeed-constraint-lens-theme`，也可用 `?theme=dark` 或 `?theme=light` 指定初始主题；切换不会重置配置。同源卡片通过 storage 同步，theme 消息更新宿主外框。
+
+暗色中与 InsightChat《主题表.md》对应的部分使用“追光”声明：品牌蓝 #317AF7、主文字 #E6E6E6、次文字 #B3B3B3、占位与禁用文字 #808080，面板 #161616／#1C1C1C，分割线与边框为 10% 白色。问题气泡采用品牌蓝 20% 与 #1C1C1C 混色；输入框采用品牌蓝至紫的 60% 混色渐变边框。图表特有的数据色保留其语义。

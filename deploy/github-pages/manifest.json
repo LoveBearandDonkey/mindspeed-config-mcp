@@ -1,12 +1,430 @@
 {
     "schema_version":  "1.0",
-    "packaged_at_asia_shanghai":  "20261112-174534",
-    "product_version":  "v1.0.16",
+    "packaged_at_asia_shanghai":  "20261113-112809",
+    "product_version":  "v1.0.17",
     "entry":  "index.html",
-    "bytes":  1837866,
-    "sha256":  "C6690A05741BB1AADF90344CB2BB8AB5DA1FD2DB889D39C6B496BFACE3CAD0F5",
+    "bytes":  1850504,
+    "sha256":  "951913A11024F9DE27E411BEC7C8656BBB42887283815D9F48F806AC62AF6766",
     "execution_mode":  "browser-local-config-core",
     "mcp_protocol_endpoint":  false,
+    "source_snapshot":  {
+                            "schema_version":  1,
+                            "sha256":  "3affb1531d8334a75daefa6277379b86322fd5ed8bdda67c4b393d03f9707f00",
+                            "files":  [
+                                          {
+                                              "path":  "apps/mcp-server/package.json",
+                                              "sha256":  "b93df50cafe3d78640f5a3117bd9a7b62964f1aecc9510f561b0c6ddb82cc980"
+                                          },
+                                          {
+                                              "path":  "apps/mcp-server/src/app-resource.js",
+                                              "sha256":  "cea046f97cd5c7bbd261c55cf6d73e5784cc7133009fce9f8bc736a8324e8d02"
+                                          },
+                                          {
+                                              "path":  "apps/mcp-server/ui/src/mcp-analysis-notebook.js",
+                                              "sha256":  "3e8d0ab0765e3ea135ea41fabdc6b67bf2d17ba511533e677759390f75b364bb"
+                                          },
+                                          {
+                                              "path":  "apps/mcp-server/ui/src/mcp-capacity-adapter.js",
+                                              "sha256":  "24ebf838ad2eead09131c3672627fe578ea7d6759a757071bc66e83e228099ac"
+                                          },
+                                          {
+                                              "path":  "apps/mcp-server/ui/src/mcp-conflict-fields.js",
+                                              "sha256":  "28a34502ea8f176a754249d91ca8dcda3206038b57c6f8bcfba13e2470541aab"
+                                          },
+                                          {
+                                              "path":  "apps/mcp-server/ui/src/mcp-fixes-adapter.js",
+                                              "sha256":  "d44fb8c0b55aaf1950c7a6a441b4a31956e333319af9dbc9151105cbb350fcd2"
+                                          },
+                                          {
+                                              "path":  "apps/mcp-server/ui/src/mcp-host-interaction.js",
+                                              "sha256":  "700745742fd981c35eb3b23c81acfbacf3bd42339371befb0d2dbd2d5f4199a6"
+                                          },
+                                          {
+                                              "path":  "apps/mcp-server/ui/src/mcp-pages-bridge.js",
+                                              "sha256":  "2011b0152679ad54f5e6d8dcdc938905b62a6da2151152b0e517c1846d8edd3d"
+                                          },
+                                          {
+                                              "path":  "apps/mcp-server/ui/src/mcp-parse-adapter.js",
+                                              "sha256":  "4af93dcd331508705f54e9af860564cfdaee3a948a25b6eb43f8dff0ce909d1e"
+                                          },
+                                          {
+                                              "path":  "apps/mcp-server/ui/src/mcp-plan-adapter.js",
+                                              "sha256":  "42188bb7592967d6373d1b624c801d0abff9cf9b9b2cdc5064b1f81d7c375a3d"
+                                          },
+                                          {
+                                              "path":  "apps/mcp-server/ui/src/mcp-shell-entry.js",
+                                              "sha256":  "60deb5f61bf0059306507562c9a5b0e87b4381e2d1ee06a59311c4fe9a8b9d3a"
+                                          },
+                                          {
+                                              "path":  "apps/mcp-server/ui/src/mcp-shell.css",
+                                              "sha256":  "a834114099257e4f3dcf4e6970eb54b0ac5d3e8f9ab76695158f779697f2543a"
+                                          },
+                                          {
+                                              "path":  "apps/mcp-server/ui/src/mcp-topology-adapter.js",
+                                              "sha256":  "2d3161df6fc35c56a4af3bce40db12a80ffdebba4a270246121590d4c686f9f9"
+                                          },
+                                          {
+                                              "path":  "apps/mcp-server/ui/src/mcp-validation-adapter.js",
+                                              "sha256":  "b6c4c092488d8aff21838b1e0b953732b557fa1d4ae0e38beb0fa2d51d143eb8"
+                                          },
+                                          {
+                                              "path":  "apps/mcp-server/ui/src/mcp-workbench-overview.js",
+                                              "sha256":  "23a956ae9aa8b03c04d990f5a90eca67270f84bcb062d20ac2553106f3c3b79c"
+                                          },
+                                          {
+                                              "path":  "apps/mcp-server/ui/src/remote-web-client.css",
+                                              "sha256":  "fa9bf1981387489542ca363e5abe4ec2dc358b7c28cb42f66887dc5c646dd60a"
+                                          },
+                                          {
+                                              "path":  "apps/mcp-server/ui/src/remote-web-client.js",
+                                              "sha256":  "c235eb584a043cad013e148123b14a3900baf8ce6e3b044061ba25efb4bbbd7c"
+                                          },
+                                          {
+                                              "path":  "apps/mcp-server/vite.config.js",
+                                              "sha256":  "ff7d0d9601b3ffe02da103ebd9fd1e2880402e190b8be408d64faf09e8d3e9cf"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/mindspeed-intro/mindspeed-agent-overview.html",
+                                              "sha256":  "1b685bf37c296edeb56c9eb8a6fedd16925d4eb8fc4f3e4a19af2bab4b91bf2b"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/mindspeed-intro/mindspeed-best-practices.html",
+                                              "sha256":  "904cb6f46ea9eeab44673e3445894cc07d412db2444c424b5c5abb6b67afd66c"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/mindspeed-intro/mindspeed-demo-catalog.html",
+                                              "sha256":  "2d0a8e0aa351146bf519ecdc4bc6a9c077ed8a52c92712a431f7c27fa85b6edf"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/mindspeed-intro/mindspeed-field-evidence.html",
+                                              "sha256":  "039e275d85b7e4b70b4f05250dcf8877d5822189da82b1cd0587f077e0b9139d"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/mindspeed-intro/mindspeed-tool-matrix-analysis.html",
+                                              "sha256":  "3b0eb6c5ff2a599f1052f4c2b6b954cdbe390fdc6fb3122051cb40a5b854d5f1"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/shared/plane-rules.js",
+                                              "sha256":  "928bcfb7867a0efc7a30cdb084ea98d40048201fa3f0ace179db3213583579de"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/config-relation-observer.html",
+                                              "sha256":  "ffcd7b078657f1b1009a0fd3b1c5edfc948dde49308c72715b15da281877b152"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html",
+                                              "sha256":  "e2102588637970ef878e4906fe89a6da268bed3b73d133e7d3d695686e2d641f"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/config-test/ds_z3_config.json",
+                                              "sha256":  "6e2753c870561658babe45922114f14ad899d5e4cfb6deb38fe47935ee60dc6f"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/config-test/hf_deepseekv3_config.json",
+                                              "sha256":  "cbf0b95dc614de208a109bb5fd4e7eed11385e9c68411d2c17db5319443035d9"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/config-test/hf_mixtral_config.json",
+                                              "sha256":  "9d56d04b36d0fd12ff54ae4c5bac769cc176e254e64ff71144614b6318b40793"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/config-test/hf_qwen2_7b_config.json",
+                                              "sha256":  "d318b49c4a29771e259d93053084eb752f5bfe69c20c4f2e041bd1017884f810"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/config-test/lf_qwen3_full_sft.yaml",
+                                              "sha256":  "55c2e16e8efa8df9052420f7b74370bd16da1938243c8a7a2907d2111515ad29"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/config-test/lf_qwen3_lora_sft.yaml",
+                                              "sha256":  "783c247613e0c46c4b4ea5c6627acd5387d939af91f22a9d6a9efdb4996147ae"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/config-test/megatron_175b.sh",
+                                              "sha256":  "4bc0e0194fef6cdaf578fcf81259ec7de34b26fc1892741ab314827e23059952"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/config-test/megatron_llama3_8b_fp8.sh",
+                                              "sha256":  "fddc588ca15f24384465f16e171147204feeb691f8fbc54b2a797cf135adc9cc"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/config-test/mf_pretrain_deepseek3_671b.yaml",
+                                              "sha256":  "91b7f74c5da116253d9a16f58c17fcddbfbf18b6383e06fefaf3ad6051b53c8f"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/config-test/mf_pretrain_qwen3_30b_a3b.yaml",
+                                              "sha256":  "ba3f336bcf5777285417b248b03e9ae2b87473c6763f4e28353afae4e6ac3c8f"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/config-test/mixtral_8x7b.sh",
+                                              "sha256":  "5146f17ce599a10a7e307dbfc140c1ed1056d3eb14ad8cc539a4f5ab62fc3a18"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/config-test/README.md",
+                                              "sha256":  "9126424fb6a7f91c6cbe7571d8b5fc20b682a809f0e4996f288b4bf6446602a7"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/css/components.css",
+                                              "sha256":  "4cce6ca7571dc1a82ad0f1fb38f67fe286b03ab36bc5306084d4daeaa6760cac"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/css/config-relation-capacity.css",
+                                              "sha256":  "3949d1392a8b99a05852eefd910161f899808383b9ad2cd3776a37ba45e4e270"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/css/config-relation-doc.css",
+                                              "sha256":  "a20a381d6d03b2a723e0f287ea2c8514e5bf1b5a54d21e8117a26f083f02e902"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/css/config-relation-observer.css",
+                                              "sha256":  "436b8aea1526d922a3574ef87ca841d993357b221c1798a7baed83ebae244973"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/css/config-relation-plane.css",
+                                              "sha256":  "4f1dccba0bdbd90a9d68cec5e1a9139c5fd81a2e0c903ba30d8572ec5c78bbc7"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/css/config-relation-yaml.css",
+                                              "sha256":  "87777421107fe744c51384654e3af3bd81ee0cd30e3e6f06fe1d1aad1268dc64"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/css/foundation.css",
+                                              "sha256":  "70248ea5c86fff4a505a439cea6300238e3da50fb212ef767add35ce7e22ed64"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/css/ide-frame-pattern.css",
+                                              "sha256":  "d4a5199a7cfe9f5710473136fa46849e21fdc9535183a0e50525347829343033"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/css/model-architecture-3d-deck-pattern.css",
+                                              "sha256":  "4c8fe930e16aa270ef2b90df2de228fcf2c48dc2ba67e09335fa908c1a562a84"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/css/model-graphviz-pattern.css",
+                                              "sha256":  "697229cf12d9b54cc3167acebfdd36ff1bb684eacde9590969809ac478365902"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/css/semantic.css",
+                                              "sha256":  "d1a160a95ebed46997702ee556b34922afbea9b23527bf57171f5e682aacce90"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/css/style.css",
+                                              "sha256":  "5050811086f847b595dc49b195c3d6407896432bf8c4fba6858ae0cd5a9d5ea9"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/css/training-run-twin.css",
+                                              "sha256":  "a6f9bf45bf19e758fdc90e283671f401422559f30ea4360ebcf12d5c36decfe0"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/css/workbench-shell-pattern.css",
+                                              "sha256":  "fae714c93cbe7725722b85c5d35d24483233409e758007cb0d892497187601ac"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/js/config-relation-capacity.js",
+                                              "sha256":  "c44242b1752c212bfdf33d027c668fb6eb24394ff5698dcaade648dd45717cda"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/js/config-relation-doc.js",
+                                              "sha256":  "d2b3a99f235a1f45386e37511a23a7274adedd24c2356c8520ddd7df6e675f57"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/js/config-relation-import.js",
+                                              "sha256":  "47594e2085693f0fc5dd7bd3d94f812377697371588911948eca96177bc78e56"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/js/config-relation-liquid-glass.js",
+                                              "sha256":  "a2b7a473efebb67d9ba511260a6bc055683b97a3a2565bc1614ee9d4e9615c54"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/js/config-relation-observer.js",
+                                              "sha256":  "b29dbe40829fef765798a9de0370ad2536d62946db00d59754ae11fb01daa4ac"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/js/config-relation-plane.js",
+                                              "sha256":  "c9be1fd6bffb5683adb84edc2c3336d292bf24c66116f3ee191089a42b965d1b"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/js/config-relation-yaml.js",
+                                              "sha256":  "bd0096301a205264a8e584601145798fcf6f1685038e4f73ad70ed0d51ed2e39"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/js/ide-frame-pattern.js",
+                                              "sha256":  "70e59b8251fd5db7ef5b116f376fc240773a7f26748f5d31f1d801d06c9f77bc"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/js/model-architecture-3d-deck-pattern.js",
+                                              "sha256":  "32c2a38a3108ea4e2a6d690a15d969551652e35e9dbbefd54bcc3bc948d915e2"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/js/model-graphviz-pattern.js",
+                                              "sha256":  "c9218873f476c92ce907ab7065c9854791d40460eb344eaad9ca66107f832aec"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/js/workbench-shell-pattern.js",
+                                              "sha256":  "821731129e479e7c3a2972d72fa146f229c87a0933f5a1427694267bbdee67b8"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/model-graphviz-embed/pattern.css",
+                                              "sha256":  "bbd7b2817d013992fe987b650f22a7702f486acdb260ae2d69ab0153f3979d92"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/model-graphviz-embed/pattern.js",
+                                              "sha256":  "1048259aaf3b45fcd39181661e3586b15246300688dbcdec55d0f1347ee80069"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/openPangu-2.0-Flash架构参考.md",
+                                              "sha256":  "b888ee5e3aa42322d69ad13852ce8ccd591d087bf7c77f2fb47e7dfdd4993303"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/tools/cro-selfcheck.js",
+                                              "sha256":  "ddf4dd3ac872e1b977aafbf3428001a70788e8a1e11cf419efbdf532a8922899"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/tools/plane-rules-selfcheck.js",
+                                              "sha256":  "c6b4b2c8c602c695b31f78cc22cdad947e2ab272042b0acd59ea61e757e89ab8"
+                                          },
+                                          {
+                                              "path":  "apps/web/config-relation-plane-baseline/training-run-twin-standalone/定位链-openPangu-2.0-Flash.md",
+                                              "sha256":  "d76fb417d4c61a2031afaddd440703887a391533e7973fd2f56fd9ac27727f07"
+                                          },
+                                          {
+                                              "path":  "package-lock.json",
+                                              "sha256":  "97a1fc2137985cfb3ec29acdc223d73fd44f7a6c1b53e459c769edcbaf292eb6"
+                                          },
+                                          {
+                                              "path":  "package.json",
+                                              "sha256":  "65688b8e1caff24ed739da91c92d68d292dfbb49b9bb1e7585d88c5f6f8511d2"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/package.json",
+                                              "sha256":  "ab84a13871d76df48e1aaa35a1a39f37386ecc0c7598ebdbeee10c8e56d8e800"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/analyze-performance-evidence.js",
+                                              "sha256":  "766a02033819e6f28004ffe42191a941b5aa7c03bc51fa3ed4c4335c5d741e43"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/compose-analysis-report.js",
+                                              "sha256":  "64c64e6fce5f9b5367861bea2efce5a0963244e7df55a2ef4e743df2131840a0"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/compute-rank-topology.js",
+                                              "sha256":  "0cc852c429fb3a9f4d635cb127a6d9239e26f996ea3007d256fafcb0767f64d7"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/estimate-training-capacity.js",
+                                              "sha256":  "f6b238a62b09103ea50e9f4231030bf4edaaeef249bf0a3ad0655ab7667bb1ed"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/index.js",
+                                              "sha256":  "ee7863220a66f0d25a6018482b3dc759c1c8b7532cdbe1a89933114144a9e76c"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/page-rules.js",
+                                              "sha256":  "c77e70e2522523f9caa61b5f735ae4d6365b42389ed5e9eebda706a97e621d9d"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/parse-dialogue.js",
+                                              "sha256":  "6751da4d03c05206ebaea45869ae92a3ada3c1a0f663fc329e778b985db2d144"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/parse-training-config.js",
+                                              "sha256":  "b41f1da08f634984bc5e6b93b067bbc547c0741fc32720a7b32e83ec88d21110"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/plan-training-config-completion.js",
+                                              "sha256":  "3bb909af9128f058419c091c81ea8be1a576d2e1afe8d9809d444762773a0db4"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/plan-training-config.js",
+                                              "sha256":  "4081d8fbf08085891ce867670250068da717d9d19284c4bceeb004be9540a09a"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/quick-assessment.js",
+                                              "sha256":  "ad7d19ad7a53258e0192a423c24ea7a38f42206122d3295e6686b1931f0aeb39"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/result.js",
+                                              "sha256":  "84d61cb6436cb97e5a488958cc9b37b2c85eb2ef08f2344c6819f259b7677bee"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/review-config-change.js",
+                                              "sha256":  "28e00447968d5d049eedfdb66c71986a7c47ab6147cb5f699bfb61d0e334b468"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/sha256.js",
+                                              "sha256":  "88a92a06043de351d855bfa9956b8e949809204a3f17110e2532d3052f893d9a"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/source-text-diff.js",
+                                              "sha256":  "b6b5e9b3e994ba30d2b01587dbce0e0adcc9c0b3fd5cd6da3719def0eba941f8"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/static-strategy-suggestions.js",
+                                              "sha256":  "ae9686d14a62bd8e689cc8cbc2877841d4e27785a3fd1bba1addaf4b59a0f420"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/suggest-config-fixes.js",
+                                              "sha256":  "f5c9c1d285c2361738e37645ddf4c0858ee65bb1bf80d374bee4e66b689ea502"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/tool-readiness.js",
+                                              "sha256":  "f463aed72aa5d46b9d6a1a5ff8969cce96c51ce7229afca2847ccfc7d3f8627a"
+                                          },
+                                          {
+                                              "path":  "packages/config-core/src/validate-parallel-config.js",
+                                              "sha256":  "e5ec73ed307577772b6c08e0a0bdafa365e797b529e9c7bfc76439a5fbdee6ac"
+                                          },
+                                          {
+                                              "path":  "packages/contracts/analyze-performance-evidence-v1.schema.json",
+                                              "sha256":  "5f15de6edaf9c6400442c570ea9e6c2197800ccced34fda8c9bdf20e742d7c07"
+                                          },
+                                          {
+                                              "path":  "packages/contracts/compose-analysis-report-v1.schema.json",
+                                              "sha256":  "c152c3bd51f1c66e22de911f30d3a3f0bb2854157f56d0f10f3493cbdc107be0"
+                                          },
+                                          {
+                                              "path":  "packages/contracts/package.json",
+                                              "sha256":  "1f0c51d02387bccf81e669b8f83298c0a399c4d000a49955daa258b97057444d"
+                                          },
+                                          {
+                                              "path":  "packages/contracts/parse-training-config-v1.schema.json",
+                                              "sha256":  "bd04a38df54b3f4aebce2a270eaa0928e8fcf2ec2ec9dcd85a889dedf51dde70"
+                                          },
+                                          {
+                                              "path":  "packages/contracts/plan-training-config-v1.schema.json",
+                                              "sha256":  "a6dd4fb02989b89630cb3365e187207eee844c2e2016d3aff2e9d6f636c2aa10"
+                                          },
+                                          {
+                                              "path":  "packages/contracts/review-config-change-v1.schema.json",
+                                              "sha256":  "f662161469e16aaab13d96b0ad1ebb86f834b209cd1dbdb3b08002fe3ec482d2"
+                                          },
+                                          {
+                                              "path":  "packages/contracts/src/index.js",
+                                              "sha256":  "96de69174d07fcc58d9b9c52beec0034e68abcc8655f6285121e6c703e4cc958"
+                                          },
+                                          {
+                                              "path":  "packages/contracts/test/contracts.test.js",
+                                              "sha256":  "1025918c0ec28b3627df292f7860055ceec1cde4cf45684e5aac1e9a5229db3d"
+                                          },
+                                          {
+                                              "path":  "packages/contracts/tool-result-v1.schema.json",
+                                              "sha256":  "0406cc8464a2f16f1592f7b5a5b984c32dd283391e82df67ebe85ab680250f2c"
+                                          },
+                                          {
+                                              "path":  "packages/contracts/training-config-v1.schema.json",
+                                              "sha256":  "e394b6b63a4ae37677a2e82be92a923984b8ab5d34fab64ff243e959656bebe6"
+                                          },
+                                          {
+                                              "path":  "tools/demo-source-fingerprint.cjs",
+                                              "sha256":  "f1b8edb468fa8b2c70420018f095a2f60d66b1a8262349e8cb49aeff0b50d8a5"
+                                          },
+                                          {
+                                              "path":  "tools/package-github-pages.ps1",
+                                              "sha256":  "e6e5ad4c037c21c075a098c50c32a797d54d10061bcf4df5ce7cd42b538f5406"
+                                          }
+                                      ]
+                        },
     "capabilities":  [
                          "parse_training_config",
                          "validate_parallel_config",

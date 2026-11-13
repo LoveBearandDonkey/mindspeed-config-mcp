@@ -2,7 +2,7 @@
   "missing": {
     "status": "invalid",
     "code": "PLAN_NEEDS_CONTEXT",
-    "source_ref": "mindspeed-config-mcp:packages/config-core/src/plan-training-config.js@0.1.0",
+    "source_ref": "mindspeed-config-mcp:packages/config-core/src/plan-training-config.js@0.2.0",
     "required_inputs": [
       "rule_profile.framework",
       "model.id",
@@ -22,7 +22,7 @@
   "planned": {
     "status": "estimated",
     "confidence": "model-informed",
-    "policy_source": "mindspeed-config-mcp:packages/config-core/src/plan-training-config.js@0.1.0",
+    "policy_source": "mindspeed-config-mcp:packages/config-core/src/plan-training-config.js@0.2.0",
     "considered": 80,
     "valid_candidate_count": 48,
     "candidates": [
@@ -64,6 +64,30 @@
           "parallel.ep"
         ],
         "rank_count": 64
+      }
+    ]
+  },
+  "blocked": {
+    "status": "invalid",
+    "diagnostics": [
+      {
+        "code": "PLAN_BATCH_NOT_DIVISIBLE",
+        "message": "Global Batch=17 不能被 Micro Batch=1 × DP=4 整除，无法得到正整数累积次数。",
+        "fields": [
+          "batch.global_batch_size",
+          "batch.micro_batch_size",
+          "parallel.dp"
+        ],
+        "rejected_count": 1,
+        "suggestion": "先核对是否允许解除 parallel.dp 的锁定，再调整相关输入重新比较。",
+        "source_ref": "mindspeed-config-mcp:packages/config-core/src/plan-training-config.js@0.2.0",
+        "example": {
+          "tp": 2,
+          "pp": 2,
+          "ep": 2,
+          "cp": 1,
+          "dp": 4
+        }
       }
     ]
   }

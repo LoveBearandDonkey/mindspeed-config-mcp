@@ -4,7 +4,7 @@ import { parallelWorld } from "./page-rules.js";
 import { diagnostic, toolResult } from "./result.js";
 import { validateParallelConfig } from "./validate-parallel-config.js";
 
-const POLICY_SOURCE = "mindspeed-config-mcp:packages/config-core/src/plan-training-config.js@0.1.0";
+const POLICY_SOURCE = "mindspeed-config-mcp:packages/config-core/src/plan-training-config.js@0.2.0";
 const REQUIRED_WITHOUT_BASE = [
   "rule_profile.framework", "model.id", "model.total_layers", "model.hidden_size",
   "model.num_attention_heads", "model.ffn_hidden_size", "model.vocab_size",
@@ -12,6 +12,29 @@ const REQUIRED_WITHOUT_BASE = [
   "memory.compute_dtype", "memory.parameter_dtype", "memory.shard_mode",
 ];
 const RISK_ORDER = { safe: 0, tight: 1, alert: 2, over: 3 };
+
+// Derived from confirmed baseline values, never from the newly requested resource count.
+export function preparePlanningBaseConfig(base) {
+  if (!base) return base;
+  const output = structuredClone(base);
+  const batch = output.batch;
+  if (batch && (batch.global_batch_size === undefined || batch.global_batch_size === null
+    || batch.global_batch_size === "")) {
+    const factors = [batch.micro_batch_size, output.parallel?.dp, batch.micro_batch_count];
+    if (factors.every((value) => Number.isInteger(value) && value > 0)) {
+      batch.global_batch_size = factors.reduce((product, value) => product * value, 1);
+    }
+  }
+  return output;
+}
+
+function adjustmentFor(fields, locks) {
+  const locked = fields.filter((path) => locks.has(path));
+  if (locked.length) return `先核对是否允许解除 ${locked.join("、")} 的锁定，再调整相关输入重新比较。`;
+  if (fields.some((path) => path.startsWith("model."))) return "在工作台核对模型结构与层切分；规划不会自动改写模型结构。";
+  if (fields.some((path) => path.startsWith("memory.") || path.startsWith("features."))) return "核对高级条件和工作台特性开关，按该约束调整后重新比较。";
+  return "调整所列资源、批量或并行条件后重新比较；其他条件可返回工作台修改。";
+}
 
 function getPath(value, path) {
   return path.split(".").reduce((current, part) => current?.[part], value);
@@ -84,7 +107,7 @@ function planningInput(input) {
 }
 
 export function planTrainingConfig(input) {
-  const base = input.base_config;
+  const base = preparePlanningBaseConfig(input.base_config);
   const requiredInputs = missingEvidence(base);
   const locks = new Set([...(base?.policy?.locked_fields ?? []), ...(input.locked_fields ?? [])]);
   if (requiredInputs.length) {
@@ -132,6 +155,17 @@ export function planTrainingConfig(input) {
   const epValues = options("parallel.ep", base,
     seed.model.routed_experts > 0 ? factors(seed.model.routed_experts, 8) : [1], locks);
   const candidates = [];
+  const rejections = new Map();
+  function reject(code, message, fields, candidate, sourceRef = POLICY_SOURCE) {
+    const prior = rejections.get(code);
+    if (prior) { prior.rejected_count += 1; return; }
+    rejections.set(code, {
+      code, message, fields, rejected_count: 1,
+      suggestion: adjustmentFor(fields, locks), source_ref: sourceRef,
+      example: { tp: candidate.parallel.tp, pp: candidate.parallel.pp, ep: candidate.parallel.ep,
+        cp: candidate.parallel.cp, dp: candidate.parallel.dp },
+    });
+  }
   let considered = 0;
   for (const tp of tpValues) for (const pp of ppValues) for (const ep of epValues) {
     if (input.goal === "pipeline-balanced" && base.parallel.pp > 1 && pp === 1) continue;
@@ -140,19 +174,43 @@ export function planTrainingConfig(input) {
     Object.assign(candidate.parallel, { tp, pp, ep, dp: 1 });
     const rankPerDp = parallelWorld(candidate);
     const dp = totalRanks / rankPerDp;
-    if (!Number.isInteger(dp) || dp < 1 || (locks.has("parallel.dp") && dp !== base.parallel.dp)) continue;
+    if (!Number.isInteger(dp) || dp < 1) {
+      reject("PLAN_RANKS_NOT_DIVISIBLE", `目标 ${totalRanks} Rank 无法按示例 TP=${tp}、PP=${pp}、CP=${candidate.parallel.cp}、EP=${ep}（${candidate.parallel.ep_mode} 口径）得到正整数 DP。`,
+        ["cluster.total_ranks", "parallel.tp", "parallel.pp", "parallel.cp", "parallel.ep"], candidate);
+      continue;
+    }
     candidate.parallel.dp = dp;
+    if (locks.has("parallel.dp") && dp !== base.parallel.dp) {
+      reject("PLAN_LOCKED_DP_CONFLICT", `示例切分要求 DP=${dp}，但 DP 已锁定为 ${base.parallel.dp}。`, ["parallel.dp", "cluster.total_ranks"], candidate);
+      continue;
+    }
     const batchCount = candidate.batch.global_batch_size
       / (candidate.batch.micro_batch_size * dp);
-    if (!Number.isInteger(batchCount) || batchCount < 1
-      || (locks.has("batch.micro_batch_count") && batchCount !== base.batch.micro_batch_count)) continue;
+    if (!Number.isInteger(batchCount) || batchCount < 1) {
+      reject("PLAN_BATCH_NOT_DIVISIBLE", `Global Batch=${candidate.batch.global_batch_size} 不能被 Micro Batch=${candidate.batch.micro_batch_size} × DP=${dp} 整除，无法得到正整数累积次数。`,
+        ["batch.global_batch_size", "batch.micro_batch_size", "parallel.dp"], candidate);
+      continue;
+    }
+    if (locks.has("batch.micro_batch_count") && batchCount !== base.batch.micro_batch_count) {
+      reject("PLAN_LOCKED_ACCUMULATION_CONFLICT", `示例切分需要累积 ${batchCount} 次，但累积次数已锁定为 ${base.batch.micro_batch_count}。`, ["batch.micro_batch_count", "batch.global_batch_size", "parallel.dp"], candidate);
+      continue;
+    }
     candidate.batch.micro_batch_count = batchCount;
     const changes = changeList(base, candidate);
-    if (changes.some(({ path }) => locks.has(path))) continue;
+    if (changes.some(({ path }) => locks.has(path))) {
+      reject("PLAN_LOCKED_FIELD_CONFLICT", "示例候选需要改动已锁定字段。", changes.filter(({ path }) => locks.has(path)).map(({ path }) => path), candidate);
+      continue;
+    }
     const validation = validateParallelConfig(candidate);
-    if (validation.status !== "valid" || validation.errors.length) continue;
+    if (validation.status !== "valid" || validation.errors.length) {
+      for (const issue of validation.errors) reject(issue.code, issue.message, issue.fields ?? [], candidate, issue.source_ref);
+      continue;
+    }
     const estimate = estimateTrainingCapacity(candidate);
-    if (estimate.status !== "estimated") continue;
+    if (estimate.status !== "estimated") {
+      for (const issue of estimate.errors) reject(issue.code, issue.message, issue.fields ?? [], candidate, issue.source_ref);
+      continue;
+    }
     const stages = estimate.data.stages;
     const totals = stages.map(({ total_gib }) => total_gib);
     const bottleneck = stages[estimate.data.bottleneck_stage];
@@ -160,7 +218,7 @@ export function planTrainingConfig(input) {
       id: `tp${tp}-pp${pp}-ep${ep}-dp${dp}`,
       changes,
       proposed_config: candidate,
-      validation: { status: validation.status, warning_codes: validation.warnings.map(({ code }) => code) },
+      validation: { status: validation.status, warning_codes: validation.warnings.map(({ code }) => code), warnings: validation.warnings },
       capacity: {
         confidence: "theoretical",
         bottleneck_stage: bottleneck.stage,
@@ -168,6 +226,9 @@ export function planTrainingConfig(input) {
         bottleneck_ratio: bottleneck.ratio,
         level: bottleneck.level,
         stage_spread_gib: Math.max(...totals) - Math.min(...totals),
+        available_gib: seed.cluster.card_memory_gib,
+        headroom_gib: seed.cluster.card_memory_gib - bottleneck.total_gib,
+        thresholds: estimate.data.thresholds,
         safe_ratio: estimate.data.thresholds.tight,
       },
       tradeoffs: tradeoffs(base, candidate),
@@ -214,6 +275,10 @@ export function planTrainingConfig(input) {
       considered,
       valid_candidate_count: candidates.length,
       candidates: shortlisted,
+      diagnostics: [...rejections.values()].sort((left, right) => right.rejected_count - left.rejected_count).slice(0, 6),
+      ranking_basis: ["优先比较理论容量风险等级", input.goal === "memory-safe" ? "同风险等级下优先降低瓶颈占用比例"
+        : input.goal === "pipeline-balanced" ? "同风险等级下优先缩小 Stage 容量差距" : "同风险等级下优先减少字段改动",
+      "其余条件相同时优先减少字段改动；未预测吞吐"],
       policy_source: POLICY_SOURCE,
     },
   });

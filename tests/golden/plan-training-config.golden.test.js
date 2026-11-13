@@ -15,6 +15,10 @@ export function projectPlanTrainingConfig() {
     schema_version: "1.0", resources, goal: "memory-safe",
     base_config: createTrainingConfig({ model: { first_k_dense_layers: 4 } }),
   });
+  const blockedConfig = createTrainingConfig({ model: { first_k_dense_layers: 4 }, batch: { global_batch_size: 17 } });
+  const blocked = planTrainingConfig({ schema_version: "1.0", resources: blockedConfig.cluster,
+    goal: "minimal-change", base_config: blockedConfig,
+    locked_fields: ["parallel.tp", "parallel.pp", "parallel.ep", "parallel.dp"] });
   return {
     missing: {
       status: missing.status,
@@ -36,6 +40,7 @@ export function projectPlanTrainingConfig() {
         rank_count: candidate.topology.rank_count,
       })),
     },
+    blocked: { status: blocked.status, diagnostics: blocked.data.diagnostics },
   };
 }
 

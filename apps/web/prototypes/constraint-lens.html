@@ -4,6 +4,37 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>V2 约束视图 · 独立原型</title>
+  <meta name="color-scheme" content="light dark">
+  <script>
+    (()=>{
+      const key='mindspeed-constraint-lens-theme';
+      const valid=value=>value==='light'||value==='dark';
+      const apply=theme=>{
+        document.documentElement.dataset.theme=theme;
+        document.querySelectorAll('[data-theme-choice]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.themeChoice===theme)));
+        document.dispatchEvent(new CustomEvent('constraint-lens-theme',{detail:{theme}}));
+      };
+      let theme=new URLSearchParams(location.search).get('theme');
+      if(!valid(theme)){try{theme=localStorage.getItem(key);}catch{}}
+      apply(valid(theme)?theme:'light');
+      document.addEventListener('DOMContentLoaded',()=>{
+        apply(document.documentElement.dataset.theme);
+        document.querySelector('.theme-switch').addEventListener('click',event=>{
+          const button=event.target.closest('[data-theme-choice]');if(!button)return;
+          apply(button.dataset.themeChoice);
+          try{localStorage.setItem(key,button.dataset.themeChoice);}catch{}
+        });
+      });
+      window.addEventListener('storage',event=>{if(event.key===key)apply(valid(event.newValue)?event.newValue:'light');});
+    })();
+  </script>
+  <script>if(new URLSearchParams(location.search).get('embed')==='inline')document.documentElement.dataset.embed='inline';</script>
+  <style>
+    html[data-embed=inline] body{background:#fff;overflow:hidden}
+    html[data-embed=inline] .shell{max-width:none;padding:0}
+    html[data-embed=inline] .sticky-nav,html[data-embed=inline] .issue-summary,html[data-embed=inline] #case-question,html[data-embed=inline] .agent-composer,html[data-embed=inline] .composer-status,html[data-embed=inline] .reply-actions{display:none}
+    html[data-embed=inline] .panel{border:0;border-radius:0;box-shadow:none}
+  </style>
   <style>
     :root{font-family:Inter,"Segoe UI","Microsoft YaHei",sans-serif;color:#1b2430;background:#f7f8fa;font-synthesis:none}
     *{box-sizing:border-box}body{margin:0}button{font:inherit}button:focus-visible,summary:focus-visible{outline:3px solid #2378dc;outline-offset:3px}
@@ -111,21 +142,21 @@
     .v2-advice-try:disabled{border-color:#dedede;background:#f3f3f3;color:#999;cursor:not-allowed}.v2-advice-try:disabled:hover{background:#f3f3f3}.v2-advice-button:disabled{opacity:.58;cursor:not-allowed}.v2-advice-button:disabled:hover{border-color:#d7d7d7;color:#222}
     .v2-service-state{padding-top:10px;color:#777;font-size:11px;text-align:center}.v2-service-state a{color:#126ab1;text-decoration:none}.v2-service-state a:hover{text-decoration:underline}
     .v2-service-state button{margin-left:8px;padding:0;border:0;background:none;color:#126ab1;font:inherit;cursor:pointer}.v2-service-state button:hover{text-decoration:underline}
-    .v2-target-cell,.v2-actual-cell{--v2-right-line:transparent;--v2-bottom-line:transparent;border:0;background-image:linear-gradient(to right,rgba(0,0,0,.4) 0 1.5px,transparent 1.5px),linear-gradient(to bottom,rgba(0,0,0,.4) 0 1.5px,transparent 1.5px),linear-gradient(to left,var(--v2-right-line) 0 1.5px,transparent 1.5px),linear-gradient(to top,var(--v2-bottom-line) 0 1.5px,transparent 1.5px);background-repeat:no-repeat;box-shadow:none}
-    .v2-cell-last-column{--v2-right-line:rgba(0,0,0,.4)}.v2-cell-last-row{--v2-bottom-line:rgba(0,0,0,.4)}
+    .v2-target-cell,.v2-actual-cell{--v2-right-line:transparent;--v2-bottom-line:transparent;border:0;background-image:linear-gradient(to right,var(--v2-grid-line,rgba(0,0,0,.4)) 0 1.5px,transparent 1.5px),linear-gradient(to bottom,var(--v2-grid-line,rgba(0,0,0,.4)) 0 1.5px,transparent 1.5px),linear-gradient(to left,var(--v2-right-line) 0 1.5px,transparent 1.5px),linear-gradient(to top,var(--v2-bottom-line) 0 1.5px,transparent 1.5px);background-repeat:no-repeat;box-shadow:none}
+    .v2-cell-last-column{--v2-right-line:var(--v2-grid-line,rgba(0,0,0,.4))}.v2-cell-last-row{--v2-bottom-line:var(--v2-grid-line,rgba(0,0,0,.4))}
     .v2-target-cell.is-covered{background-image:none}
     .v2-artboard.is-v2-abstract .v2-target-grid,.v2-artboard.is-v2-abstract .v2-actual-grid{display:block}
     .v2-artboard.is-v2-abstract .v2-target-grid{width:var(--v2-target-width);height:var(--v2-target-height)}
     .v2-artboard.is-v2-abstract .v2-actual-grid{width:var(--v2-actual-width);height:var(--v2-actual-height);background:rgba(246,126,130,.68)}
     .v2-artboard.is-v2-overlap .v2-target-grid{background:transparent;visibility:hidden}
-    .v2-artboard.is-v2-overlap .v2-actual-cell{background-color:transparent}
+    .v2-artboard.is-v2-overlap .v2-actual-cell{background-color:var(--v2-matched-fill,transparent)}
     .v2-artboard.is-v2-overlap.is-v2-abstract .v2-target-grid{background:#4fa2e9;visibility:visible}
     .v2-artboard.is-v2-overlap.is-v2-abstract .v2-actual-grid{background:transparent}
     @media(prefers-reduced-motion:no-preference){
       .v2-artboard.is-v2-success .v2-actual-cell{animation:v2-match-cell 1.45s ease-out both}
       .v2-artboard.is-v2-success::after{content:"";position:absolute;z-index:2;left:var(--v2-matrix-left);bottom:var(--v2-matrix-inset);width:var(--v2-wide-width);height:var(--v2-matrix-height);pointer-events:none;animation:v2-match-glow 1.45s ease-out both}
     }
-    @keyframes v2-match-cell{0%,28%{background-color:#57cd91}100%{background-color:transparent}}
+    @keyframes v2-match-cell{0%,28%{background-color:#57cd91}100%{background-color:var(--v2-matched-fill,transparent)}}
     @keyframes v2-match-glow{0%{box-shadow:0 0 0 0 #4fc78a88;opacity:1}45%{box-shadow:0 0 0 18px #4fc78a33;opacity:1}100%{box-shadow:0 0 0 30px #4fc78a00;opacity:0}}
     .visual.is-v2-visual{display:flex;flex-direction:column}
     .visual.is-v2-visual .v2-restored{display:flex;flex:1;flex-direction:column;min-width:0}
@@ -157,11 +188,139 @@
     .insert-plan{display:block;width:100%;margin-top:20px;padding:10px 12px;border:1px solid #111;border-radius:9px;background:#111;color:#fff;font-size:12px;font-weight:600;cursor:pointer}.insert-plan:hover:not(:disabled){background:#292929}.insert-plan:disabled{border-color:#dedede;background:#f3f3f3;color:#999;cursor:not-allowed}.insert-plan:focus-visible,.agent-send:focus-visible{outline:2px solid #111;outline-offset:2px}
     .agent-composer{position:relative;margin-top:48px;border:1px solid #dedede;border-radius:16px;background:#fff}.agent-composer:focus-within{border-color:#111;box-shadow:0 0 0 2px #11111118}.agent-composer textarea{display:block;width:100%;min-height:calc(3 * 1.6em + 63px);resize:vertical;padding:14px 16px 49px;border:0;border-radius:16px;background:transparent;color:#222;font:13px/1.6 Inter,"Segoe UI","Microsoft YaHei",sans-serif;scrollbar-width:thin;scrollbar-color:#b7bec5 transparent}.agent-composer textarea:focus{outline:0}.agent-composer textarea::placeholder{color:#999}.agent-composer textarea::-webkit-scrollbar{width:9px}.agent-composer textarea::-webkit-scrollbar-track{background:transparent}.agent-composer textarea::-webkit-scrollbar-thumb{border:2px solid transparent;border-radius:99px;background:#bec5cb;background-clip:padding-box}.agent-composer textarea::-webkit-scrollbar-thumb:hover{background:#969fa7;background-clip:padding-box}.agent-send{position:absolute;right:10px;bottom:10px;display:grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:50%;background:#111;color:#fff;cursor:pointer}.agent-send:hover:not(:disabled){background:#292929}.agent-send:disabled{background:#e6e6e6;color:#aaa;cursor:not-allowed}.agent-send svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.composer-status{margin:8px 2px 0;color:#777;font-size:11px}.composer-status:empty{display:none}
   </style>
+  <style id="theme-palette">
+    /* Dark tokens follow InsightChat/主题表.md: 追光 base, tints, dividers and composer. */
+    :root{color-scheme:light;--theme-switch-bg:#f1f1f1;--theme-switch-ink:#666;--theme-switch-active:#fff;--theme-switch-active-ink:#111;--theme-switch-shadow:0 1px 4px #00000012}
+    .theme-switch{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:10px;background:var(--theme-switch-bg)}
+    .theme-switch button{display:inline-flex;align-items:center;justify-content:center;width:30px;height:28px;border:0;border-radius:8px;padding:6px;background:transparent;color:var(--theme-switch-ink);cursor:pointer}
+    .theme-switch svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+    .theme-switch button[aria-pressed=true]{background:var(--theme-switch-active);color:var(--theme-switch-active-ink);box-shadow:var(--theme-switch-shadow);font-weight:650}
+    .mast-actions{flex-wrap:wrap;justify-content:flex-end}
+    :root[data-theme=dark]{
+      color-scheme:dark;color:var(--foreground);background:var(--night-page);
+      --brand-blue:#317AF7;--brand-blue-disabled:#264DAB;--brand-green:#5BA854;--brand-purple:#6A29AB;
+      --foreground:#E6E6E6;--foreground-secondary:#B3B3B3;--foreground-placeholder:#808080;--foreground-disabled:#808080;
+      --surface-1:#161616;--surface-2:#1C1C1C;--divider-weak:rgba(255,255,255,.10);--divider-strong:rgba(255,255,255,.10);--border-line:rgba(255,255,255,.10);
+      --brand-tint:20%;--brand-tint-border:40%;--brand-tint-strong:26%;--warning:#FFAA3B;--danger:#FF4B7B;
+      --night-page:#101114;--night-surface:var(--surface-1);--night-canvas:var(--surface-2);--night-raised:#242424;--night-line:var(--border-line);--night-text:var(--foreground);--night-secondary:var(--foreground-secondary);--night-muted:var(--foreground-secondary);
+      --v2-grid-line:rgba(255,255,255,.38);--v2-matched-fill:#263444;
+      --night-blue:var(--brand-blue);--night-blue-bg:rgba(49,122,247,.20);--night-warm:var(--warning);--night-warm-bg:#33271a;--night-green:var(--brand-green);--night-green-bg:#202e20;--night-rose:var(--danger);
+      --theme-switch-bg:var(--surface-2);--theme-switch-ink:var(--foreground-secondary);--theme-switch-active:rgba(49,122,247,.20);--theme-switch-active-ink:var(--foreground);--theme-switch-shadow:none;
+    }
+    html[data-theme=dark] body,html[data-theme=dark][data-embed=inline] body{background:var(--night-page)}
+    :root[data-theme=dark] :is(.sticky-nav,.mast){background:var(--night-page);border-color:var(--divider-strong)}
+    :root[data-theme=dark] .brand{color:var(--night-text)}
+    :root[data-theme=dark] .mark{background:var(--surface-2);color:var(--foreground)}
+    :root[data-theme=dark] :is(.gallery,.source-switch,.width-switch,.choice,.v2-mode){background:var(--surface-2)}
+    :root[data-theme=dark] :is(.gallery button,.source-switch button,.width-switch button,.choice button,.v2-mode button){color:var(--night-muted)}
+    :root[data-theme=dark] :is(.gallery button[aria-selected=true],.source-switch button[aria-pressed=true],.width-switch button[aria-pressed=true],.choice button.active,.v2-mode button[aria-pressed=true]){background:var(--night-blue-bg);color:var(--foreground);box-shadow:none}
+    :root[data-theme=dark] .panel{background:var(--night-surface);border-color:var(--night-line);box-shadow:none}
+    html[data-theme=dark][data-embed=inline] .panel{box-shadow:none}
+    :root[data-theme=dark] .question{background:color-mix(in srgb,var(--brand-blue) var(--brand-tint),var(--surface-2));color:var(--foreground)}
+    :root[data-theme=dark] :is(.meta,.disclosure,.issue-sources,.v2-advice,.compat-control-group,.interaction,.capacity-view__footer,.capacity-view .v2-advice){border-color:var(--night-line)}
+    :root[data-theme=dark] :is(.meta,.balance-feedback,.product-status-note,.rank-hint,.product-view-toolbar,.measure-foot,.capacity-note,.capacity-legend,.capacity-view__heading small,.capacity-view__footer,.capacity-advice-empty,.advice-empty,.v2-service-state,.v2-limit,.v2-limit small,.reply-feedback,.composer-status,.disclosure p,.disclosure li,.issue-card .issue-code,.compat-eyebrow,.compat-eyebrow code,.compat-node small,.compat-control-note,.division-control-note,.split-row-label small,.split-footer .v2-advice-button small){color:var(--night-muted)}
+    :root[data-theme=dark] :is(.lead-row h2,.equation-factor strong,.division-top strong,.measure-head strong,.split-summary.is-valid strong,.compat-node strong,.compat-rule-title,.compat-control-group>strong,.capacity-view__heading strong,.capacity-view__cap b,.capacity-bar-row__value,.capacity-view__footer b,.issue-card h3,.v2-advice strong,.split-row strong){color:var(--night-text)}
+    :root[data-theme=dark] :is(.agent-response p,.equation-factor,.measure-head,.division-top,.factor small,.factor.tp-factor small,.split-row-label,.v2-legend,.capacity-bar-row__name,.capacity-hbm__head,.compat-control-row,.compat-rule p,.compatibility-preview p,.compatibility-preview li,.compatibility-preview code,.case-select>span,.disclosure summary,.disclosure code,.issue-summary p,.issue-sources ul,.product-layer-toggle,.rank-label,.product-replica-name,.cp-line-label){color:var(--night-secondary)}
+    :root[data-theme=dark] :is(.visual,.v2-artboard,.issue-card){background:var(--night-canvas);border-color:var(--night-line)}
+    :root[data-theme=dark] :is(.restore-button,.factor-stepper,.factor select,.factor input[type=number],.v2-advice-button,.split-row,.compat-rule,.compat-node,.case-select button,.v2-limit-marks span,.capacity-view__cap,.compat-eyebrow>span,.compatibility-preview li,.product-stage){background:var(--night-raised);border-color:var(--night-line);color:var(--night-secondary)}
+    :root[data-theme=dark] .factor-stepper input[type=number]{background:transparent;border:0;color:var(--night-text)}
+    :root[data-theme=dark] .factor-stepper button{color:var(--night-secondary)}
+    :root[data-theme=dark] :is(.restore-button,.v2-advice-button,.case-select button){background:var(--surface-2);color:var(--foreground);box-shadow:none}
+    :root[data-theme=dark] :is(.restore-button:hover,.v2-advice-button:hover,.case-select button:hover){background:var(--surface-2);border-color:var(--brand-blue);color:var(--brand-blue);box-shadow:none}
+    :root[data-theme=dark] :is(.lock-toggle:hover,.reply-actions button:hover,.reply-actions button[aria-pressed=true]){background:rgba(255,255,255,.05);color:var(--foreground)}
+    :root[data-theme=dark] :is(.lock-toggle,.reply-actions button){color:var(--night-muted)}
+    :root[data-theme=dark] .lock-toggle.locked{background:rgba(49,122,247,.26);color:var(--foreground)}
+    :root[data-theme=dark] :is(.factor.tp-factor,.factor.nested-factor,.factor.target-factor){background:transparent;border-color:var(--night-line)}
+    :root[data-theme=dark] :is(.factor.tp-factor small,.v2-controls .factor.is-data small,.equation-factor.tp-equation small,.equation-factor.tp-equation strong,.result,.result.good-text,.annotation.ok,.issue-card h3 span,.split-view.is-preview .split-summary::after,.v2-service-state a,.v2-service-state button){color:var(--night-blue)}
+    :root[data-theme=dark] .factor input[type=range]{background:linear-gradient(to right,var(--night-blue) 0%,var(--night-blue) var(--range-progress),rgba(255,255,255,.10) var(--range-progress),rgba(255,255,255,.10) 100%) center/100% 2px no-repeat}
+    :root[data-theme=dark] .v2-progressive-slider::before{background:linear-gradient(to right,var(--night-blue) 0 var(--range-progress),rgba(255,255,255,.10) var(--range-progress) 100%)}
+    :root[data-theme=dark] .v2-controls .v2-progressive-slider input[type=range]{background:none}
+    :root[data-theme=dark] .factor input[type=range]::-webkit-slider-thumb{background:var(--foreground);border-color:var(--border-line);box-shadow:0 1px 4px #0005}
+    :root[data-theme=dark] .factor input[type=range]::-moz-range-thumb{background:var(--foreground);border-color:var(--border-line);box-shadow:0 1px 4px #0005}
+    :root[data-theme=dark] :is(.v2-advice-button[aria-pressed=true],.case-select button[aria-pressed=true]){background:var(--night-blue-bg);border-color:rgba(49,122,247,.40);color:var(--foreground);box-shadow:none}
+    :root[data-theme=dark] :is(.v2-advice-priority,.compat-advice-priority,.badge.good){background:var(--night-green-bg);border-color:#375d4d;color:var(--night-green)}
+    :root[data-theme=dark] :is(.badge.bad,.badge.estimate,.compat-link.is-conflict){background:var(--night-warm-bg);color:var(--night-warm)}
+    :root[data-theme=dark] :is(.annotation:not(.ok),.capacity-summary.is-warning strong,.split-summary:not(.is-valid) strong,.capacity-view__status,.capacity-bar-row.is-over .capacity-bar-row__value){color:var(--night-warm)}
+    :root[data-theme=dark] :is(.meta .source svg,.split-status,.compat-conclusion.is-valid,.capacity-view__status.is-safe){color:var(--night-green)}
+    :root[data-theme=dark] :is(.split-status span,.compat-conclusion.is-valid span,.compat-link.is-valid,.compat-rule-icon){background:var(--night-green-bg);color:var(--night-green)}
+    :root[data-theme=dark] :is(.split-status.is-warning,.compat-conclusion:not(.is-valid)){color:var(--night-warm)}
+    :root[data-theme=dark] :is(.split-status.is-warning span,.compat-conclusion:not(.is-valid) span,.compat-rule.is-conflict .compat-rule-icon){background:#473328;color:var(--night-warm)}
+    :root[data-theme=dark] :is(.split-row--leftover,.split-row--shortage,.compat-rule.is-conflict){background:#2b2421;border-color:#654737}
+    :root[data-theme=dark] :is(.split-row--leftover .split-row-label,.split-row--leftover strong,.split-row--shortage strong,.split-row--shortage .split-row-label small){color:var(--night-warm)}
+    :root[data-theme=dark] .split-dots i{background:var(--brand-blue)}
+    :root[data-theme=dark] .split-row--leftover .split-dots i{background:#e7aa7e}
+    :root[data-theme=dark] .split-row--shortage .split-dots i.is-missing{background:#3e2f26;border-color:#d79d74}
+    :root[data-theme=dark] :is(.split-row-stack .split-row--leftover,.split-row-stack .split-row--shortage){box-shadow:0 -6px 14px var(--night-canvas)}
+    :root[data-theme=dark] .compat-rule-token{background:#ffffff0a;border-color:#ffffff20}
+    :root[data-theme=dark] .compat-switch{background:var(--surface-2);border-color:var(--border-line);color:var(--foreground-secondary)}
+    :root[data-theme=dark] .compat-switch.is-on{background:var(--brand-blue);border-color:var(--brand-blue);color:#fff}
+    :root[data-theme=dark] .compat-switch::before{background:#e6eef7}
+    :root[data-theme=dark] .compat-node span{background:var(--night-blue-bg);color:var(--night-blue)}
+    :root[data-theme=dark] .compat-node.is-off{background:var(--surface-2);border-color:var(--night-line)}
+    :root[data-theme=dark] .compat-node.is-off span{background:rgba(255,255,255,.05);color:var(--foreground-disabled)}
+    :root[data-theme=dark] :is(.v2-advice-try,.insert-plan,.agent-send){background:var(--brand-blue);border-color:var(--brand-blue);color:#fff}
+    :root[data-theme=dark] :is(.v2-advice-try:hover,.insert-plan:hover:not(:disabled),.agent-send:hover:not(:disabled)){background:color-mix(in srgb,var(--brand-blue) 84%,#000)}
+    :root[data-theme=dark] :is(.v2-advice-try:disabled,.v2-advice-try:disabled:hover,.insert-plan:disabled,.agent-send:disabled){background:var(--brand-blue-disabled);border-color:var(--brand-blue-disabled);color:var(--foreground-disabled)}
+    :root[data-theme=dark] .v2-advice-button:disabled:hover{border-color:var(--night-line);color:var(--night-muted)}
+    :root[data-theme=dark] :is(.insert-plan:focus-visible,.agent-send:focus-visible){outline-color:var(--night-blue)}
+    :root[data-theme=dark] .agent-composer{border:1.5px solid transparent;background:linear-gradient(var(--surface-1),var(--surface-1)) padding-box,linear-gradient(90deg,color-mix(in srgb,var(--brand-blue) 60%,var(--surface-1)),color-mix(in srgb,var(--brand-purple) 60%,var(--surface-1))) border-box}
+    :root[data-theme=dark] .agent-composer:focus-within{border-color:transparent;box-shadow:0 0 0 3px rgba(49,122,247,.08)}
+    :root[data-theme=dark] .agent-composer textarea{color:var(--night-text);scrollbar-color:#576579 transparent}
+    :root[data-theme=dark] .agent-composer textarea::placeholder{color:var(--foreground-placeholder)}
+    :root[data-theme=dark] .agent-composer textarea::-webkit-scrollbar-thumb{background-color:#576579}
+    :root[data-theme=dark] .factor.passive-changed .factor-stepper{background:#3a2c22;border-color:#d99b6c;box-shadow:0 0 0 2px #d99b6c22}
+    :root[data-theme=dark] .factor.passive-changed small{color:var(--night-warm)}
+    :root[data-theme=dark] .v2-controls .factor.is-suggested .factor-stepper{background:#3b282d;border-color:#c8828b;box-shadow:0 0 0 2px #c8828b22}
+    :root[data-theme=dark] :is(.v2-controls .factor.is-suggested .factor-stepper input,.v2-controls .factor.is-suggested .factor-stepper button,.v2-feedback){color:var(--night-rose)}
+    :root[data-theme=dark] :is(.v2-arrow,.v2-arrow-label){color:var(--foreground)}
+    :root[data-theme=dark] .v2-target-grid{background:var(--brand-blue)}
+    :root[data-theme=dark] .v2-actual-cell{background-color:#eb9296b8}
+    :root[data-theme=dark] .v2-artboard.is-v2-abstract .v2-actual-grid{background:#eb9296b8}
+    :root[data-theme=dark] .v2-artboard.is-v2-overlap.is-v2-abstract .v2-target-grid{background:var(--brand-blue)}
+    :root[data-theme=dark] .v2-artboard.is-v2-overlap .v2-actual-cell{background-color:var(--v2-matched-fill)}
+    :root[data-theme=dark] .v2-artboard.is-v2-overlap.is-v2-abstract .v2-actual-grid{background-color:transparent}
+    :root[data-theme=dark] .v2-hover-tip{background:var(--surface-2);border-color:var(--border-line);color:var(--night-text);box-shadow:0 6px 24px #0005}
+    :root[data-theme=dark] .capacity-bar-row__capacity{background:var(--surface-2);border-color:var(--border-line)}
+    :root[data-theme=dark] .capacity-bar-row__fill{background:linear-gradient(90deg,#559fdf,#77c9db);box-shadow:0 1px 3px #0003}
+    :root[data-theme=dark] .capacity-bar-row.is-peak .capacity-bar-row__fill{background:linear-gradient(90deg,#5da9ed,#7ac6e9)}
+    :root[data-theme=dark] .capacity-bar-row.is-over .capacity-bar-row__fill{background:linear-gradient(90deg,#e8ad7d,#df9294)}
+    :root[data-theme=dark] .capacity-hbm__range-line{border-color:var(--foreground-secondary)}
+    :root[data-theme=dark] .capacity-hbm__range-line::before{border-right-color:var(--foreground-secondary)}
+    :root[data-theme=dark] .capacity-hbm__range-line::after{border-left-color:var(--foreground-secondary)}
+    :root[data-theme=dark] :is(.capacity-summary strong,.capacity-hbm__head strong){color:var(--night-text)}
+    :root[data-theme=dark] .capacity-summary.is-warning strong{color:var(--night-warm)}
+    :root[data-theme=dark] :is(.capacity-mode-heading,.capacity-boundaries,.capacity-thresholds,.capacity-hbm__keys,.capacity-hbm__scope,.capacity-range,.capacity-stage){color:var(--night-secondary)}
+    :root[data-theme=dark] .capacity-controls select{background:var(--night-raised);border-color:var(--night-line);color:var(--night-text)}
+    :root[data-theme=dark] .capacity-feedback{color:var(--night-warm)}
+    :root[data-theme=dark] .capacity-hbm{--memory-gradient:linear-gradient(90deg,#539ee4 0%,#71bfd0 48%,#dbaa76 78%,#df9294 100%)}
+    :root[data-theme=dark] .capacity-hbm__capacity{background:var(--surface-2);border-color:var(--border-line);box-shadow:inset 0 1px 3px #0003}
+    :root[data-theme=dark] .capacity-hbm__overflow{background:repeating-linear-gradient(135deg,#c17d7e 0 8px,#df9a98 8px 16px)}
+    :root[data-theme=dark] .capacity-hbm__mark{background:#e4edf8;box-shadow:0 0 0 1px #1119}
+    :root[data-theme=dark] .capacity-hbm__mark--tight{background:transparent;box-shadow:none;border-left-color:#efbe88}
+    :root[data-theme=dark] .capacity-hbm__keys i{border-color:#b6c6d9}
+    :root[data-theme=dark] .capacity-hbm__keys .tight i{border-color:#efbe88}
+    :root[data-theme=dark] .capacity-hbm__keys .overflow i{background:#df9a98}
+    :root[data-theme=dark] .scale{background:rgba(255,255,255,.10)}
+    :root[data-theme=dark] .scale-target{background:#7c8c9f}
+    :root[data-theme=dark] :is(.tp-rank,.rank-cell,.group,.groups.valid .group){background:var(--night-blue-bg);border-color:#3a6184;color:var(--night-blue)}
+    :root[data-theme=dark] :is(.tp-rank.active,.rank-cell.active){background:var(--brand-blue);color:#fff}
+    :root[data-theme=dark] .tp-rank.peer{background:#2c4d70;border-color:#77afe1}
+    :root[data-theme=dark] .ep-pane{background:#1d2b29;border-color:#3c514a}
+    :root[data-theme=dark] .ep-title{color:var(--night-green)}
+    :root[data-theme=dark] a{color:var(--brand-blue)}
+    :root[data-theme=dark] ::selection{background:rgba(49,122,247,.40);color:#fff}
+    :root[data-theme=dark] *{scrollbar-color:var(--divider-strong) transparent}
+    :root[data-theme=dark] :is(.agent-composer textarea,.product-layer-scroll){scrollbar-color:var(--divider-strong) transparent}
+    :root[data-theme=dark] .agent-composer textarea::-webkit-scrollbar-thumb{background-color:var(--divider-strong)}
+    :root[data-theme=dark] :is(button,input,select,textarea,summary):focus-visible{outline-color:var(--brand-blue)}
+    :root[data-theme=dark] :is(.restore-button,.v2-advice-button,.case-select button):focus-visible{border-color:var(--brand-blue);color:var(--brand-blue);box-shadow:none}
+    @media(max-width:420px){.mast-actions{gap:5px}.source-switch button,.width-switch button{padding-inline:7px}}
+  </style>
 </head>
 <body>
   <main class="shell" data-shell-width="wide">
     <div class="sticky-nav">
-      <div class="mast"><div class="brand"><span class="mark" aria-hidden="true">◎</span><span class="brand-full">MindSpeed Config · V2</span><span class="brand-short">V2</span></div><div class="mast-actions"><div class="source-switch" role="group" aria-label="WorldSize 建议来源"><button type="button" data-v2-source="mcp" aria-pressed="false">MCP</button><button type="button" data-v2-source="original" aria-pressed="true">原始</button></div><div class="width-switch" role="group" aria-label="页面宽度"><button type="button" data-width-mode="wide" aria-pressed="true">宽屏 960</button><button type="button" data-width-mode="narrow" aria-pressed="false">窄屏 480</button></div></div></div>
+      <div class="mast"><div class="brand"><span class="mark" aria-hidden="true">◎</span><span class="brand-full">MindSpeed Config · V2</span><span class="brand-short">V2</span></div><div class="mast-actions"><div class="theme-switch" role="group" aria-label="页面主题"><button type="button" data-theme-choice="light" aria-pressed="true" aria-label="浅色主题" title="浅色主题"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.5"/><path d="M10 1.5v2m0 13v2M1.5 10h2m13 0h2M4 4l1.5 1.5m9 9L16 16M4 16l1.5-1.5m9-9L16 4"/></svg></button><button type="button" data-theme-choice="dark" aria-pressed="false" aria-label="深色主题" title="深色主题"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.5 12A7 7 0 0 1 8 3.5 7 7 0 1 0 16.5 12Z"/></svg></button></div><div class="source-switch" role="group" aria-label="WorldSize 建议来源"><button type="button" data-v2-source="mcp" aria-pressed="false">MCP</button><button type="button" data-v2-source="original" aria-pressed="true">原始</button></div><div class="width-switch" role="group" aria-label="页面宽度"><button type="button" data-width-mode="wide" aria-pressed="true">宽屏 960</button><button type="button" data-width-mode="narrow" aria-pressed="false">窄屏 480</button></div></div></div>
       <div class="gallery" role="tablist" aria-label="约束视图案例">
         <button role="tab" id="tab-worldsize-v2" aria-controls="case-panel" aria-selected="true" data-case="worldsize-v2">WorldSize</button>
         <button role="tab" id="tab-heads" aria-controls="case-panel" aria-selected="false" data-case="heads">注意力切分</button>
@@ -566,7 +725,7 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
         const limitBlockers=state.validation.status==='valid'?[]:worldsizeV2CurrentLimitBlockers(state);
         if(!limitBlockers?.length)return '';
         const unavailable=limitBlockers.slice(0,worldsizeV2MaxSuggestions).map(item=>`<button type="button" class="v2-advice-button" disabled title="${item.field.toUpperCase()} 超过控件上限，无法试用">超限项 · ${item.field.toUpperCase()} ${item.value}（上限 ${item.maximum}）</button>`).join('');
-        return `<div class="v2-advice"><div class="v2-advice-header"><strong>修复建议</strong><button type="button" class="v2-advice-try" disabled title="超限项无法试用">试用</button></div><div class="v2-advice-options" role="group" aria-label="受控件上限限制的选项">${unavailable}</div></div>`;
+        return `<div class="v2-advice"><div class="v2-advice-header"><strong>修复建议</strong><button type="button" class="v2-advice-try" disabled title="超限项无法试用">采用并测试</button></div><div class="v2-advice-options" role="group" aria-label="受控件上限限制的选项">${unavailable}</div></div>`;
       }
       const controls=suggestions.slice(0,worldsizeV2MaxSuggestions).map((item,index)=>{
         const key=worldsizeV2SuggestionKey(item);
@@ -576,7 +735,7 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
         return `<button type="button" class="v2-advice-button" data-v2-suggestion-key="${key}" aria-pressed="${key===worldsizeV2SelectedSuggestion}"${item.requiresCapacityConfirmation?` title="仅在实际可用 ${itemRank.to} Rank 时采用"`:''}>${index+1}. ${index===0?'<span class="v2-advice-priority">优先</span> ':''}${description}${item.requiresCapacityConfirmation?' · 需确认资源':''}</button>`;
       }).join('');
       const source=worldsizeV2Source==='mcp'?'来自 V2 服务 suggest_config_fixes 的 structuredContent':'来自当前页面内嵌 config-core 的静态复验';
-      return `<div class="v2-advice"><div class="v2-advice-header"><strong title="${source}">修复建议</strong><button type="button" class="v2-advice-try" data-v2-try title="将所选方案写入 Control">试用</button></div><div class="v2-advice-options" role="group" aria-label="推荐方案">${controls}</div></div>`;
+      return `<div class="v2-advice"><div class="v2-advice-header"><strong title="${source}">修复建议</strong><button type="button" class="v2-advice-try" data-v2-try title="将所选方案写入 Control">采用并测试</button></div><div class="v2-advice-options" role="group" aria-label="推荐方案">${controls}</div></div>`;
     }
     function renderWorldsizeV2ServiceState(state,suggestions){
       if(state.validation.status==='valid'||suggestions.length)return '';
@@ -805,7 +964,7 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       const fields=scene==='layers'?[['total','model.total_layers',1024],['count','parallel.pp',128],['ranks','cluster.total_ranks',65536]]:[['total','model.num_attention_heads',1024],['kv','model.num_key_value_heads',1024],['count','parallel.tp',128],['ranks','cluster.total_ranks',65536]];
       const inputs=fields.map(([key,label,max])=>`<div class="factor"><div class="factor-top"><label for="division-${scene}-${key}"><small>${label}</small></label><span class="factor-stepper"><button type="button" data-division-step="${key}" data-step-direction="-1" aria-label="减小 ${label}" ${selection[key]<=1?'disabled':''}>−</button><input id="division-${scene}-${key}" type="number" data-division-number="${key}" aria-label="${label}" min="1" max="${max}" step="1" value="${selection[key]}"><button type="button" data-division-step="${key}" data-step-direction="1" aria-label="增大 ${label}" ${selection[key]>=max?'disabled':''}>+</button></span></div></div>`).join('');
       const mode=scene==='layers'?`<div class="factor"><div class="factor-top"><label for="division-${scene}-mode"><small>parallel.pipeline_layer_mode</small></label><select id="division-${scene}-mode" data-division-mode aria-label="parallel.pipeline_layer_mode"><option value="uniform" ${selection.mode==='uniform'?'selected':''}>uniform</option></select></div></div>`:'';
-      return `<div class="division-controls" aria-label="当前配置">${inputs}${mode}<p class="division-control-note">选择方案仅预览；点击试用后更新这些配置值。</p></div>`;
+      return `<div class="division-controls" aria-label="当前配置">${inputs}${mode}<p class="division-control-note">选择方案仅预览；点击“采用并测试”后更新这些配置值。</p></div>`;
     }
     function renderDivisionAdvice(scene,selection){
       if(divisionVariant(scene,selection).tone==='good')return '';
@@ -813,7 +972,7 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       const selected=choices.find(item=>item.id===selectedAdvice[scene]);
       if(!choices.length)return '<div class="v2-advice"><div class="v2-advice-header"><strong>修复建议</strong></div><p class="advice-empty">当前控件范围内没有通过全部静态规则的方案，请核对配置。</p></div>';
       const buttons=choices.map((item,index)=>`<button type="button" class="v2-advice-button" data-division-option="${item.id}" aria-pressed="${item===selected}">${index+1}. ${escapeHtml(item.label)}<small>${escapeHtml(item.detail)}</small></button>`).join('');
-      return `<div class="v2-advice"><div class="v2-advice-header"><strong>修复建议</strong><button type="button" class="v2-advice-try" data-division-try ${selected?'':'disabled'}>试用</button></div><div class="v2-advice-options" role="group" aria-label="可试调方案">${buttons}</div></div>`;
+      return `<div class="v2-advice"><div class="v2-advice-header"><strong>修复建议</strong><button type="button" class="v2-advice-try" data-division-try ${selected?'':'disabled'}>采用并测试</button></div><div class="v2-advice-options" role="group" aria-label="可试调方案">${buttons}</div></div>`;
     }
     function renderDivision(scene,variant){
       const isLayers=scene==='layers';
@@ -874,7 +1033,7 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
       const plans=compatibilityPlans(states);
       if(!plans.length)return `<div class="v2-advice"><div class="v2-advice-header"><strong>解决方案</strong></div><p class="advice-empty">${Object.values(states).every(state=>state.validation.status==='valid')?'当前规则关系均已满足，无需调整。':'当前示例没有找到通过全部规则静态复验的开关组合。'}</p></div>`;
       const selected=plans.find(plan=>plan.id===selectedAdvice.compatibility)??plans[0];
-      return `<div class="v2-advice compat-advice"><div class="v2-advice-header"><strong>解决方案</strong><button type="button" class="v2-advice-try" data-compatibility-try>试用</button></div><div class="v2-advice-options" role="group" aria-label="配置选项冲突解决方案">${plans.map((plan,index)=>`<button type="button" class="v2-advice-button" data-compatibility-option="${plan.id}" aria-pressed="${plan===selected}">${plan.preferred?'<span class="compat-advice-priority">优先</span>':''}${index+1}. ${Object.entries(plan.changes).map(([key,value])=>`${compatibilityOptionDisplay[key].label}=${compatibilityValue(key,value)}`).join(' · ')}</button>`).join('')}</div></div>`;
+      return `<div class="v2-advice compat-advice"><div class="v2-advice-header"><strong>解决方案</strong><button type="button" class="v2-advice-try" data-compatibility-try>采用并测试</button></div><div class="v2-advice-options" role="group" aria-label="配置选项冲突解决方案">${plans.map((plan,index)=>`<button type="button" class="v2-advice-button" data-compatibility-option="${plan.id}" aria-pressed="${plan===selected}">${plan.preferred?'<span class="compat-advice-priority">优先</span>':''}${index+1}. ${Object.entries(plan.changes).map(([key,value])=>`${compatibilityOptionDisplay[key].label}=${compatibilityValue(key,value)}`).join(' · ')}</button>`).join('')}</div></div>`;
     }
     function renderCompatibilityControls(){
       return `<div class="compat-controls" aria-label="各规则配置">${compatibilityScenarios.map(scenario=>`<div class="compat-control-group"><strong>${escapeHtml(scenario.label)}</strong>${[scenario.leftKey,scenario.rightKey].map(key=>{const option=compatibilityOptionDisplay[key];return `<div class="compat-control-row"><span title="${option.argument}">${option.label}</span><button type="button" class="compat-switch ${compatibilitySelection[key]?'is-on':''} ${key==='staticRecompute'?'is-wide':''}" data-compatibility-toggle="${key}" role="switch" aria-checked="${compatibilitySelection[key]}" aria-label="${option.label}（${option.argument}）">${compatibilityValue(key,compatibilitySelection[key])}</button></div>`}).join('')}</div>`).join('')}<p class="compat-control-note">“配入／不配”表示启动命令中是否写入该参数。</p></div>`;
@@ -981,7 +1140,7 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
     }
     function renderCapacityAdvice(options,selected){
       const buttons=options.map((item,index)=>`<button type="button" class="v2-advice-button" data-capacity-advice="${item.key}" aria-pressed="${item.key===capacitySelectedAdvice}"${item.requiresResources?' title="增加 PP 需要确认可用 Rank"':''}>${index+1}. ${index===0?'<span class="v2-advice-priority">优先</span> ':''}${item.label} · ${item.peak.toFixed(1)} GiB${item.requiresResources?' · 需确认 Rank':''}</button>`).join('');
-      return `<div class="v2-advice"><div class="v2-advice-header"><strong>调整建议</strong><button type="button" class="v2-advice-try" data-capacity-try ${selected?'':'disabled'}>试用</button></div><div class="v2-advice-options" role="group" aria-label="理论容量调整建议">${buttons||'<span class="capacity-advice-empty">暂无可试用建议</span>'}</div></div>`;
+      return `<div class="v2-advice"><div class="v2-advice-header"><strong>调整建议</strong><button type="button" class="v2-advice-try" data-capacity-try ${selected?'':'disabled'}>采用并测试</button></div><div class="v2-advice-options" role="group" aria-label="理论容量调整建议">${buttons||'<span class="capacity-advice-empty">暂无可试用建议</span>'}</div></div>`;
     }
     function renderCapacity(view){
       const result=view.result;
@@ -1480,6 +1639,20 @@ var ConstraintLensCore=(function(e){Object.defineProperty(e,Symbol.toStringTag,{
     window.addEventListener('resize',()=>{hideWorldsizeV2Tooltip();if(current==='worldsize-v2')$('visual').innerHTML=renderWorldsizeV2(worldsizeV2State());});
     window.addEventListener('scroll',hideWorldsizeV2Tooltip,true);
     render();
+    // Inline host contract: the original renderer owns all state and calculations.
+    if(document.documentElement.dataset.embed==='inline'&&window.parent!==window){
+      const channel='mindspeed-constraint-lens/v1';
+      const hostOrigin=new URL(document.referrer||location.href).origin;
+      const send=(type,payload)=>parent.postMessage({channel,type,case:current,...payload},hostOrigin==='null'?'*':hostOrigin);
+      let lastHeight=0;
+      const report=()=>{const height=Math.ceil(document.querySelector('.shell').getBoundingClientRect().height);if(height!==lastHeight){lastHeight=height;send('resize',{height});}};
+      new ResizeObserver(report).observe(document.querySelector('.shell'));
+      $('insert-plan').addEventListener('click',()=>queueMicrotask(()=>send('draft',{text:$('agent-input').value})));
+      send('ready',{question:cases[current].question});
+      send('theme',{theme:document.documentElement.dataset.theme});
+      document.addEventListener('constraint-lens-theme',event=>send('theme',event.detail));
+      report();
+    }
   </script>
 </body>
 </html>

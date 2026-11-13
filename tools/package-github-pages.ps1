@@ -34,6 +34,9 @@ $previousMode = $env:MINDSPEED_CONFIG_MCP_STATIC_DEMO
 $staticBuildAttempted = $false
 Push-Location $resolvedRoot
 try {
+    $sourceSnapshotJson = & node tools/demo-source-fingerprint.cjs
+    if ($LASTEXITCODE -ne 0) { throw "Could not fingerprint workbench source inputs." }
+    $sourceSnapshot = $sourceSnapshotJson | ConvertFrom-Json
     $env:MINDSPEED_CONFIG_MCP_STATIC_DEMO = "1"
     $staticBuildAttempted = $true
     & npm.cmd run build:ui
@@ -47,6 +50,11 @@ try {
     }
 
     $artifact = $artifacts[0]
+    $sourceAfterJson = & node tools/demo-source-fingerprint.cjs
+    if ($LASTEXITCODE -ne 0) { throw "Could not recheck workbench source inputs." }
+    if (($sourceAfterJson | ConvertFrom-Json).sha256 -ne $sourceSnapshot.sha256) {
+        throw "Source files changed during packaging. Run package:github-pages again."
+    }
     $html = [IO.File]::ReadAllText($artifact.FullName, [Text.Encoding]::UTF8)
     if (-not $html.Contains('mcpDistribution=`github-pages`')) {
         throw "Static demo marker missing; refusing to publish a host-dependent MCP App."
@@ -75,6 +83,7 @@ try {
         sha256 = $hash.Hash
         execution_mode = "browser-local-config-core"
         mcp_protocol_endpoint = $false
+        source_snapshot = $sourceSnapshot
         capabilities = @(
             "parse_training_config"
             "validate_parallel_config"
@@ -85,7 +94,7 @@ try {
     }
     [IO.File]::WriteAllText(
         (Join-Path $targetDirectory "manifest.json"),
-        (($manifest | ConvertTo-Json -Depth 4) + [Environment]::NewLine),
+        (($manifest | ConvertTo-Json -Depth 6) + [Environment]::NewLine),
         [Text.UTF8Encoding]::new($false)
     )
     [IO.File]::WriteAllText(
