@@ -1,8 +1,8 @@
 ﻿# MindSpeed 当前问答内容案例
 
-核对日期：2026-11-12。
+主体核对日期：2026-11-12；案例三补充核对：2026-11-13。
 
-> 本文分析对象是 `D:\Projects\MindSpeed`（MindSpeed Core）。本文保存在 `D:\Projects\mindspeed-config-mcp\docs`，该位置只是文档存放位置，不代表分析对象是配置 MCP。本文纠正此前把两个仓库混淆的案例。
+> 本文主体分析对象是 `D:\Projects\MindSpeed`（MindSpeed Core）；2026-11-13 新增的案例三单独说明 MindSpeed-Agent 的 Issue 分诊插件及 Observatory 网页。本文保存在 `D:\Projects\mindspeed-config-mcp\docs`，该位置只是文档存放位置，不代表所述能力属于配置 MCP。各案例按所属仓库区分。
 
 ## 先说明：原生使用方式不是问答或 MCP
 
@@ -13,9 +13,36 @@ import torch
 import mindspeed.megatron_adaptor
 ```
 
-用户实际输入是 Python 代码、命令行参数、模型与数据路径等；程序执行后产生训练行为、日志、异常或落盘文件。它不是必须由 Agent 调用的工具，也没有本文此前误写的九个 MCP 工具及 `content` / `structuredContent` 返回契约。
+用户实际输入是 Python 代码、命令行参数、模型与数据路径等；程序执行后产生训练行为、日志、异常或落盘文件。
 
-这里保留“问答案例”的文件名，是用问答解释如何使用原生功能。下文的中文答复是使用说明，不是 MindSpeed 自动生成的自然语言答复。
+## MindSpeed 对比MindSpeed-Agent
+两者通常配合使用。
+
+### MindSpeed 适配与执行专家
+
+>我已有训练代码，要在昇腾上运行或提速
+
+MindSpeed 的检查实际嵌在 Megatron 参数校验及特性校验过程中（训练程序的一环）；它最本质的能力，依然是负责让	Python 训练在昇腾 NPU 上适配并加速。检查只是执行前顺手做的事。
+比如
+
+执行前校验（初始化时触发）：参数是否满足要求，某个特性依赖的功能是否开启
+
+运行适配：某个训练框架使用了 CUDA 专用接口、算子或通信方式，需要进行昇腾适配；
+
+加速优化：通过融合算子减少执行开销，通过通信重叠减少等待，通过并行和内存优化支持更合适的训练规模。效果可能体现为吞吐提高、耗时下降或内存占用降低；
+
+
+使用方式是，在配套环境（你的电脑）中安装 MindSpeed，然后在 Megatron 的训练脚本中“import”引入
+
+### MindSpeed-Agent 规则检查专家
+
+>我不知道参数怎么配、为什么报错、该改哪里
+
+>我要把 GPU 模型迁移到昇腾
+
+MindSpeed-Agent 则提供专门的审查、preflight 和训练验证工作流，负责帮助开发者分析、配置、迁移、调优和验证训练。
+
+使用方式是，需要加载到Agent（如Claude Code、Codex）中使用。服务供给方式是插件（执行）+Skills+工作流（组织过程）+资料
 
 ## 当前典型输入和输出
 
@@ -146,3 +173,100 @@ on_trace_ready=torch_npu.profiler.tensorboard_trace_handler(args_.profile_save_p
 - `MCP本地使用.md`、`V2版-用户使用流程.md`：介绍配置 MCP 的使用，不能当作 MindSpeed Core 自身的原生入口说明。
 
 原生操作优先参考当前 MindSpeed 仓库的 README、`docs/zh/user-guide/quickstart.md`、`docs/zh/user-guide/profile.md` 和 `docs/zh/features/auto_settings.md`。
+
+## 案例三：在 MindSpeed-Agent 中按需打开 Observatory Issue 看板
+
+记录日期：2026-11-13。对象为 `D:\Projects\MindSpeed-Agent` 中的 `mindspeed-scan-issue-agent` 插件；两张页面截图由用户提供，保存在本文同目录。
+
+### 用户问题与答复要点
+
+> 这个页面是在 MindSpeed-Agent 工作流中给用户提供的吗？什么时候触发，展示的内容是什么？
+
+是。Observatory 是 **GitCode Issue 分诊插件按需提供的专业网页**，用于查看仓库问题、检阅分诊结果，以及配置凭据和发布权限。它不是覆盖训练、推理、迁移和算子调优的统一工作台，也不是 MindSpeed Core 的原生界面或配置 MCP 的 MCP App。
+
+插件通过 `gitcode-issue-triage` Skill 识别需求，由 Python 启动器安装、构建和运行独立的 `mindspeed-issue-observatory` 网站。用户可以从宿主 Agent 发起，也可以直接运行命令。
+
+### 什么时候触发页面
+
+| 用户需求或执行阶段 | 插件行为与页面作用 |
+| --- | --- |
+| “打开 Ascend/MindSpeed-Agent 的 Issue 看板”“查看这个仓库的 Issue 可视化情况” | 使用已确认的目标仓库执行 `visualize --repo owner/repo`，启动本地网站并打开浏览器；没有明确仓库时才询问 |
+| 批量分诊前发现没有只读 Token | 引导进入 `/agent-settings` 配置本机凭据；无 Token 也允许先启动设置页 |
+| 用户直接执行 `visualize` 命令 | 不依赖聊天，直接启动同一套完整网页 |
+| 普通扫描或分析候选 Issue | 使用 `scan --mode dry-run` 返回分析结果，不要求每次打开网页；需要代码证据或草稿时可进入 `shadow` 模式 |
+| 交互发布前需要审批 | 在设置页读取具体仓库的待审批草稿，核对完整内容后给予单次授权；审批不等于立即发布，实际执行前仍需重新核查 |
+
+典型协作链为：**用户在宿主 Agent 提出 Issue 管理需求 → 插件收集和分析 → 按需打开网页检阅 → 用户配置或审批 → Agent 继续执行。** 首次缺少凭据时，设置步骤会前移到批量分析之前。
+
+### 页面一：Issue 分析看板
+
+入口示例：`http://127.0.0.1:5173/?repo=Ascend%2FMindSpeed-Agent`。
+
+![Observatory Issue 分析看板：尚未采集及请求失败状态](<./Issue 分诊插件提供完整的 Observatory 网页.png>)
+
+看板提供分析概览、Issue 工作台、采集与变化、分析设置等入口。按页面实现，可展示以下信息；本图仅截取其中的分析概览部分：
+
+- Open Issue、明确 Bug、疑似 Bug/待分诊、高优先级关注数量。
+- 问题领域分布、积压时长、需关注的问题清单，以及搜索、筛选和导出。
+- Issue 详情、纳入原因、建议优先级与证据入口，可跳转 GitCode 原单。
+- 采集时间、数据可见范围、历史快照和变化，以及具备所需数据后的近 30 天响应/解决效率。
+
+**本次截图的真实状态。** 当前对象为 `Ascend/MindSpeed-Agent`，页面显示“尚未采集”“该仓库尚未成功采集”，并提示“不允许跨站请求”。因此，图中的 `0` 是当前未成功采集状态下的展示，**不能解释为仓库实际没有 Issue，也不能据此计算 Bug 数量或服务效率**。本次未排查跨站请求错误的根因，不能将它直接归因于 Token 缺失。
+
+分类和优先级属于分析建议，不等于已复现并确认代码缺陷；Open 状态也不保证代码尚未修复。阅读结果时应同时核对采集时间、可见范围、原单和关联代码。
+
+### 页面二：Agent 设置中心
+
+入口：`http://127.0.0.1:5173/agent-settings`。
+
+![Observatory Agent 设置中心：凭据、可信仓库与单次发布审批](<./Issue 分诊插件提供完整的 Observatory 网页-设置.png>)
+
+| 区域 | 用法与边界 |
+| --- | --- |
+| GitCode 凭据 | 分别配置只读 Token 和发布 Token；提交给本机服务，保存到 Windows 凭据管理器，网页不回显；不要粘贴到聊天或仓库文件 |
+| 可信仓库 | 添加 GitCode `owner/repo`，设置默认仓库及交互/定时发布开关；点击保存仓库配置后生效，新仓库默认不能发布 |
+| 单次发布审批 | 选择仓库并读取待审批草稿，核对具体 Issue 和完整回复后授权；交互审批绑定本次草稿，仍需 Agent 执行发布命令并核查远端结果 |
+
+本图中只读与发布 Token 均为“未配置”，目标仓库为 `Ascend/MindSpeed-Agent`，交互发布和定时发布均未勾选，也没有展示已批准的草稿。定时发布属于单独模式，只允许预设模板，除仓库开关外还需调度命令显式请求；不能把“已打开设置页”或“已加入可信仓库”当作发布授权。
+
+### 本次启动方式与后续使用
+
+运行环境要求 Python 3.10+、Git、Node.js 24+ 和 npm。以下命令在插件目录执行，`visualize` 启动完整网页；旧 `serve` 只提供轻量诊断页，不能替代完整看板。
+
+```powershell
+Set-Location 'D:\Projects\MindSpeed-Agent\plugins\mindspeed-scan-issue-agent'
+python scripts/issue_agent.py check
+python scripts/issue_agent.py visualize --repo Ascend/MindSpeed-Agent --port 5173 --sync-interval-minutes 0
+```
+
+本机的 `python` 命令为 Windows 应用执行别名，本次实际使用已有 uv 管理的 Python 3.12 启动：
+
+```powershell
+uv run --no-project --python 3.12 python scripts/issue_agent.py visualize --repo Ascend/MindSpeed-Agent --port 5173 --sync-interval-minutes 0
+```
+
+首次启动自动拉取网站的 `codex/agent-settings-v0.4` 分支，执行依赖安装和生产构建；后续复用本地安装。此次服务监听 `127.0.0.1:5173`，启动器健康检查通过。无只读 Token 时先打开设置页；配置后需重启网站，采集进程才会使用新凭据。完整批量分诊需满足凭据要求，公开 API 的不完整降级预览需要用户明确接受。
+
+查看状态和停止服务：
+
+```powershell
+python scripts/issue_agent.py visualize-status
+python scripts/issue_agent.py visualize-stop
+```
+
+### 刷新机制：服务端和浏览器分别控制
+
+| 机制 | 默认行为 | 本次启动及使用说明 |
+| --- | --- | --- |
+| 服务端定时同步 | 启动时执行，之后默认每 60 分钟采集；不依赖浏览器保持打开 | 本次用 `--sync-interval-minutes 0` 关闭，仅作用于服务端调度 |
+| 看板前端刷新 | 页面打开时，若为基线或数据超过 15 分钟，会尝试采集；之后默认每 15 分钟刷新，可在分析设置中调整或暂停 | 图中仍显示“每 15 分钟自动分析”，所以不能说全部自动刷新已关闭 |
+| 手动刷新 | 用户点击“立即分析”触发采集 | 采集能否成功仍取决于请求、权限和数据源；本次截图显示失败状态 |
+
+本案例确认了网站构建启动和两类页面的用途，没有完成真实 Issue 数据采集、缺陷复现、草稿发布或跨站请求故障修复。截图用于记录交互入口与当前状态，不作为完整分诊效果的验收证据。
+
+### 依据
+
+- [GitCode Issue 分诊 Skill](../../MindSpeed-Agent/skills/common/common/gitcode-issue-triage/SKILL.md)：触发话术、模式选择、凭据预检与页面启动约定。
+- [Issue 分诊插件说明](../../MindSpeed-Agent/plugins/mindspeed-scan-issue-agent/README.md)：完整网站、轻量诊断页、启动要求与发布流程。
+- [网站启动器](../../MindSpeed-Agent/plugins/mindspeed-scan-issue-agent/engine/issue_agent/web_observatory.py)：安装分支、监听地址、健康检查、凭据注入与服务生命周期。
+- 本机网站代码位于 `C:\Users\24565\AppData\Local\9-17-scan-issue-agent\web-observatory\app`；`app/page.tsx` 用于核对看板内容与前端刷新，`app/agent-settings.tsx` 用于核对设置和审批，`scripts/serve.mjs` 用于核对服务端定时同步。以上说明对应本次安装版本。
