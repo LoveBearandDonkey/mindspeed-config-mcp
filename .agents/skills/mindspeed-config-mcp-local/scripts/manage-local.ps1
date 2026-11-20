@@ -226,6 +226,11 @@ function Start-ManagedServices {
 
 function Start-Preview {
     Assert-Prerequisites
+    $prototypePath = Join-Path $ProjectRoot "apps\web\prototypes\constraint-lens.html"
+    if (-not (Test-Path -LiteralPath $prototypePath -PathType Leaf)) {
+        throw "Constraint Lens prototype not found: $prototypePath"
+    }
+    $prototypeUrl = ([Uri][IO.Path]::GetFullPath($prototypePath)).AbsoluteUri
     Stop-ManagedServices
     if (-not (Test-PortAvailable $PreviewPort)) {
         throw "Preview port $PreviewPort is occupied by a process not managed by this skill."
@@ -261,15 +266,19 @@ function Start-Preview {
             project_root = $ProjectRoot
             started_at = (Get-Date).ToUniversalTime().ToString("o")
             preview_url = $previewUrl
+            prototype_url = $prototypeUrl
             browser_url = $previewUrl
             preview_log = $previewLog
             preview_error_log = $previewErrorLog
             preview_process = Process-Record $previewProcess
         }
         Save-State $state
-        if (-not $NoBrowser) { Start-Process $previewUrl }
+        if (-not $NoBrowser) {
+            Start-Process $previewUrl
+            Start-Process $prototypeUrl
+        }
         Write-Host "MindSpeed Config MCP standalone preview started."
-        $state | Select-Object preview_url, preview_log
+        $state | Select-Object preview_url, prototype_url, preview_log
     } catch {
         if ($previewProcess) { Stop-TrackedProcess (Process-Record $previewProcess) "MCP App preview" }
         throw
@@ -290,6 +299,7 @@ switch ($Action) {
                 mode = "preview"
                 preview = if ($previewRunning) { "running" } else { "stopped" }
                 preview_url = $state.preview_url
+                prototype_url = $state.prototype_url
             }
             if (-not $previewRunning) { exit 1 }
         } else {

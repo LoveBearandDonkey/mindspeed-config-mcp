@@ -13,7 +13,7 @@ description: "This skill should be used when the user asks to start, launch, pre
 | 用户表达 | 动作 |
 | --- | --- |
 | 拉起服务、启动服务、打开工作台 | `Start` |
-| 预览页面、打开页面预览、只看界面 | `Preview` |
+| 拉起预览、预览页面、打开页面预览、只看界面 | `Preview` |
 | 刷新服务、重启服务、更新后看效果 | `Refresh` |
 | 查看状态、服务正常吗 | `Status` |
 | 停止服务、关闭本地服务 | `Stop` |
@@ -41,6 +41,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File <skill目录>\scripts\manage
 `http://127.0.0.1:4174/training-run-twin-standalone/config-relation-plane-mindspeed-config-mcp.html?preview=1`
 启动并打开改造版页面。该固定 URL 由预览服务映射到当次带时间戳的真实 HTML，与 MCP Resource 读取的内容相同；
 它不启动 MCP Server 或 Inspector，不能用于验收 MCP 协议通信。原始基线页面单独使用 4173 端口。
+同时在浏览器打开本仓库 `apps/web/prototypes/constraint-lens.html`（当前路径为
+`D:\Projects\mindspeed-config-mcp\apps\web\prototypes\constraint-lens.html`），使用本地文件 URL
+直接预览该独立原型；路径随项目根目录解析。`-NoBrowser` 对两个页面均生效。
 若 4174 被非本 Skill 管理的进程占用，应明确报错，不要结束未知进程。
 
 脚本运行后应核对退出码和摘要。失败时读取摘要给出的日志路径，不要让用户重新手工走完整
